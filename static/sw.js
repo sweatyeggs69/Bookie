@@ -1,11 +1,11 @@
 /* =========================================================
-   Booker Service Worker
+   Bookie Service Worker
    - Cache-first for static assets (CSS, JS, fonts, icons)
    - Network-first for API calls and HTML pages
    ========================================================= */
 
 /* eslint-disable no-restricted-globals */
-const CACHE_VERSION = 'booker-v1';
+const CACHE_VERSION = 'bookie-v1';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
 
@@ -35,7 +35,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(k => k.startsWith('booker-') && k !== STATIC_CACHE && k !== API_CACHE)
+          .filter(k => k.startsWith('bookie-') && k !== STATIC_CACHE && k !== API_CACHE)
           .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
@@ -105,7 +105,7 @@ async function networkFirst(request, cacheName, timeoutMs = 6000) {
     const shell = await caches.match('/');
     if (shell) return shell;
     return new Response(
-      '<h1 style="font-family:sans-serif;padding:2rem">Booker is offline</h1>',
+      '<h1 style="font-family:sans-serif;padding:2rem">Bookie is offline</h1>',
       { status: 503, headers: { 'Content-Type': 'text/html' } }
     );
   }

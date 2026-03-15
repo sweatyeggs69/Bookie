@@ -1,5 +1,5 @@
 /* =========================================================
-   Booker – Material Design 3 Dark Theme
+   Bookie – Material Design 3 Dark Theme
    ========================================================= */
 
 /* ── Design Tokens ─────────────────────────────────────── */
@@ -1093,8 +1093,18 @@ textarea.field { resize: vertical; min-height: 80px; }
   margin-bottom: 12px;
 }
 
-/* ── Filter bar toggle row (mobile only) ──────────────── */
-.filter-bar-toggle-row { display: none; }
+/* Desktop: hide mobile-only user menu items */
+.user-menu-mobile-only { display: none !important; }
+
+/* ── Filter controls (selects) – always visible on desktop ─ */
+.filter-controls {
+  display: contents; /* renders children as direct flex items of .filter-bar */
+}
+/* Toggle button hidden on desktop */
+.filter-bar-toggle-btn { display: none; }
+
+/* ── Filter bar toggle button styles ──────────────────────── */
+.filter-bar-toggle-row { display: none; } /* legacy, unused */
 .filter-bar-toggle-btn {
   display: flex;
   align-items: center;
@@ -1315,10 +1325,12 @@ textarea.field { resize: vertical; min-height: 80px; }
   .dialog-scrim.open .dialog { transform: translateY(0); }
   .dialog-wide { max-width: 100%; }
 
-  /* Top app bar: collapse search */
+  /* Top app bar: collapse search, hide buttons moved to account menu */
   .top-app-bar { padding: 0 8px; gap: 4px; }
   .top-app-bar .logo-text { display: none; }
-  .toggle-group { padding: 4px 8px; } /* keep visible, just smaller */
+  .toggle-group { padding: 4px 8px; }
+  #refreshLibraryBtn, #uploadNavBtn { display: none; }
+  .user-menu-mobile-only { display: flex !important; }
 
   /* Book grid: exactly 2 columns on mobile */
   .book-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
@@ -1343,21 +1355,27 @@ textarea.field { resize: vertical; min-height: 80px; }
   .dialog-footer { flex-wrap: wrap; padding: 12px 16px; gap: 6px; overflow: visible; }
   .dialog-footer > [style*="flex:1"] { display: none; }
 
-  /* Filter bar on mobile: always visible, scrollable */
+  /* Filter bar on mobile: single row with count + view toggle + Filters button */
   .filter-bar {
     display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    flex-wrap: wrap;
     padding: 8px 12px 10px;
     gap: 8px;
+    align-items: center;
   }
-  .filter-bar::-webkit-scrollbar { display: none; }
-  /* Hide desktop grid/list toggle, size buttons, and spacer on mobile */
-  .filter-bar > .toggle-group,
+  /* Show the Filters toggle button on mobile */
+  .filter-bar-toggle-btn { display: flex; }
+  /* Hide size buttons on mobile (not useful on small screens) */
   .grid-size-btns { display: none; }
-  .filter-bar > div[style*="flex:1"] { display: none; }
+  /* Collapse the filter selects by default on mobile */
+  .filter-controls {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .filter-controls.open { display: flex; }
+  .filter-controls .filter-select { width: 100%; }
 }
 
 /* ── Divider ───────────────────────────────────────────── */
@@ -1703,9 +1721,7 @@ body.modal-open { overflow: hidden; }
   .search-bar input,
   .search-bar #searchDropdown { display: none; }
   .search-bar.expanded {
-    flex: 1 1 0;
-    width: 0;
-    min-width: 120px;
+    flex: 99 1 0;  /* outgrow the .spacer so bar fills available space */
     max-width: none;
     padding: 0 16px;
     overflow: visible;

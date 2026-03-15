@@ -232,19 +232,19 @@ def embed_cover_in_epub(epub_path: str, cover_data: bytes) -> bool:
 
             # Update OPF XML
             opf_text = contents[opf_path].decode("utf-8", errors="replace")
-            # Add <meta name="cover" content="booker-cover"/> to <metadata> if not present
+            # Add <meta name="cover" content="bookie-cover"/> to <metadata> if not present
             if 'name="cover"' not in opf_text and "name='cover'" not in opf_text:
                 opf_text = re.sub(
                     r'(</metadata>)',
-                    '  <meta name="cover" content="booker-cover"/>\n\\1',
+                    '  <meta name="cover" content="bookie-cover"/>\n\\1',
                     opf_text,
                     count=1,
                 )
             # Add <item> to <manifest> if id not present
-            if 'id="booker-cover"' not in opf_text:
+            if 'id="bookie-cover"' not in opf_text:
                 opf_text = re.sub(
                     r'(</manifest>)',
-                    '  <item id="booker-cover" href="cover.jpg" media-type="image/jpeg"/>\n\\1',
+                    '  <item id="bookie-cover" href="cover.jpg" media-type="image/jpeg"/>\n\\1',
                     opf_text,
                     count=1,
                 )

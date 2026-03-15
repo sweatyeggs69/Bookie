@@ -1,4 +1,4 @@
-# Booker
+# Bookie
 
 Self-hosted ebook manager with a Material Design 3 dark UI. Runs as a Docker container.
 
@@ -18,12 +18,12 @@ Self-hosted ebook manager with a Material Design 3 dark UI. Runs as a Docker con
 
 ```bash
 docker run -d \
-  --name booker \
+  --name bookie \
   -p 5000:5000 \
-  -v booker-data:/app/data \
+  -v bookie-data:/app/data \
   -e ADMIN_USER=admin \
   -e ADMIN_PASS=changeme \
-  ghcr.io/dumpstarrfire/booker:latest
+  ghcr.io/dumpstarrfire/bookie:latest
 ```
 
 Then open http://localhost:5000 in your browser.
@@ -32,19 +32,19 @@ Then open http://localhost:5000 in your browser.
 
 ```yaml
 services:
-  booker:
-    image: ghcr.io/dumpstarrfire/booker:latest
+  bookie:
+    image: ghcr.io/dumpstarrfire/bookie:latest
     ports:
       - "5000:5000"
     volumes:
-      - booker-data:/app/data
+      - bookie-data:/app/data
     environment:
       - ADMIN_USER=admin
       - ADMIN_PASS=changeme
     restart: unless-stopped
 
 volumes:
-  booker-data:
+  bookie-data:
 ```
 
 ## Environment Variables
@@ -58,7 +58,7 @@ volumes:
 
 ## Data Volume
 
-Everything Booker needs persists under `/app/data`:
+Everything Bookie needs persists under `/app/data`:
 
 ```
 data/
@@ -73,10 +73,10 @@ Mount this directory as a Docker volume to keep your library across container up
 ## Building Locally
 
 ```bash
-git clone https://github.com/DumpstarrFire/Booker.git
-cd Booker
-docker build -t booker .
-docker run -p 5000:5000 -v $(pwd)/data:/app/data booker
+git clone https://github.com/DumpstarrFire/Bookie.git
+cd Bookie
+docker build -t bookie .
+docker run -p 5000:5000 -v $(pwd)/data:/app/data bookie
 ```
 
 ## Send to Kindle Setup

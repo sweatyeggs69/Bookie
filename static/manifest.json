@@ -1,6 +1,6 @@
 {
-  "name": "Booker",
-  "short_name": "Booker",
+  "name": "Bookie",
+  "short_name": "Bookie",
   "description": "Self-hosted ebook manager",
   "start_url": "/",
   "scope": "/",

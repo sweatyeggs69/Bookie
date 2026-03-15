@@ -1,4 +1,4 @@
-"""Booker – Docker ebook manager with Material Design 3 UI."""
+"""Bookie – Docker ebook manager with Material Design 3 UI."""
 import base64
 import hashlib
 import io

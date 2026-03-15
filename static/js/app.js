@@ -1,5 +1,5 @@
 /* =========================================================
-   Booker – Frontend Application
+   Bookie – Frontend Application
    ========================================================= */
 
 'use strict';
@@ -359,7 +359,7 @@ function exportLogs() {
   const blob = new Blob([content], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `booker-logs-${new Date().toISOString().slice(0,10)}.txt`;
+  a.download = `bookie-logs-${new Date().toISOString().slice(0,10)}.txt`;
   a.click();
 }
 
@@ -1548,6 +1548,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const filtered = window._metaResultsList.filter(r => activeSrcs.has(r.source));
       renderMetaResults(filtered);
     }
+  });
+
+  // Filter controls toggle (mobile)
+  document.getElementById('filterBarToggle')?.addEventListener('click', () => {
+    document.getElementById('filterControls')?.classList.toggle('open');
   });
 
   // Send dialog (manual address entry fallback)
