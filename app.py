@@ -505,6 +505,45 @@ def create_app():
             "placeholders": [{"placeholder": p, "description": d} for p, d in renamer.PLACEHOLDERS],
         })
 
+    @app.route("/api/rename/bulk", methods=["POST"])
+    @login_required
+    def bulk_rename():
+        """Rename all books using the current naming scheme. apply=true to commit."""
+        data = request.get_json(force=True) or {}
+        apply = data.get("apply", False)
+        scheme = Settings.get("rename_scheme", "original")
+        custom_tpl = Settings.get("rename_custom_template", "")
+        books = Book.query.all()
+        results = []
+        errors = []
+        for book in books:
+            src = BOOKS_DIR / book.filename
+            if not src.exists():
+                errors.append({"id": book.id, "original": book.filename, "error": "File not found"})
+                continue
+            meta = {
+                "title": book.title, "author": book.author,
+                "published_date": book.published_date, "publisher": book.publisher,
+                "isbn": book.isbn, "isbn13": book.isbn13, "language": book.language,
+            }
+            template = renamer.get_scheme_template(scheme, custom_tpl)
+            new_name = renamer.apply_scheme(template, book.filename, meta)
+            if new_name == book.filename:
+                results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": False})
+                continue
+            if apply:
+                try:
+                    new_path, new_name = renamer.rename_book_file(src, BOOKS_DIR, scheme, meta, custom_tpl)
+                    book.filename = new_name
+                    results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": True})
+                except Exception as e:
+                    errors.append({"id": book.id, "original": book.filename, "error": str(e)})
+            else:
+                results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": True})
+        if apply:
+            db.session.commit()
+        return jsonify({"results": results, "errors": errors, "applied": apply})
+
     # -----------------------------------------------------------------------
     # Metadata
     # -----------------------------------------------------------------------
@@ -530,7 +569,8 @@ def create_app():
     def apply_metadata(book_id):
         book = Book.query.get_or_404(book_id)
         meta = request.get_json(force=True) or {}
-        _apply_metadata(book, meta)
+        # Explicit user selection always replaces all fields
+        _apply_metadata(book, meta, replace_missing_only=False)
         return jsonify(book.to_dict())
 
     @app.route("/api/metadata/search", methods=["GET"])

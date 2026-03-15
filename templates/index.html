@@ -83,15 +83,24 @@
       <!-- ===== LIBRARY VIEW ===== -->
       <div id="viewLibrary">
         <div class="content-header">
-          <h1 id="libraryTitle">All Books</h1>
+          <h1 id="libraryTitle" class="library-title-desktop">All Books</h1>
           <span id="bookCount" style="color:var(--md-sys-color-on-surface-variant);font-size:14px"></span>
           <button class="icon-btn" id="refreshLibraryBtn" title="Refresh library">
             <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
           </button>
         </div>
 
-        <!-- Filter Bar toggle (mobile only) -->
+        <!-- Filter Bar toggle row (mobile only) – layout toggle on left, filters pill on right -->
         <div class="filter-bar-toggle-row">
+          <div class="mobile-layout-toggle">
+            <button class="mobile-layout-btn active" id="mobileViewGrid" title="Grid view">
+              <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/></svg>
+            </button>
+            <button class="mobile-layout-btn" id="mobileViewList" title="List view">
+              <svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            </button>
+          </div>
+          <div style="flex:1"></div>
           <button class="filter-bar-toggle-btn" id="filterBarToggle">
             <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
             Filters
@@ -201,7 +210,7 @@
               </button>
               <button class="tab" data-tab="rename">
                 <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                File Naming
+                File Organization
               </button>
               <button class="tab" data-tab="account">
                 <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
@@ -222,7 +231,7 @@
               <select id="settingsTabSelect" class="field settings-tab-select">
                 <option value="smtp">SMTP / Email</option>
                 <option value="metadata">Metadata</option>
-                <option value="rename">File Naming</option>
+                <option value="rename">File Organization</option>
                 <option value="account">Account</option>
                 <option value="libstats">Library Stats</option>
                 <option value="logs">Logs</option>
@@ -293,15 +302,6 @@
                   <span class="switch-thumb"></span>
                 </label>
               </div>
-              <hr class="divider">
-              <div class="form-field">
-                <label>Folder organisation</label>
-                <select class="field" id="folderOrganization">
-                  <option value="flat">Flat (no subfolders)</option>
-                  <option value="by_author">By Author</option>
-                  <option value="by_author_series">By Author / Series</option>
-                </select>
-              </div>
               <button class="btn btn-filled" id="saveMetaBtn" style="margin-top:8px">Save</button>
             </div>
 
@@ -330,9 +330,10 @@
             </div>
           </div>
 
-          <!-- Rename Tab -->
+          <!-- File Organization Tab -->
           <div id="tabRename" class="tab-panel">
-            <div class="card">
+            <!-- File Naming Scheme -->
+            <div class="card" style="margin-bottom:16px">
               <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">File Naming Scheme</h3>
               <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:20px">Choose how imported files are automatically renamed. Existing files are not affected.</p>
               <div class="form-field">
@@ -365,6 +366,33 @@
                 </p>
               </div>
               <button class="btn btn-filled" id="saveRenameBtn">Save</button>
+            </div>
+
+            <!-- Folder Organisation -->
+            <div class="card" style="margin-bottom:16px">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Folder Organisation</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Control how your library files are arranged into subfolders.</p>
+              <div class="form-field">
+                <label>Folder Structure</label>
+                <select class="field" id="folderOrganization">
+                  <option value="flat">Flat (no subfolders)</option>
+                  <option value="by_author">By Author</option>
+                  <option value="by_author_series">By Author / Series</option>
+                </select>
+              </div>
+              <button class="btn btn-filled" id="saveFolderBtn" style="margin-top:8px">Save</button>
+            </div>
+
+            <!-- Bulk Rename -->
+            <div class="card">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Bulk Rename &amp; Organize</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Rename and move all library files using the current naming scheme and folder structure. A preview is shown before any changes are made.</p>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-outlined" id="bulkRenamePreviewBtn">Preview Changes</button>
+                <button class="btn btn-tonal" id="bulkRenameApplyBtn" disabled>Apply to All Books</button>
+              </div>
+              <div id="bulkRenameStatus" style="margin-top:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant)"></div>
+              <div id="bulkRenamePreview" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
             </div>
           </div>
 

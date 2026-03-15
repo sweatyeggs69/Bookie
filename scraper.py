@@ -288,116 +288,81 @@ def _parse_gr_book_page(html: str, book_id: str) -> dict:
 
 def search_librarything(query: str, api_key: str = "", max_results: int = 8) -> list[dict]:
     """
-    Search LibraryThing via thingTitle → getwork chain.
+    Search LibraryThing via the thingTitle API.
+    Parses the XML response directly – no secondary REST call needed.
     Requires a LibraryThing developer API key.
     """
     if not api_key:
         return []
 
-    # Step 1: thingTitle → list of ISBNs for the most likely work
     title_url = f"https://www.librarything.com/api/{api_key}/thingTitle/{requests.utils.quote(query)}"
     try:
         r = requests.get(title_url, headers=HEADERS, timeout=12)
         r.raise_for_status()
         root = ET.fromstring(r.text)
-        isbns = [el.text.strip() for el in root.findall("isbn") if el.text][:max_results]
     except Exception as exc:
         logger.warning("LibraryThing thingTitle failed: %s", exc)
         return []
 
-    if not isbns:
-        return []
-
-    # Step 2: getwork for each unique ISBN (rate-limited: 1 req/s)
     results = []
-    seen_ids = set()
-    for isbn in isbns:
-        work = _fetch_lt_work_by_isbn(isbn, api_key)
-        if work:
-            wid = work.get("_lt_work_id")
-            if wid and wid in seen_ids:
-                continue
-            if wid:
-                seen_ids.add(wid)
-            results.append(work)
-        time.sleep(1.1)  # LT rate limit: 1 req/s
-    return results
+    seen_ids: set[str] = set()
 
+    # thingTitle returns <ltml> with nested <item> elements, or a flat list
+    # depending on API version.  Search both depths.
+    items = root.findall(".//item") or root.findall("item")
+    if not items:
+        # Older format: root IS the item-list; individual isbn/title siblings
+        items = [root]
 
-def _fetch_lt_work_by_isbn(isbn: str, api_key: str) -> dict | None:
-    url = "https://www.librarything.com/services/rest/1.1/"
-    params = {
-        "method": "librarything.ck.getwork",
-        "id": isbn,
-        "apikey": api_key,
-        "ct": "json",
-    }
-    try:
-        r = requests.get(url, params=params, headers=HEADERS, timeout=12)
-        r.raise_for_status()
-        data = r.json()
-        if data.get("stat") != "ok":
-            return None
-        res = data.get("result", {})
-        work_id = str(res.get("id", ""))
+    for item in items[:max_results]:
+        work_id = item.get("id", "")
+        if work_id and work_id in seen_ids:
+            continue
+        if work_id:
+            seen_ids.add(work_id)
 
-        # Title
-        title_obj = res.get("title")
-        title = title_obj.get("displayForm") if isinstance(title_obj, dict) else title_obj
+        title_el = item.find("title")
+        title = (title_el.text or "").strip() if title_el is not None else None
 
-        # Author
-        author_obj = res.get("author")
-        author = author_obj.get("displayForm") if isinstance(author_obj, dict) else author_obj
+        # Author may be an element or attribute
+        author_el = item.find("author")
+        if author_el is not None:
+            author = (author_el.text or "").strip() or author_el.get("displayForm", "")
+        else:
+            author = item.get("author", "") or None
 
-        # Rating
-        rating_obj = res.get("rating")
-        rating = None
-        if isinstance(rating_obj, dict):
-            try:
-                rating = float(rating_obj.get("value", 0)) or None
-            except (ValueError, TypeError):
-                pass
+        # Collect ISBNs
+        all_isbns = [el.text.strip() for el in item.findall("isbn") if el.text]
+        isbn10 = next((i for i in all_isbns if len(i) == 10), None)
+        isbn13 = next((i for i in all_isbns if len(i) == 13), None)
+        cover_isbn = isbn13 or isbn10 or (all_isbns[0] if all_isbns else None)
 
-        # Description from common knowledge
-        desc = None
-        ck = res.get("commonknowledge", {})
-        if isinstance(ck, dict):
-            desc_field = ck.get("description", {})
-            if isinstance(desc_field, dict):
-                fields = desc_field.get("field", [])
-                if fields and isinstance(fields, list):
-                    desc = fields[0].get("text")
+        if not title and not cover_isbn:
+            continue
 
-        # ISBNs
-        all_isbns = res.get("isbn", []) or []
-        if isinstance(all_isbns, str):
-            all_isbns = [all_isbns]
-        isbn10 = next((i for i in all_isbns if len(i) == 10), isbn if len(isbn) == 10 else None)
-        isbn13 = next((i for i in all_isbns if len(i) == 13), isbn if len(isbn) == 13 else None)
+        cover_url = (
+            f"https://covers.librarything.com/devkey/{api_key}/large/isbn/{cover_isbn}"
+            if cover_isbn else None
+        )
 
-        # Cover via LT cover service (uses dev key + isbn)
-        cover_isbn = isbn13 or isbn10 or isbn
-        cover_url = f"https://covers.librarything.com/devkey/{api_key}/large/isbn/{cover_isbn}"
-
-        return {
+        results.append({
             "source": "librarything",
             "_lt_work_id": work_id,
             "title": title,
-            "author": author,
+            "author": author or None,
             "publisher": None,
             "published_date": None,
-            "description": desc,
+            "description": None,
             "page_count": None,
             "categories": None,
             "language": None,
             "isbn": isbn10,
             "isbn13": isbn13,
-            "rating": rating,
+            "rating": None,
             "cover_url": cover_url,
-        }
-    except Exception as exc:
-        logger.warning("LibraryThing getwork failed for isbn %s: %s", isbn, exc)
-        return None
+        })
+
+    return results
 
 
 # ---------------------------------------------------------------------------
