@@ -11,12 +11,8 @@ services:
     volumes:
       - booker_data:/app/data
     environment:
-      # ── Upload limits ──────────────────────────────────
+      DATA_DIR: /app/data
       MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-500}"
-
-      # ── Paths (inside container) ───────────────────────
-      BOOKS_DIR: /app/data/books
-      COVERS_DIR: /app/data/covers
 
       # ── Optional: pre-configure SMTP ──────────────────
       # These can also be set in the Settings UI instead
