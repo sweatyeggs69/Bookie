@@ -10,7 +10,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 COVERS_DIR = Path(os.environ.get("DATA_DIR", "data")) / "covers"
-THUMB_SIZE = (200, 300)
+THUMB_SIZE = (300, 450)
 COVER_SIZE = (400, 600)
 
 

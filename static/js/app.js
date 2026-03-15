@@ -56,7 +56,10 @@ function navigate(view, opts = {}) {
   state.view = view;
   state.activeShelf = opts.shelf || null;
   // Keep URL hash in sync so page refresh restores the current view
-  history.replaceState(null, '', view === 'library' ? '/' : '#' + view);
+  // (settings view preserves sub-tab via activateSettingsTab; only set bare hash here)
+  if (view !== 'settings') {
+    history.replaceState(null, '', view === 'library' ? '/' : '#' + view);
+  }
 
   // Sync both nav rail and bottom nav
   document.querySelectorAll('.nav-rail-item, .bottom-nav-item').forEach(btn => {
@@ -78,12 +81,29 @@ function navigate(view, opts = {}) {
   } else if (view === 'settings') {
     loadSettings();
     loadEmailAddresses();
+    // Restore active sub-tab from URL hash (e.g. #settings/smtp)
+    const subTab = location.hash.replace('#settings/', '').replace('#settings', '');
+    activateSettingsTab(SETTINGS_TABS.includes(subTab) ? subTab : 'smtp');
   }
 
   closeMenu();
 }
 
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+
+const SETTINGS_TABS = ['smtp', 'metadata', 'rename', 'account', 'libstats', 'logs'];
+function activateSettingsTab(target) {
+  if (!SETTINGS_TABS.includes(target)) target = 'smtp';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab${cap(target)}`)?.classList.add('active');
+  const sel = document.getElementById('settingsTabSelect');
+  if (sel) sel.value = target;
+  // Persist in URL hash so refresh restores the same sub-tab
+  history.replaceState(null, '', `#settings/${target}`);
+  if (target === 'libstats') loadStats();
+  if (target === 'logs') loadLogs();
+}
 
 // ── Books ────────────────────────────────────────────────
 async function loadBooks() {
@@ -264,7 +284,7 @@ async function openBook(id) {
   document.getElementById('bookDialogTitle').textContent = book.title || 'Book Details';
 
   const cover = book.cover_filename
-    ? `<img src="/api/books/${id}/cover" alt="cover" style="width:180px;height:270px;object-fit:cover;border-radius:8px;flex-shrink:0">`
+    ? `<img src="/api/books/${id}/cover?t=${Date.now()}" alt="cover" style="width:180px;height:270px;object-fit:cover;border-radius:8px;flex-shrink:0">`
     : `<div style="width:180px;height:270px;background:var(--md-sys-color-surface-container-highest);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${svgBook(56)}</div>`;
 
   const shelfPills = (book.shelves || []).map(s => `<span class="shelf-pill">${esc(s)}</span>`).join('');
@@ -1073,9 +1093,15 @@ async function saveMeta() {
   await api('/api/settings', { method: 'PUT', body: JSON.stringify({
     auto_metadata: document.getElementById('autoMetadata').checked ? 'true' : 'false',
     meta_replace_missing: document.getElementById('metaReplaceMissing').checked ? 'true' : 'false',
-    folder_organization: v('folderOrganization'),
   })});
   snack('Metadata settings saved!');
+}
+
+async function saveFolder() {
+  await api('/api/settings', { method: 'PUT', body: JSON.stringify({
+    folder_organization: v('folderOrganization'),
+  })});
+  snack('Folder organisation saved!');
 }
 
 async function saveApiKeys() {
@@ -1127,6 +1153,43 @@ async function saveRename() {
     rename_custom_template: v('renameCustomTemplate'),
   })});
   snack('Naming scheme saved!');
+}
+
+async function bulkRenamePreview() {
+  const statusEl = document.getElementById('bulkRenameStatus');
+  const previewEl = document.getElementById('bulkRenamePreview');
+  const applyBtn = document.getElementById('bulkRenameApplyBtn');
+  statusEl.textContent = 'Loading preview…';
+  previewEl.innerHTML = '';
+  applyBtn.disabled = true;
+  const res = await apiJSON('/api/rename/bulk', { method: 'POST', body: JSON.stringify({ apply: false }) });
+  const changed = res.results.filter(r => r.changed);
+  const unchanged = res.results.filter(r => !r.changed).length;
+  if (!changed.length && !res.errors.length) {
+    statusEl.textContent = `All ${unchanged} files already match the current scheme.`;
+    return;
+  }
+  statusEl.textContent = `${changed.length} file${changed.length !== 1 ? 's' : ''} will be renamed. ${unchanged} already match. ${res.errors.length ? `${res.errors.length} error(s).` : ''}`;
+  previewEl.innerHTML = [
+    ...changed.map(r => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--md-sys-color-outline-variant)">
+      <span style="color:var(--md-sys-color-on-surface-variant)">${esc(r.original)}</span>
+      <span style="margin:0 6px;color:var(--md-sys-color-primary)">→</span>
+      <span>${esc(r.new)}</span></div>`),
+    ...res.errors.map(e => `<div style="font-size:12px;padding:4px 0;color:var(--md-sys-color-error)">${esc(e.original)}: ${esc(e.error)}</div>`),
+  ].join('');
+  applyBtn.disabled = changed.length === 0;
+}
+
+async function bulkRenameApply() {
+  const statusEl = document.getElementById('bulkRenameStatus');
+  const applyBtn = document.getElementById('bulkRenameApplyBtn');
+  applyBtn.disabled = true;
+  statusEl.textContent = 'Renaming…';
+  const res = await apiJSON('/api/rename/bulk', { method: 'POST', body: JSON.stringify({ apply: true }) });
+  const changed = res.results.filter(r => r.changed).length;
+  statusEl.textContent = `Done. ${changed} file${changed !== 1 ? 's' : ''} renamed.${res.errors.length ? ` ${res.errors.length} error(s).` : ''}`;
+  document.getElementById('bulkRenamePreview').innerHTML = '';
+  loadBooks();
 }
 
 function toggleCustomScheme() {
@@ -1217,7 +1280,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const navRail = document.getElementById('navRail');
   const navToggle = document.getElementById('navToggle');
   if (localStorage.getItem('navPinned') === '1') {
-    navRail.classList.add('expanded', 'pinned');
+    navRail.classList.add('no-transition', 'expanded', 'pinned');
+    requestAnimationFrame(() => navRail.classList.remove('no-transition'));
   }
   navToggle?.addEventListener('click', e => {
     const pinned = navRail.classList.contains('pinned');
@@ -1250,19 +1314,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // View toggle
-  document.getElementById('viewGrid').addEventListener('click', () => {
-    state.viewMode = 'grid';
-    document.getElementById('viewGrid').classList.add('active');
-    document.getElementById('viewList').classList.remove('active');
+  // View toggle (desktop filter bar + mobile toggle row)
+  function setViewMode(mode) {
+    state.viewMode = mode;
+    document.getElementById('viewGrid').classList.toggle('active', mode === 'grid');
+    document.getElementById('viewList').classList.toggle('active', mode === 'list');
+    document.getElementById('mobileViewGrid')?.classList.toggle('active', mode === 'grid');
+    document.getElementById('mobileViewList')?.classList.toggle('active', mode === 'list');
     renderBooks(document.getElementById('bookContainer'));
-  });
-  document.getElementById('viewList').addEventListener('click', () => {
-    state.viewMode = 'list';
-    document.getElementById('viewList').classList.add('active');
-    document.getElementById('viewGrid').classList.remove('active');
-    renderBooks(document.getElementById('bookContainer'));
-  });
+  }
+  document.getElementById('viewGrid').addEventListener('click', () => setViewMode('grid'));
+  document.getElementById('viewList').addEventListener('click', () => setViewMode('list'));
+  document.getElementById('mobileViewGrid')?.addEventListener('click', () => setViewMode('grid'));
+  document.getElementById('mobileViewList')?.addEventListener('click', () => setViewMode('list'));
 
   // Search (grid filter + live dropdown)
   let searchTimeout, liveSearchTimeout;
@@ -1398,20 +1462,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saveApiKeysBtn')?.addEventListener('click', saveApiKeys);
   document.getElementById('saveSourcesBtn')?.addEventListener('click', saveSources);
   document.getElementById('saveRenameBtn')?.addEventListener('click', saveRename);
+  document.getElementById('saveFolderBtn')?.addEventListener('click', saveFolder);
+  document.getElementById('bulkRenamePreviewBtn')?.addEventListener('click', bulkRenamePreview);
+  document.getElementById('bulkRenameApplyBtn')?.addEventListener('click', bulkRenameApply);
   document.getElementById('renameScheme')?.addEventListener('change', toggleCustomScheme);
   document.getElementById('changePwdBtn')?.addEventListener('click', changePassword);
   document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
 
-  // Settings tabs (sidebar buttons + mobile dropdown in sync)
-  function activateSettingsTab(target) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(`tab${cap(target)}`)?.classList.add('active');
-    const sel = document.getElementById('settingsTabSelect');
-    if (sel) sel.value = target;
-    if (target === 'libstats') loadStats();
-    if (target === 'logs') loadLogs();
-  }
+  // Settings tabs (sidebar buttons + mobile dropdown in sync) – uses module-level activateSettingsTab
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => activateSettingsTab(tab.dataset.tab));
   });
@@ -1450,8 +1508,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore view from URL hash (set by navigate(); survives refresh/bookmark/share)
   const _VIEWS = ['library', 'shelves', 'upload', 'settings'];
-  const _hash = location.hash.replace('#', '');
-  navigate(_VIEWS.includes(_hash) ? _hash : 'library');
+  // Support #settings/tabname format
+  const _rawHash = location.hash.replace('#', '');
+  const _view = _rawHash.startsWith('settings') ? 'settings' : _rawHash;
+  navigate(_VIEWS.includes(_view) ? _view : 'library');
 });
 
 function previewCoverFile(file) {

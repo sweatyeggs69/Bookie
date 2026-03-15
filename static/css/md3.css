@@ -178,6 +178,8 @@ body {
   overflow: hidden;
 }
 
+.no-transition, .no-transition * { transition: none !important; }
+
 /* ── Navigation Rail ───────────────────────────────────── */
 .nav-rail {
   display: flex;
@@ -1083,7 +1085,7 @@ textarea.field { resize: vertical; min-height: 80px; }
   margin-bottom: 12px;
 }
 
-/* ── Filter bar toggle (mobile only) ──────────────────── */
+/* ── Filter bar toggle row (mobile only) ──────────────── */
 .filter-bar-toggle-row { display: none; }
 .filter-bar-toggle-btn {
   display: flex;
@@ -1099,6 +1101,29 @@ textarea.field { resize: vertical; min-height: 80px; }
   font-weight: 500;
 }
 .filter-bar-toggle-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* Mobile layout toggle (grid / list) shown in toggle row */
+.mobile-layout-toggle {
+  display: flex;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  overflow: hidden;
+}
+.mobile-layout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+.mobile-layout-btn.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.mobile-layout-btn svg { width: 18px; height: 18px; fill: currentColor; }
 
 /* ── Drag & Drop ───────────────────────────────────────── */
 .drop-zone {
@@ -1289,14 +1314,18 @@ textarea.field { resize: vertical; min-height: 80px; }
   .search-bar { flex: 1; max-width: none; }
   .toggle-group { padding: 4px 8px; } /* keep visible, just smaller */
 
-  /* Book grid: 2 columns minimum */
-  .book-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  /* Book grid: exactly 2 columns on mobile */
+  .book-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
 
   /* Content spacing */
   .content-header { padding: 12px 12px 8px; }
   .content-area { padding: 0 12px calc(80px + env(safe-area-inset-bottom) + 16px); }
   .filter-bar { padding: 0 12px 10px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Hide "All Books" heading on mobile; keep count + refresh aligned */
+  .library-title-desktop { display: none; }
+  .content-header { flex-wrap: nowrap; }
 
   /* Shelf grid: 1 column */
   .shelf-grid { grid-template-columns: 1fr; }
@@ -1316,9 +1345,10 @@ textarea.field { resize: vertical; min-height: 80px; }
   .dialog-footer > [style*="flex:1"] { display: none; }
   .send-split-btn { flex-shrink: 0; }
 
-  /* Collapsible filter bar on mobile */
+  /* Collapsible filter bar on mobile; layout toggle row always visible */
   .filter-bar-toggle-row {
     display: flex;
+    align-items: center;
     padding: 0 12px 8px;
   }
   .filter-bar {
@@ -1329,8 +1359,9 @@ textarea.field { resize: vertical; min-height: 80px; }
     padding: 0 12px 12px;
   }
   .filter-bar.open { display: flex; }
+  /* Hide desktop grid/list toggle and size buttons inside filter bar on mobile */
   .filter-bar > .toggle-group,
-  .grid-size-btns { display: none; } /* hidden on small tablets */
+  .grid-size-btns { display: none; }
   .filter-bar > div[style*="flex:1"] { display: none; }
 }
 
