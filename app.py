@@ -695,7 +695,9 @@ def create_app():
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _apply_metadata(book: Book, meta: dict):
+def _apply_metadata(book: Book, meta: dict, replace_missing_only: bool = None):
+    if replace_missing_only is None:
+        replace_missing_only = Settings.get("meta_replace_missing", "true") == "true"
     field_map = {
         "title": "title", "author": "author", "isbn": "isbn", "isbn13": "isbn13",
         "publisher": "publisher", "published_date": "published_date",
@@ -707,14 +709,17 @@ def _apply_metadata(book: Book, meta: dict):
     for src_key, model_key in field_map.items():
         val = meta.get(src_key)
         if val:
+            if replace_missing_only and getattr(book, model_key, None):
+                continue
             setattr(book, model_key, val)
     cover_url = meta.get("cover_url")
     if cover_url:
-        data = scraper.fetch_cover_image(cover_url)
-        if data:
-            cf = cover_mgr.save_cover(book.id, data)
-            if cf:
-                book.cover_filename = cf
+        if not replace_missing_only or not book.cover_filename:
+            data = scraper.fetch_cover_image(cover_url)
+            if data:
+                cf = cover_mgr.save_cover(book.id, data)
+                if cf:
+                    book.cover_filename = cf
     db.session.commit()
 
 

@@ -86,6 +86,9 @@
         <div class="content-header">
           <h1 id="libraryTitle">All Books</h1>
           <span id="bookCount" style="color:var(--md-sys-color-on-surface-variant);font-size:14px"></span>
+          <button class="icon-btn" id="refreshLibraryBtn" title="Refresh library">
+            <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </button>
         </div>
 
         <!-- Filter Bar -->
@@ -114,9 +117,6 @@
             <option value="desc">↓ Descending</option>
           </select>
         </div>
-
-        <!-- Stats -->
-        <div id="statsArea" style="padding:0 24px 16px"></div>
 
         <!-- Book grid / list -->
         <div class="content-area">
@@ -150,39 +150,6 @@
           </div>
           <input type="file" id="fileInput" multiple accept=".epub,.pdf,.mobi,.azw,.azw3,.fb2,.djvu,.cbz,.cbr,.txt" style="display:none">
 
-          <div style="margin-top:24px;padding:20px;background:var(--md-sys-color-surface-container);border-radius:var(--md-sys-shape-corner-large)">
-            <h3 style="font-size:16px;font-weight:500;margin-bottom:12px">Import naming scheme</h3>
-            <div class="form-row" style="margin-bottom:12px">
-              <div class="form-field" style="margin:0">
-                <label>Scheme</label>
-                <select class="field" id="uploadScheme">
-                  <option value="original">Keep original filename</option>
-                  <option value="title">Title</option>
-                  <option value="author_title">Author - Title</option>
-                  <option value="title_author">Title - Author</option>
-                  <option value="author_title_year">Author - Title (Year)</option>
-                  <option value="title_year">Title (Year)</option>
-                  <option value="series_order">Series Index - Title</option>
-                  <option value="custom">Custom template…</option>
-                </select>
-              </div>
-              <div class="form-field" id="customTemplateField" style="margin:0;display:none">
-                <label>Custom template</label>
-                <input class="field" id="uploadCustomTemplate" type="text" placeholder="{author} - {title} ({year})">
-              </div>
-            </div>
-            <p style="font-size:12px;color:var(--md-sys-color-on-surface-variant)">
-              Placeholders: <code style="color:var(--md-sys-color-primary)">{title}</code>
-              <code style="color:var(--md-sys-color-primary)">{author}</code>
-              <code style="color:var(--md-sys-color-primary)">{year}</code>
-              <code style="color:var(--md-sys-color-primary)">{publisher}</code>
-              <code style="color:var(--md-sys-color-primary)">{isbn}</code>
-              <code style="color:var(--md-sys-color-primary)">{isbn13}</code>
-              <code style="color:var(--md-sys-color-primary)">{language}</code>
-              <code style="color:var(--md-sys-color-primary)">{original}</code>
-            </p>
-          </div>
-
           <div class="upload-queue" id="uploadQueue"></div>
         </div>
       </div>
@@ -194,7 +161,7 @@
           <div class="tab-bar">
             <button class="tab active" data-tab="smtp">
               <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg>
-              SMTP / Kindle
+              SMTP / Email
             </button>
             <button class="tab" data-tab="metadata">
               <svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
@@ -207,6 +174,10 @@
             <button class="tab" data-tab="account">
               <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
               Account
+            </button>
+            <button class="tab" data-tab="libstats">
+              <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+              Library Stats
             </button>
           </div>
 
@@ -261,6 +232,18 @@
                 </label>
               </div>
               <hr class="divider">
+              <div class="switch-field">
+                <div>
+                  <div class="switch-label">Only replace missing fields</div>
+                  <div class="switch-sub">When auto-fetching or applying metadata, skip fields that already have a value</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="metaReplaceMissing" checked>
+                  <span class="switch-track"></span>
+                  <span class="switch-thumb"></span>
+                </label>
+              </div>
+              <hr class="divider">
               <div class="form-field">
                 <label>Default Metadata Source</label>
                 <select class="field" id="defaultMetaSource">
@@ -309,6 +292,15 @@
                 </p>
               </div>
               <button class="btn btn-filled" id="saveRenameBtn">Save</button>
+            </div>
+          </div>
+
+          <!-- Library Stats Tab -->
+          <div id="tabLibstats" class="tab-panel">
+            <div class="card">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Library Statistics</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:20px">Overview of your book collection.</p>
+              <div id="statsArea"></div>
             </div>
           </div>
 
@@ -514,20 +506,34 @@
 
 <!-- Cover Upload Dialog -->
 <div class="dialog-scrim" id="coverDialog">
-  <div class="dialog">
+  <div class="dialog dialog-wide">
     <div class="dialog-header">
       <span class="dialog-title">Replace Cover</span>
       <button class="icon-btn" id="closeCoverDialog"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
     </div>
     <div class="dialog-body">
-      <div class="drop-zone" id="coverDropZone" style="padding:32px">
+      <!-- Cover search section -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Search Online</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input class="field" id="coverSearchQuery" type="text" placeholder="Book title or author…" style="flex:1">
+          <button class="btn btn-tonal" id="coverSearchBtn">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            Search
+          </button>
+        </div>
+        <div id="coverSearchResults" class="cover-search-results"></div>
+      </div>
+      <hr class="divider">
+      <!-- Upload section -->
+      <div style="font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Upload Image</div>
+      <div class="drop-zone" id="coverDropZone" style="padding:24px">
         <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
         <p>Drop cover image or click to select</p>
         <small>JPG, PNG · Recommended 400×600px or larger</small>
       </div>
       <input type="file" id="coverInput" accept="image/*" style="display:none">
-      <hr class="divider">
-      <div class="form-field">
+      <div class="form-field" style="margin-top:12px;margin-bottom:0">
         <label>Or enter image URL</label>
         <input class="field" id="coverUrl" type="url" placeholder="https://…">
       </div>
@@ -535,7 +541,6 @@
     </div>
     <div class="dialog-footer">
       <button class="btn btn-text" id="closeCoverDialogBtn">Cancel</button>
-      <button class="btn btn-tonal" id="embedCoverBtn" style="display:none">Embed in EPUB</button>
       <button class="btn btn-filled" id="saveCoverBtn">Save Cover</button>
     </div>
   </div>

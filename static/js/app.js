@@ -23,8 +23,7 @@ const state = {
   addToShelfBookId: null,
   coverBookId: null,
   coverFile: null,
-  uploadScheme: 'original',
-  uploadCustomTemplate: '',
+  selectedCoverUrl: null,
 };
 
 // ── API helpers ──────────────────────────────────────────
@@ -121,9 +120,6 @@ async function loadBooks() {
 
   renderBooks(container);
   renderPagination();
-
-  // Load stats on first page load
-  if (state.page === 1 && !state.activeShelf) loadStats();
 }
 
 function renderBooks(container) {
@@ -136,7 +132,7 @@ function renderBooks(container) {
 
 function bookCard(b) {
   const cover = b.cover_filename
-    ? `<img class="book-cover" src="/api/books/${b.id}/cover?thumb=true" alt="${esc(b.title)}" loading="lazy" onerror="this.parentElement.innerHTML='${coverPlaceholderSvg()}'">`
+    ? `<img class="book-cover" src="/api/books/${b.id}/cover?thumb=true" alt="${esc(b.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="book-cover-placeholder" style="display:none">${svgBook()}</div>`
     : `<div class="book-cover-placeholder">${svgBook()}</div>`;
   return `
   <div class="book-card" onclick="openBook(${b.id})">
@@ -215,12 +211,13 @@ function goPage(p) {
 
 // ── Stats ────────────────────────────────────────────────
 async function loadStats() {
-  const data = await apiJSON('/api/stats');
-  state.stats = data;
   const el = document.getElementById('statsArea');
   if (!el) return;
+  el.innerHTML = '<div class="loading-indicator" style="padding:24px"><div class="spinner"></div></div>';
+  const data = await apiJSON('/api/stats');
+  state.stats = data;
   const fmts = Object.entries(data.formats || {}).map(([f, n]) => `<div class="stat-card"><div class="stat-value">${n}</div><div class="stat-label">${f.toUpperCase()}</div></div>`).join('');
-  const mb = (data.total_size_bytes / 1024 / 1024).toFixed(0);
+  const mb = (data.total_size_bytes / 1024 / 1024).toFixed(1);
   el.innerHTML = `<div class="stats-grid">
     <div class="stat-card"><div class="stat-value">${data.total_books}</div><div class="stat-label">Total Books</div></div>
     <div class="stat-card"><div class="stat-value">${data.total_shelves}</div><div class="stat-label">Shelves</div></div>
@@ -239,8 +236,8 @@ async function openBook(id) {
   document.getElementById('bookDialogTitle').textContent = book.title || 'Book Details';
 
   const cover = book.cover_filename
-    ? `<img src="/api/books/${id}/cover" alt="cover" style="width:120px;height:180px;object-fit:cover;border-radius:8px;flex-shrink:0">`
-    : `<div style="width:120px;height:180px;background:var(--md-sys-color-surface-container-highest);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${svgBook(40)}</div>`;
+    ? `<img src="/api/books/${id}/cover" alt="cover" style="width:180px;height:270px;object-fit:cover;border-radius:8px;flex-shrink:0">`
+    : `<div style="width:180px;height:270px;background:var(--md-sys-color-surface-container-highest);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${svgBook(56)}</div>`;
 
   const shelfPills = (book.shelves || []).map(s => `<span class="shelf-pill">${esc(s)}</span>`).join('');
 
@@ -321,10 +318,12 @@ async function deleteBook(id) {
 function openMetaSearch(bookId) {
   state.selectedBook = state.books.find(b => b.id === bookId) || state.selectedBook;
   state.selectedMeta = null;
-  document.getElementById('metaQuery').value = state.selectedBook?.title || '';
+  const query = [state.selectedBook?.title, state.selectedBook?.author].filter(Boolean).join(' ');
+  document.getElementById('metaQuery').value = query;
   document.getElementById('metaResults').innerHTML = '';
   document.getElementById('applyMetaBtn').disabled = true;
   openDialog('metaDialog');
+  if (query) searchMeta();
 }
 
 async function searchMeta() {
@@ -700,12 +699,45 @@ async function setDefaultEmail(id) {
 function openCoverDialog(bookId) {
   state.coverBookId = bookId;
   state.coverFile = null;
+  state.selectedCoverUrl = null;
   document.getElementById('coverUrl').value = '';
   document.getElementById('coverPreviewArea').innerHTML = '';
   document.getElementById('coverInput').value = '';
+  document.getElementById('coverSearchResults').innerHTML = '';
   const book = state.selectedBook;
-  document.getElementById('embedCoverBtn').style.display = (book && book.file_format === 'epub') ? '' : 'none';
+  const query = [book?.title, book?.author].filter(Boolean).join(' ');
+  document.getElementById('coverSearchQuery').value = query;
   openDialog('coverDialog');
+  if (query) searchCovers();
+}
+
+async function searchCovers() {
+  const q = document.getElementById('coverSearchQuery').value.trim();
+  if (!q) return;
+  const resultsEl = document.getElementById('coverSearchResults');
+  resultsEl.innerHTML = '<div class="loading-indicator" style="padding:16px"><div class="spinner"></div></div>';
+  const results = await apiJSON(`/api/metadata/search?q=${encodeURIComponent(q)}&source=google_books`);
+  const list = Array.isArray(results) ? results : [];
+  const withCovers = list.filter(r => r.cover_url);
+  if (!withCovers.length) {
+    resultsEl.innerHTML = '<p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);padding:8px 0">No covers found.</p>';
+    return;
+  }
+  resultsEl.innerHTML = `<div class="cover-search-grid">${withCovers.map((r, i) => `
+    <div class="cover-search-item" data-url="${esc(r.cover_url)}" data-index="${i}" onclick="selectSearchCover(this,'${esc(r.cover_url)}')">
+      <img src="${esc(r.cover_url)}" alt="${esc(r.title)}" loading="lazy" onerror="this.parentElement.style.display='none'">
+      <div class="cover-search-item-title">${esc(r.title || '')}</div>
+    </div>`).join('')}</div>`;
+}
+
+function selectSearchCover(el, url) {
+  document.querySelectorAll('.cover-search-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  state.selectedCoverUrl = url;
+  state.coverFile = null;
+  document.getElementById('coverUrl').value = '';
+  document.getElementById('coverPreviewArea').innerHTML =
+    `<img src="${esc(url)}" style="max-height:160px;border-radius:8px;object-fit:contain;margin-top:8px">`;
 }
 
 async function saveCover() {
@@ -716,25 +748,25 @@ async function saveCover() {
     fd.append('file', state.coverFile);
     res = await fetch(`/api/books/${state.coverBookId}/cover`, { method: 'POST', body: fd });
   } else {
-    const url = v('coverUrl');
-    if (!url) { snack('Select a file or enter a URL'); return; }
+    const url = state.selectedCoverUrl || v('coverUrl');
+    if (!url) { snack('Select a file, search result, or enter a URL'); return; }
     res = await api(`/api/books/${state.coverBookId}/cover`, { method: 'POST', body: JSON.stringify({ url }) });
   }
-  if (res.ok) {
-    snack('Cover saved!');
-    closeDialog('coverDialog');
-    if (state.selectedBook) openBook(state.coverBookId);
-    loadBooks();
-  } else {
-    const d = await res.json(); snack(d.error || 'Failed to save cover');
+  if (!res.ok) {
+    const d = await res.json(); snack(d.error || 'Failed to save cover'); return;
   }
-}
-
-async function embedCover() {
-  const res = await api(`/api/books/${state.coverBookId}/cover/embed`, { method: 'POST' });
-  const d = await res.json();
-  if (res.ok) snack('Cover embedded in EPUB!');
-  else snack(d.error || 'Embed failed');
+  // Auto-embed cover into EPUB after saving
+  const book = state.selectedBook;
+  if (book && book.file_format === 'epub') {
+    const embedRes = await api(`/api/books/${state.coverBookId}/cover/embed`, { method: 'POST' });
+    if (embedRes.ok) snack('Cover saved and embedded in EPUB!');
+    else snack('Cover saved (embed failed)');
+  } else {
+    snack('Cover saved!');
+  }
+  closeDialog('coverDialog');
+  if (state.selectedBook) openBook(state.coverBookId);
+  loadBooks();
 }
 
 // ── Upload ───────────────────────────────────────────────
@@ -758,7 +790,7 @@ async function uploadFile(file) {
   fd.append('file', file);
 
   // Simulate progress via XHR for real progress events
-  await new Promise((resolve, reject) => {
+  const result = await new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/books/upload');
     xhr.upload.addEventListener('progress', e => {
@@ -781,11 +813,14 @@ async function uploadFile(file) {
     xhr.send(fd);
   });
 
-  // Apply naming scheme if not "original"
-  const scheme = document.getElementById('uploadScheme').value;
-  if (scheme !== 'original') {
-    // The server applies the rename scheme during upload via settings
-    // If user selected a per-upload scheme different from saved setting, update temporarily
+  // Auto-refresh library count after upload
+  if (result) {
+    document.getElementById('bookCount').textContent = '';
+    // Refresh library in background so count updates
+    apiJSON('/api/books?page=1&per_page=1').then(data => {
+      const total = data.total || 0;
+      document.getElementById('bookCount').textContent = total === 1 ? '1 book' : `${total.toLocaleString()} books`;
+    });
   }
 }
 
@@ -799,6 +834,7 @@ async function loadSettings() {
   setVal('smtpSender', data.smtp_sender || '');
   document.getElementById('smtpTls').checked = (data.smtp_tls || 'true') === 'true';
   document.getElementById('autoMetadata').checked = (data.auto_metadata || 'false') === 'true';
+  document.getElementById('metaReplaceMissing').checked = (data.meta_replace_missing || 'true') === 'true';
   setVal('defaultMetaSource', data.default_metadata_source || 'google_books');
   setVal('renameScheme', data.rename_scheme || 'original');
   setVal('renameCustomTemplate', data.rename_custom_template || '');
@@ -837,6 +873,7 @@ async function testSmtp() {
 async function saveMeta() {
   await api('/api/settings', { method: 'PUT', body: JSON.stringify({
     auto_metadata: document.getElementById('autoMetadata').checked ? 'true' : 'false',
+    meta_replace_missing: document.getElementById('metaReplaceMissing').checked ? 'true' : 'false',
     default_metadata_source: v('defaultMetaSource'),
   })});
   snack('Metadata settings saved!');
@@ -963,6 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('closeAddToShelfBtn').addEventListener('click', () => closeDialog('addToShelfDialog'));
   document.getElementById('closeCoverDialog').addEventListener('click', () => closeDialog('coverDialog'));
   document.getElementById('closeCoverDialogBtn').addEventListener('click', () => closeDialog('coverDialog'));
+  document.getElementById('refreshLibraryBtn').addEventListener('click', () => loadBooks());
 
   // Close dialog on scrim click
   document.querySelectorAll('.dialog-scrim').forEach(scrim => {
@@ -1003,7 +1041,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file) { state.coverFile = file; previewCoverFile(file); }
   });
   document.getElementById('saveCoverBtn').addEventListener('click', saveCover);
-  document.getElementById('embedCoverBtn').addEventListener('click', embedCover);
+  document.getElementById('coverSearchBtn').addEventListener('click', searchCovers);
+  document.getElementById('coverSearchQuery').addEventListener('keydown', e => { if (e.key === 'Enter') searchCovers(); });
 
   // Upload drop zone
   const dropZone = document.getElementById('dropZone');
@@ -1016,15 +1055,6 @@ document.addEventListener('DOMContentLoaded', () => {
       handleFiles(e.dataTransfer.files);
     });
     document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
-  }
-
-  // Upload scheme toggle
-  const schemeEl = document.getElementById('uploadScheme');
-  if (schemeEl) {
-    schemeEl.addEventListener('change', e => {
-      state.uploadScheme = e.target.value;
-      document.getElementById('customTemplateField').style.display = e.target.value === 'custom' ? '' : 'none';
-    });
   }
 
   // Settings
@@ -1044,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(`tab${cap(target)}`)?.classList.add('active');
+      if (target === 'libstats') loadStats();
     });
   });
 
