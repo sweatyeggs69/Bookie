@@ -1,7 +1,9 @@
-"""Metadata scraping from Google Books, Open Library, and GoodReads."""
+"""Metadata scraping from Google Books, Open Library, iTunes, and GoodReads."""
 import re
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -21,17 +23,24 @@ HEADERS = {
 # ---------------------------------------------------------------------------
 
 def search_google_books(query: str, max_results: int = 10) -> list[dict]:
-    """Search Google Books API."""
+    """Search Google Books API with rate-limit retry."""
     url = "https://www.googleapis.com/books/v1/volumes"
     params = {"q": query, "maxResults": max_results, "printType": "books"}
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        return [_parse_google_volume(item) for item in data.get("items", [])]
-    except Exception as exc:
-        logger.warning("Google Books search failed: %s", exc)
-        return []
+    for attempt in range(3):
+        try:
+            r = requests.get(url, params=params, timeout=10)
+            if r.status_code == 429:
+                wait = 2 ** attempt
+                logger.warning("Google Books rate limited, retrying in %ds", wait)
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            data = r.json()
+            return [_parse_google_volume(item) for item in data.get("items", [])]
+        except Exception as exc:
+            logger.warning("Google Books search failed: %s", exc)
+            return []
+    return []
 
 
 def fetch_google_books_by_isbn(isbn: str) -> dict | None:
@@ -43,9 +52,16 @@ def _parse_google_volume(item: dict) -> dict:
     info = item.get("volumeInfo", {})
     isbns = {i["type"]: i["identifier"] for i in info.get("industryIdentifiers", [])}
     image = info.get("imageLinks", {})
-    cover_url = image.get("extraLarge") or image.get("large") or image.get("thumbnail")
+    # Get best available cover; replace zoom param for higher quality
+    cover_url = (
+        image.get("extraLarge") or image.get("large")
+        or image.get("medium") or image.get("thumbnail")
+    )
     if cover_url:
         cover_url = cover_url.replace("http://", "https://")
+        # Upgrade to higher resolution
+        cover_url = re.sub(r"zoom=\d+", "zoom=3", cover_url)
+        cover_url = cover_url.replace("&edge=curl", "")
     return {
         "source": "google_books",
         "google_books_id": item.get("id"),
@@ -71,9 +87,13 @@ def _parse_google_volume(item: dict) -> dict:
 def search_open_library(query: str, max_results: int = 10) -> list[dict]:
     """Search Open Library."""
     url = "https://openlibrary.org/search.json"
-    params = {"q": query, "limit": max_results, "fields": "key,title,author_name,isbn,publisher,first_publish_year,language,number_of_pages_median,subject,cover_i,ratings_average"}
+    params = {
+        "q": query,
+        "limit": max_results,
+        "fields": "key,title,author_name,isbn,publisher,first_publish_year,language,number_of_pages_median,subject,cover_i,ratings_average",
+    }
     try:
-        r = requests.get(url, params=params, timeout=10)
+        r = requests.get(url, params=params, timeout=15)
         r.raise_for_status()
         data = r.json()
         return [_parse_ol_doc(doc) for doc in data.get("docs", [])]
@@ -111,32 +131,69 @@ def _parse_ol_doc(doc: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# iTunes / Apple Books  (great high-res covers, no auth required)
+# ---------------------------------------------------------------------------
+
+def search_itunes(query: str, max_results: int = 10) -> list[dict]:
+    """Search Apple Books (iTunes) — reliable source of high-res covers."""
+    url = "https://itunes.apple.com/search"
+    params = {"term": query, "media": "ebook", "limit": max_results}
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        results = []
+        for item in data.get("results", []):
+            raw_cover = item.get("artworkUrl100", "")
+            # Upgrade thumbnail to high-res
+            cover_url = raw_cover.replace("100x100bb", "600x600bb") if raw_cover else None
+            results.append({
+                "source": "itunes",
+                "title": item.get("trackName"),
+                "author": item.get("artistName"),
+                "publisher": item.get("sellerName"),
+                "published_date": (item.get("releaseDate") or "")[:10],
+                "description": item.get("description"),
+                "page_count": None,
+                "categories": ", ".join(item.get("genres", [])),
+                "language": None,
+                "isbn": None,
+                "isbn13": None,
+                "rating": None,
+                "cover_url": cover_url,
+            })
+        return results
+    except Exception as exc:
+        logger.warning("iTunes search failed: %s", exc)
+        return []
+
+
+# ---------------------------------------------------------------------------
 # GoodReads (scrape)
 # ---------------------------------------------------------------------------
 
 def search_goodreads(query: str, max_results: int = 10) -> list[dict]:
-    """Search GoodReads (scrape)."""
-    url = "https://www.goodreads.com/search/index.xml"
-    # GoodReads deprecated their API; fall back to web scrape
+    """Search GoodReads (web scrape)."""
     url = f"https://www.goodreads.com/search?q={requests.utils.quote(query)}&search_type=books"
     try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
+        r = requests.get(url, headers=HEADERS, timeout=15)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
         results = []
         for row in soup.select("tr[itemtype='http://schema.org/Book']")[:max_results]:
-            results.append(_parse_gr_row(row))
-        return [r for r in results if r]
+            item = _parse_gr_row(row)
+            if item:
+                results.append(item)
+        return results
     except Exception as exc:
         logger.warning("GoodReads search failed: %s", exc)
         return []
 
 
 def fetch_goodreads_book(book_id: str) -> dict | None:
-    """Fetch full details for a GoodReads book."""
     url = f"https://www.goodreads.com/book/show/{book_id}"
     try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
+        r = requests.get(url, headers=HEADERS, timeout=15)
         r.raise_for_status()
         return _parse_gr_book_page(r.text, book_id)
     except Exception as exc:
@@ -157,22 +214,18 @@ def _parse_gr_row(row) -> dict | None:
         cover_url = None
         if cover_el:
             src = cover_el.get("src", "")
+            # Strip size constraints to get largest available
             cover_url = re.sub(r"\._\w+_\.jpg", ".jpg", src)
+            cover_url = re.sub(r"SX\d+|SY\d+|CR\d+,\d+,\d+,\d+|_", "", cover_url)
         return {
             "source": "goodreads",
             "goodreads_id": gr_id,
             "title": title_el.text.strip() if title_el else None,
             "author": author_el.text.strip() if author_el else None,
             "cover_url": cover_url,
-            "publisher": None,
-            "published_date": None,
-            "description": None,
-            "page_count": None,
-            "categories": None,
-            "language": None,
-            "isbn": None,
-            "isbn13": None,
-            "rating": None,
+            "publisher": None, "published_date": None, "description": None,
+            "page_count": None, "categories": None, "language": None,
+            "isbn": None, "isbn13": None, "rating": None,
         }
     except Exception:
         return None
@@ -214,8 +267,7 @@ def _parse_gr_book_page(html: str, book_id: str) -> dict:
         "title": title,
         "author": author,
         "cover_url": cover_url,
-        "publisher": None,
-        "published_date": None,
+        "publisher": None, "published_date": None,
         "description": description,
         "page_count": page_count,
         "categories": categories,
@@ -227,70 +279,69 @@ def _parse_gr_book_page(html: str, book_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Amazon (scrape)
+# Cover search by ISBN (dedicated cover lookup)
 # ---------------------------------------------------------------------------
 
-def search_amazon(query: str) -> list[dict]:
-    """Search Amazon for book metadata (best-effort scrape)."""
-    url = f"https://www.amazon.com/s?k={requests.utils.quote(query)}&i=stripbooks"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-        results = []
-        for item in soup.select("div[data-component-type='s-search-result']")[:10]:
-            result = _parse_amazon_item(item)
-            if result:
-                results.append(result)
-        return results
-    except Exception as exc:
-        logger.warning("Amazon search failed: %s", exc)
-        return []
+def fetch_cover_urls_for_isbn(isbn: str) -> list[str]:
+    """Return a prioritized list of cover image URLs for a given ISBN."""
+    urls = []
+    clean = re.sub(r"[^0-9X]", "", isbn.upper())
+    if len(clean) == 13:
+        urls.append(f"https://covers.openlibrary.org/b/isbn/{clean}-L.jpg")
+        # Google Books by ISBN
+        gb = fetch_google_books_by_isbn(clean)
+        if gb and gb.get("cover_url"):
+            urls.append(gb["cover_url"])
+    elif len(clean) == 10:
+        urls.append(f"https://covers.openlibrary.org/b/isbn/{clean}-L.jpg")
+        gb = fetch_google_books_by_isbn(clean)
+        if gb and gb.get("cover_url"):
+            urls.append(gb["cover_url"])
+    return urls
 
 
-def _parse_amazon_item(item) -> dict | None:
-    try:
-        title_el = item.select_one("h2 a span")
-        title = title_el.text.strip() if title_el else None
-        author_el = item.select_one("div.a-row.a-size-base.a-color-secondary a")
-        author = author_el.text.strip() if author_el else None
-        cover_el = item.select_one("img.s-image")
-        cover_url = cover_el["src"] if cover_el else None
-        asin_el = item.get("data-asin")
-        return {
-            "source": "amazon",
-            "title": title,
-            "author": author,
-            "cover_url": cover_url,
-            "asin": asin_el,
-            "publisher": None,
-            "published_date": None,
-            "description": None,
-            "page_count": None,
-            "categories": None,
-            "language": None,
-            "isbn": None,
-            "isbn13": None,
-            "rating": None,
+# ---------------------------------------------------------------------------
+# Unified parallel search
+# ---------------------------------------------------------------------------
+
+SOURCE_FNS = {
+    "google_books": search_google_books,
+    "open_library": search_open_library,
+    "itunes":       search_itunes,
+    "goodreads":    search_goodreads,
+}
+
+DEFAULT_SOURCE_ORDER = ["google_books", "open_library", "itunes", "goodreads"]
+
+
+def search_all_sources(
+    query: str,
+    sources: list[str] | None = None,
+) -> list[dict]:
+    """Search all requested sources in parallel, return flat list ordered by source priority."""
+    if sources is None:
+        sources = DEFAULT_SOURCE_ORDER
+
+    results_by_source: dict[str, list[dict]] = {}
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {
+            ex.submit(SOURCE_FNS[s], query): s
+            for s in sources if s in SOURCE_FNS
         }
-    except Exception:
-        return None
+        for fut in as_completed(futures):
+            src = futures[fut]
+            try:
+                results_by_source[src] = fut.result()
+            except Exception as exc:
+                logger.warning("Source %s failed: %s", src, exc)
+                results_by_source[src] = []
 
-
-# ---------------------------------------------------------------------------
-# Unified search
-# ---------------------------------------------------------------------------
-
-def search_all_sources(query: str) -> dict:
-    """Search all available metadata sources."""
-    google = search_google_books(query)
-    open_lib = search_open_library(query)
-    goodreads = search_goodreads(query)
-    return {
-        "google_books": google,
-        "open_library": open_lib,
-        "goodreads": goodreads,
-    }
+    # Return in priority order
+    flat: list[dict] = []
+    for src in sources:
+        flat.extend(results_by_source.get(src, []))
+    return flat
 
 
 def fetch_cover_image(url: str) -> bytes | None:

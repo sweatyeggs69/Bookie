@@ -125,10 +125,10 @@ def rename_book_file(
     """
     Rename a book file using the configured scheme.
 
-    Returns (new_path, new_filename).
+    Returns (new_path, new_filename_relative_to_books_dir).
     """
     if scheme_key == "original":
-        return src_path, src_path.name
+        return src_path, str(src_path.relative_to(books_dir))
 
     template = get_scheme_template(scheme_key, custom_template)
     new_name = apply_scheme(template, src_path.name, metadata)
@@ -147,4 +147,44 @@ def rename_book_file(
     if src_path != new_path:
         src_path.rename(new_path)
 
-    return new_path, new_name
+    return new_path, str(new_path.relative_to(books_dir))
+
+
+def organize_into_folders(
+    src_path: Path,
+    books_dir: Path,
+    author: str | None,
+    series: str | None,
+    folder_mode: str = "flat",
+) -> tuple[Path, str]:
+    """
+    Move a book file into an Author/ or Author/Series/ subfolder.
+
+    folder_mode: "flat" | "by_author" | "by_author_series"
+    Returns (new_path, relative_path).
+    """
+    if folder_mode == "flat" or not author:
+        return src_path, str(src_path.relative_to(books_dir))
+
+    author_safe = _safe(author or "Unknown Author")
+
+    if folder_mode == "by_author_series" and series:
+        target_dir = books_dir / author_safe / _safe(series)
+    else:
+        target_dir = books_dir / author_safe
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / src_path.name
+
+    if target_path.exists() and target_path != src_path:
+        stem = src_path.stem
+        ext = src_path.suffix
+        counter = 1
+        while target_path.exists():
+            target_path = target_dir / f"{stem} ({counter}){ext}"
+            counter += 1
+
+    if src_path != target_path:
+        src_path.rename(target_path)
+
+    return target_path, str(target_path.relative_to(books_dir))

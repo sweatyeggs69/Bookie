@@ -352,28 +352,48 @@ function openMetaSearch(bookId) {
   if (query) searchMeta();
 }
 
+function _activeSources() {
+  return [...document.querySelectorAll('#metaSourceChips .filter-chip.active')]
+    .map(c => c.dataset.src);
+}
+
 async function searchMeta() {
   const q = document.getElementById('metaQuery').value.trim();
-  const source = document.getElementById('metaSource').value;
   if (!q) return;
+  const sources = _activeSources();
+  if (!sources.length) {
+    document.getElementById('metaResults').innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);padding:16px 0">Select at least one source.</p>';
+    return;
+  }
   document.getElementById('metaResults').innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
-  const results = await apiJSON(`/api/metadata/search?q=${encodeURIComponent(q)}&source=${source}`);
+  const results = await apiJSON(`/api/metadata/search?q=${encodeURIComponent(q)}&sources=${sources.join(',')}`);
   const list = Array.isArray(results) ? results : Object.values(results).flat();
-  if (!list.length) {
+  window._metaResultsList = list;
+  renderMetaResults(list);
+}
+
+const SOURCE_LABELS = { google_books: 'Google Books', open_library: 'Open Library', itunes: 'Apple Books', goodreads: 'GoodReads' };
+
+function renderMetaResults(list) {
+  const activeFilter = document.querySelector('#metaSourceChips .filter-chip.view-filter-active')?.dataset.src || null;
+  const filtered = activeFilter ? list.filter(r => r.source === activeFilter) : list;
+  if (!filtered.length) {
     document.getElementById('metaResults').innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);padding:16px 0">No results found.</p>';
     return;
   }
-  document.getElementById('metaResults').innerHTML = list.map((r, i) => `
-    <div class="meta-result" data-index="${i}" onclick="selectMeta(${i})">
+  document.getElementById('metaResults').innerHTML = filtered.map((r, i) => {
+    const origIdx = list.indexOf(r);
+    return `
+    <div class="meta-result" data-index="${origIdx}" onclick="selectMeta(${origIdx})">
       <img src="${r.cover_url || ''}" alt="" onerror="this.style.display='none'" loading="lazy">
       <div class="meta-result-info">
         <div class="meta-result-title">${esc(r.title || 'Unknown')}</div>
         <div class="meta-result-author">${esc(r.author || '')} ${r.published_date ? '· ' + r.published_date.slice(0,4) : ''}</div>
-        <div class="meta-result-source">${esc(r.source || source)}</div>
-        ${r.publisher ? `<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant)">${esc(r.publisher)}</div>` : ''}
+        <span class="meta-source-badge">${esc(SOURCE_LABELS[r.source] || r.source || '')}</span>
+        ${r.publisher ? `<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin-top:2px">${esc(r.publisher)}</div>` : ''}
       </div>
-    </div>`).join('');
-  window._metaResultsList = list;
+    </div>`;
+  }).join('');
 }
 
 function selectMeta(i) {
@@ -1207,6 +1227,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('metaSearchBtn').addEventListener('click', searchMeta);
   document.getElementById('metaQuery').addEventListener('keydown', e => { if (e.key === 'Enter') searchMeta(); });
   document.getElementById('applyMetaBtn').addEventListener('click', applyMeta);
+
+  // Metadata source chips: toggle search-active state
+  document.getElementById('metaSourceChips')?.addEventListener('click', e => {
+    const chip = e.target.closest('.filter-chip[data-src]');
+    if (!chip) return;
+    chip.classList.toggle('active');
+  });
+
+  // Filter bar toggle (mobile)
+  document.getElementById('filterBarToggle')?.addEventListener('click', () => {
+    document.getElementById('filterBar')?.classList.toggle('open');
+  });
 
   // Send dialog (manual address entry fallback)
   document.getElementById('confirmSendBtn').addEventListener('click', confirmSend);

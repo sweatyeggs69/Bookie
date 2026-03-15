@@ -253,22 +253,8 @@ def create_app():
         if auto_meta == "true":
             _auto_fetch_metadata(book)
 
-        # Apply renaming scheme
-        scheme = Settings.get("rename_scheme", "original")
-        custom_tpl = Settings.get("rename_custom_template", "")
-        if scheme != "original":
-            meta = {
-                "title": book.title,
-                "author": book.author,
-                "published_date": book.published_date,
-                "publisher": book.publisher,
-                "isbn": book.isbn,
-                "isbn13": book.isbn13,
-                "language": book.language,
-            }
-            new_path, new_name = renamer.rename_book_file(dest, BOOKS_DIR, scheme, meta, custom_tpl)
-            book.filename = new_name
-            db.session.commit()
+        # Apply renaming scheme + folder organization
+        _rename_and_organize(book, dest)
 
         return jsonify(book.to_dict()), 201
 
@@ -384,17 +370,7 @@ def create_app():
         query = data.get("query") or book.isbn or book.isbn13 or book.title or ""
         apply_to_book = data.get("apply", False)
 
-        results = []
-        if source == "google_books":
-            results = scraper.search_google_books(query)
-        elif source == "open_library":
-            results = scraper.search_open_library(query)
-        elif source == "goodreads":
-            results = scraper.search_goodreads(query)
-        elif source == "amazon":
-            results = scraper.search_amazon(query)
-        elif source == "all":
-            return jsonify(scraper.search_all_sources(query))
+        results = scraper.search_all_sources(query)
 
         if apply_to_book and results:
             _apply_metadata(book, results[0])
@@ -413,18 +389,33 @@ def create_app():
     @login_required
     def metadata_search():
         query = request.args.get("q", "").strip()
-        source = request.args.get("source", "google_books")
         if not query:
             return jsonify({"error": "Query required"}), 400
-        if source == "google_books":
-            return jsonify(scraper.search_google_books(query))
-        elif source == "open_library":
-            return jsonify(scraper.search_open_library(query))
-        elif source == "goodreads":
-            return jsonify(scraper.search_goodreads(query))
-        elif source == "amazon":
-            return jsonify(scraper.search_amazon(query))
-        return jsonify(scraper.search_all_sources(query))
+        # Accept comma-separated list of sources, default to priority order from settings
+        sources_param = request.args.get("sources", "")
+        if sources_param:
+            sources = [s.strip() for s in sources_param.split(",") if s.strip()]
+        else:
+            priority = Settings.get("source_priority", "")
+            sources = [s.strip() for s in priority.split(",") if s.strip()] if priority else None
+        return jsonify(scraper.search_all_sources(query, sources=sources))
+
+    @app.route("/api/metadata/sources", methods=["GET"])
+    @login_required
+    def get_meta_sources():
+        priority = Settings.get("source_priority", ",".join(scraper.DEFAULT_SOURCE_ORDER))
+        return jsonify({
+            "sources": scraper.DEFAULT_SOURCE_ORDER,
+            "priority": [s for s in priority.split(",") if s.strip()],
+        })
+
+    @app.route("/api/metadata/sources", methods=["PUT"])
+    @login_required
+    def set_meta_sources():
+        data = request.get_json(force=True) or {}
+        priority = data.get("priority", [])
+        Settings.set("source_priority", ",".join(priority))
+        return jsonify({"ok": True})
 
     # -----------------------------------------------------------------------
     # Covers
@@ -702,6 +693,7 @@ def create_app():
         "smtp_host", "smtp_port", "smtp_user", "smtp_password",
         "smtp_tls", "smtp_sender", "kindle_email",
         "auto_metadata", "default_metadata_source", "meta_replace_missing",
+        "source_priority", "folder_organization",
         "books_per_page", "default_view",
         "rename_scheme", "rename_custom_template",
     ]
@@ -769,6 +761,22 @@ def create_app():
             return jsonify({"success": True, "message": msg})
         return jsonify({"success": False, "error": msg})
 
+    @app.route("/api/books/<int:book_id>/organize", methods=["POST"])
+    @login_required
+    def organize_book(book_id):
+        """Move a book file into Author/ or Author/Series/ subfolder."""
+        book = Book.query.get_or_404(book_id)
+        src = BOOKS_DIR / book.filename
+        if not src.exists():
+            return jsonify({"error": "File not found on disk"}), 404
+        folder_mode = Settings.get("folder_organization", "flat")
+        new_path, new_rel = renamer.organize_into_folders(
+            src, BOOKS_DIR, book.author, book.series, folder_mode
+        )
+        book.filename = new_rel
+        db.session.commit()
+        return jsonify({"success": True, "filename": new_rel})
+
     # -----------------------------------------------------------------------
     # Stats
     # -----------------------------------------------------------------------
@@ -820,6 +828,34 @@ def create_app():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _rename_and_organize(book, file_path: Path):
+    """Apply rename scheme and folder organization to a newly added book file."""
+    scheme = Settings.get("rename_scheme", "original")
+    custom_tpl = Settings.get("rename_custom_template", "")
+    folder_mode = Settings.get("folder_organization", "flat")
+
+    meta = {
+        "title": book.title, "author": book.author,
+        "published_date": book.published_date, "publisher": book.publisher,
+        "isbn": book.isbn, "isbn13": book.isbn13, "language": book.language,
+        "series": book.series, "series_index": book.series_order,
+    }
+
+    current = file_path
+    if scheme != "original":
+        current, new_rel = renamer.rename_book_file(current, BOOKS_DIR, scheme, meta, custom_tpl)
+        book.filename = new_rel
+
+    if folder_mode != "flat":
+        current, new_rel = renamer.organize_into_folders(
+            current, BOOKS_DIR, book.author, book.series, folder_mode
+        )
+        book.filename = new_rel
+
+    from models import db as _db
+    _db.session.commit()
+
 
 def _migrate_db(app):
     """Add columns introduced in newer schema versions to existing databases."""
