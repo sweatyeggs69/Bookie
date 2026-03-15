@@ -391,30 +391,44 @@ def create_app():
         query = request.args.get("q", "").strip()
         if not query:
             return jsonify({"error": "Query required"}), 400
-        # Accept comma-separated list of sources, default to priority order from settings
+
+        # Determine which sources to search
         sources_param = request.args.get("sources", "")
         if sources_param:
-            sources = [s.strip() for s in sources_param.split(",") if s.strip()]
+            requested = [s.strip() for s in sources_param.split(",") if s.strip()]
         else:
             priority = Settings.get("source_priority", "")
-            sources = [s.strip() for s in priority.split(",") if s.strip()] if priority else None
-        return jsonify(scraper.search_all_sources(query, sources=sources))
+            requested = [s.strip() for s in priority.split(",") if s.strip()] if priority else list(scraper.DEFAULT_SOURCE_ORDER)
+
+        # Filter out disabled sources
+        disabled_raw = Settings.get("sources_disabled", "")
+        disabled = {s.strip() for s in disabled_raw.split(",") if s.strip()}
+        sources = [s for s in requested if s not in disabled]
+
+        api_keys = {"librarything": Settings.get("librarything_key", "")}
+        return jsonify(scraper.search_all_sources(query, sources=sources, api_keys=api_keys))
 
     @app.route("/api/metadata/sources", methods=["GET"])
     @login_required
     def get_meta_sources():
         priority = Settings.get("source_priority", ",".join(scraper.DEFAULT_SOURCE_ORDER))
+        disabled_raw = Settings.get("sources_disabled", "")
+        disabled = {s.strip() for s in disabled_raw.split(",") if s.strip()}
         return jsonify({
-            "sources": scraper.DEFAULT_SOURCE_ORDER,
+            "all": scraper.DEFAULT_SOURCE_ORDER,
+            "labels": scraper.SOURCE_LABELS,
             "priority": [s for s in priority.split(",") if s.strip()],
+            "disabled": list(disabled),
         })
 
     @app.route("/api/metadata/sources", methods=["PUT"])
     @login_required
     def set_meta_sources():
         data = request.get_json(force=True) or {}
-        priority = data.get("priority", [])
-        Settings.set("source_priority", ",".join(priority))
+        if "priority" in data:
+            Settings.set("source_priority", ",".join(data["priority"]))
+        if "disabled" in data:
+            Settings.set("sources_disabled", ",".join(data["disabled"]))
         return jsonify({"ok": True})
 
     # -----------------------------------------------------------------------
@@ -693,7 +707,8 @@ def create_app():
         "smtp_host", "smtp_port", "smtp_user", "smtp_password",
         "smtp_tls", "smtp_sender", "kindle_email",
         "auto_metadata", "default_metadata_source", "meta_replace_missing",
-        "source_priority", "folder_organization",
+        "source_priority", "sources_disabled", "folder_organization",
+        "librarything_key",
         "books_per_page", "default_view",
         "rename_scheme", "rename_custom_template",
     ]

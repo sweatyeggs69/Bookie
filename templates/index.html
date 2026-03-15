@@ -260,8 +260,9 @@
 
           <!-- Metadata Tab -->
           <div id="tabMetadata" class="tab-panel">
-            <div class="card">
-              <h3 style="font-size:16px;font-weight:500;margin-bottom:20px">Metadata Settings</h3>
+            <!-- General metadata behaviour -->
+            <div class="card" style="margin-bottom:16px">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:20px">Metadata Behaviour</h3>
               <div class="switch-field">
                 <div>
                   <div class="switch-label">Auto-download metadata on import</div>
@@ -277,7 +278,7 @@
               <div class="switch-field">
                 <div>
                   <div class="switch-label">Only replace missing fields</div>
-                  <div class="switch-sub">When auto-fetching or applying metadata, skip fields that already have a value</div>
+                  <div class="switch-sub">When applying metadata, skip fields that already have a value</div>
                 </div>
                 <label class="switch">
                   <input type="checkbox" id="metaReplaceMissing" checked>
@@ -287,15 +288,38 @@
               </div>
               <hr class="divider">
               <div class="form-field">
-                <label>Default Metadata Source</label>
-                <select class="field" id="defaultMetaSource">
-                  <option value="google_books">Google Books</option>
-                  <option value="open_library">Open Library</option>
-                  <option value="goodreads">GoodReads</option>
-                  <option value="amazon">Amazon</option>
+                <label>Folder organisation</label>
+                <select class="field" id="folderOrganization">
+                  <option value="flat">Flat (no subfolders)</option>
+                  <option value="by_author">By Author</option>
+                  <option value="by_author_series">By Author / Series</option>
                 </select>
               </div>
               <button class="btn btn-filled" id="saveMetaBtn" style="margin-top:8px">Save</button>
+            </div>
+
+            <!-- Metadata sources -->
+            <div class="card" style="margin-bottom:16px">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Metadata Sources</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Enable or disable each source. Drag to reorder search priority.</p>
+              <div id="sourceToggles"></div>
+              <button class="btn btn-tonal" id="saveSourcesBtn" style="margin-top:12px">Save Source Settings</button>
+            </div>
+
+            <!-- API Keys -->
+            <div class="card">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">API Keys</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Some sources require a developer API key to access full metadata and cover images.</p>
+              <div class="form-field">
+                <label>
+                  LibraryThing Developer Key
+                  <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);font-weight:400;margin-left:6px">
+                    — <a href="https://www.librarything.com/api" target="_blank" rel="noopener" style="color:var(--md-sys-color-primary)">Get key</a>
+                  </span>
+                </label>
+                <input class="field" id="librarythingKey" type="password" placeholder="Your LibraryThing API key" autocomplete="off">
+              </div>
+              <button class="btn btn-filled" id="saveApiKeysBtn" style="margin-top:8px">Save API Keys</button>
             </div>
           </div>
 

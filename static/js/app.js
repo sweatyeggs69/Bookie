@@ -372,45 +372,58 @@ async function searchMeta() {
   renderMetaResults(list);
 }
 
-const SOURCE_LABELS = { google_books: 'Google Books', open_library: 'Open Library', itunes: 'Apple Books', goodreads: 'GoodReads' };
+const SOURCE_LABELS = { google_books: 'Google Books', open_library: 'Open Library', itunes: 'Apple Books', goodreads: 'GoodReads', librarything: 'LibraryThing' };
 
 function renderMetaResults(list) {
-  const activeFilter = document.querySelector('#metaSourceChips .filter-chip.view-filter-active')?.dataset.src || null;
-  const filtered = activeFilter ? list.filter(r => r.source === activeFilter) : list;
-  if (!filtered.length) {
+  if (!list.length) {
     document.getElementById('metaResults').innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);padding:16px 0">No results found.</p>';
     return;
   }
-  document.getElementById('metaResults').innerHTML = filtered.map((r, i) => {
-    const origIdx = list.indexOf(r);
+  document.getElementById('metaResults').innerHTML = list.map((r, i) => {
+    const year = r.published_date ? r.published_date.slice(0, 4) : '';
+    const meta_line = [r.author, year].filter(Boolean).join(' · ');
+    const detail_parts = [
+      r.publisher ? esc(r.publisher) : null,
+      r.page_count ? `${r.page_count} pages` : null,
+      r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : null,
+    ].filter(Boolean);
+    const desc_snippet = r.description ? esc(r.description.slice(0, 120)) + (r.description.length > 120 ? '…' : '') : '';
+    const cats = r.categories ? `<div class="meta-result-cats">${esc(r.categories.split(',').slice(0,3).join(' · '))}</div>` : '';
     return `
-    <div class="meta-result" data-index="${origIdx}" onclick="selectMeta(${origIdx})">
-      <img src="${r.cover_url || ''}" alt="" onerror="this.style.display='none'" loading="lazy">
+    <div class="meta-result" data-index="${i}" onclick="selectMeta(${i})" title="Click to import this metadata">
+      ${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" onerror="this.style.display='none'" loading="lazy">` : '<div class="meta-result-no-cover"></div>'}
       <div class="meta-result-info">
         <div class="meta-result-title">${esc(r.title || 'Unknown')}</div>
-        <div class="meta-result-author">${esc(r.author || '')} ${r.published_date ? '· ' + r.published_date.slice(0,4) : ''}</div>
+        ${meta_line ? `<div class="meta-result-author">${esc(meta_line)}</div>` : ''}
+        ${detail_parts.length ? `<div class="meta-result-details">${detail_parts.join(' · ')}</div>` : ''}
+        ${desc_snippet ? `<div class="meta-result-desc">${desc_snippet}</div>` : ''}
+        ${cats}
         <span class="meta-source-badge">${esc(SOURCE_LABELS[r.source] || r.source || '')}</span>
-        ${r.publisher ? `<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin-top:2px">${esc(r.publisher)}</div>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-function selectMeta(i) {
-  state.selectedMeta = window._metaResultsList[i];
+async function selectMeta(i) {
+  if (!state.selectedBook) return;
+  const meta = window._metaResultsList[i];
+  if (!meta) return;
+  // Highlight selection
   document.querySelectorAll('.meta-result').forEach((el, idx) => el.classList.toggle('selected', idx === i));
   document.getElementById('applyMetaBtn').disabled = false;
-}
-
-async function applyMeta() {
-  if (!state.selectedMeta || !state.selectedBook) return;
+  // Auto-import immediately
   await api(`/api/books/${state.selectedBook.id}/apply-metadata`, {
-    method: 'POST', body: JSON.stringify(state.selectedMeta),
+    method: 'POST', body: JSON.stringify(meta),
   });
-  snack('Metadata applied!');
+  snack('Metadata imported!');
   closeDialog('metaDialog');
   openBook(state.selectedBook.id);
   loadBooks();
+}
+
+async function applyMeta() {
+  // Kept for the Apply button as a fallback; selectMeta now auto-applies
+  snack('Click a result to import its metadata');
 }
 
 // ── Shelves ──────────────────────────────────────────────
@@ -817,7 +830,8 @@ async function searchCovers() {
   if (!q) return;
   const resultsEl = document.getElementById('coverSearchResults');
   resultsEl.innerHTML = '<div class="loading-indicator" style="padding:16px"><div class="spinner"></div></div>';
-  const results = await apiJSON(`/api/metadata/search?q=${encodeURIComponent(q)}&source=google_books`);
+  // Search all enabled sources for cover-rich results
+  const results = await apiJSON(`/api/metadata/search?q=${encodeURIComponent(q)}`);
   const list = Array.isArray(results) ? results : [];
   const withCovers = list.filter(r => r.cover_url);
   if (!withCovers.length) {
@@ -826,8 +840,13 @@ async function searchCovers() {
   }
   resultsEl.innerHTML = `<div class="cover-search-grid">${withCovers.map((r, i) => `
     <div class="cover-search-item" data-url="${esc(r.cover_url)}" data-index="${i}" onclick="selectSearchCover(this,'${esc(r.cover_url)}')">
-      <img src="${esc(r.cover_url)}" alt="${esc(r.title)}" loading="lazy" onerror="this.parentElement.style.display='none'">
-      <div class="cover-search-item-title">${esc(r.title || '')}</div>
+      <div class="cover-img-wrap" style="position:relative">
+        <img src="${esc(r.cover_url)}" alt="${esc(r.title || '')}" loading="lazy"
+          onerror="this.closest('.cover-search-item').style.display='none'"
+          onload="this.nextElementSibling.textContent=this.naturalWidth+'×'+this.naturalHeight">
+        <span class="cover-res-badge"></span>
+      </div>
+      <div class="cover-search-item-title">${esc(r.title || '')} <span style="font-size:9px;opacity:.7">${esc(SOURCE_LABELS[r.source]||r.source||'')}</span></div>
     </div>`).join('')}</div>`;
 }
 
@@ -927,7 +946,10 @@ async function uploadFile(file) {
 
 // ── Settings ─────────────────────────────────────────────
 async function loadSettings() {
-  const data = await apiJSON('/api/settings');
+  const [data, srcData] = await Promise.all([
+    apiJSON('/api/settings'),
+    apiJSON('/api/metadata/sources'),
+  ]);
   setVal('smtpHost', data.smtp_host || '');
   setVal('smtpPort', data.smtp_port || '587');
   setVal('smtpUser', data.smtp_user || '');
@@ -936,10 +958,47 @@ async function loadSettings() {
   document.getElementById('smtpTls').checked = (data.smtp_tls || 'true') === 'true';
   document.getElementById('autoMetadata').checked = (data.auto_metadata || 'false') === 'true';
   document.getElementById('metaReplaceMissing').checked = (data.meta_replace_missing || 'true') === 'true';
-  setVal('defaultMetaSource', data.default_metadata_source || 'google_books');
+  setVal('folderOrganization', data.folder_organization || 'flat');
   setVal('renameScheme', data.rename_scheme || 'original');
   setVal('renameCustomTemplate', data.rename_custom_template || '');
+  // Show API key as placeholder dots if set
+  const ltInput = document.getElementById('librarythingKey');
+  if (ltInput) ltInput.placeholder = data.librarything_key ? '••••••••••••' : 'Your LibraryThing API key';
   toggleCustomScheme();
+  renderSourceToggles(srcData);
+}
+
+function renderSourceToggles(srcData) {
+  const el = document.getElementById('sourceToggles');
+  if (!el || !srcData) return;
+  const allSources = srcData.all || [];
+  const disabled = new Set(srcData.disabled || []);
+  const labels = srcData.labels || {};
+  el.innerHTML = allSources.map(s => `
+    <div class="source-toggle-row" data-source="${s}">
+      <div class="source-drag-handle">
+        <svg viewBox="0 0 24 24"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:500">${labels[s] || s}</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" class="source-enabled-chk" data-source="${s}" ${disabled.has(s) ? '' : 'checked'}>
+        <span class="switch-track"></span>
+        <span class="switch-thumb"></span>
+      </label>
+    </div>`).join('');
+  initSourceDrag(el);
+}
+
+function initSourceDrag(container) {
+  let dragged = null;
+  container.querySelectorAll('.source-toggle-row').forEach(row => {
+    row.draggable = true;
+    row.addEventListener('dragstart', () => { dragged = row; row.style.opacity = '0.5'; });
+    row.addEventListener('dragend', () => { dragged = null; row.style.opacity = ''; });
+    row.addEventListener('dragover', e => { e.preventDefault(); if (dragged && dragged !== row) container.insertBefore(dragged, row); });
+  });
 }
 
 async function saveSmtp() {
@@ -975,9 +1034,29 @@ async function saveMeta() {
   await api('/api/settings', { method: 'PUT', body: JSON.stringify({
     auto_metadata: document.getElementById('autoMetadata').checked ? 'true' : 'false',
     meta_replace_missing: document.getElementById('metaReplaceMissing').checked ? 'true' : 'false',
-    default_metadata_source: v('defaultMetaSource'),
+    folder_organization: v('folderOrganization'),
   })});
   snack('Metadata settings saved!');
+}
+
+async function saveApiKeys() {
+  const ltVal = v('librarythingKey').trim();
+  const body = {};
+  if (ltVal) body.librarything_key = ltVal;
+  if (Object.keys(body).length) {
+    await api('/api/settings', { method: 'PUT', body: JSON.stringify(body) });
+    document.getElementById('librarythingKey').value = '';
+    document.getElementById('librarythingKey').placeholder = '••••••••••••';
+    snack('API keys saved!');
+  }
+}
+
+async function saveSources() {
+  const rows = [...document.querySelectorAll('#sourceToggles .source-toggle-row')];
+  const priority = rows.map(r => r.dataset.source);
+  const disabled = rows.filter(r => !r.querySelector('.source-enabled-chk').checked).map(r => r.dataset.source);
+  await api('/api/metadata/sources', { method: 'PUT', body: JSON.stringify({ priority, disabled }) });
+  snack('Source settings saved!');
 }
 
 async function sendTestEmail() {
@@ -1290,6 +1369,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('testSmtpBtn')?.addEventListener('click', testSmtp);
   document.getElementById('sendTestEmailBtn')?.addEventListener('click', sendTestEmail);
   document.getElementById('saveMetaBtn')?.addEventListener('click', saveMeta);
+  document.getElementById('saveApiKeysBtn')?.addEventListener('click', saveApiKeys);
+  document.getElementById('saveSourcesBtn')?.addEventListener('click', saveSources);
   document.getElementById('saveRenameBtn')?.addEventListener('click', saveRename);
   document.getElementById('renameScheme')?.addEventListener('change', toggleCustomScheme);
   document.getElementById('changePwdBtn')?.addEventListener('click', changePassword);

@@ -1520,3 +1520,66 @@ textarea.field { resize: vertical; min-height: 80px; }
 .toggle-group .toggle-btn:last-child {
   border-radius: 0 var(--md-sys-shape-corner-full) var(--md-sys-shape-corner-full) 0;
 }
+
+/* ── Source toggle rows (settings) ────────────────────── */
+.source-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  cursor: grab;
+}
+.source-toggle-row:last-child { border-bottom: none; }
+.source-drag-handle {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: .5;
+  flex-shrink: 0;
+}
+.source-drag-handle svg { width: 20px; height: 20px; fill: currentColor; }
+
+/* ── Metadata result card (expanded info) ─────────────── */
+.meta-result-details {
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 2px;
+}
+.meta-result-desc {
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.meta-result-cats {
+  font-size: 10px;
+  color: var(--md-sys-color-tertiary);
+  margin-top: 3px;
+}
+.meta-result-no-cover {
+  width: 56px;
+  min-width: 56px;
+  height: 72px;
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 4px;
+}
+.meta-result { cursor: pointer; }
+
+/* ── Cover resolution badge ───────────────────────────── */
+.cover-res-badge {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  min-width: 4ch;
+  text-align: center;
+}
