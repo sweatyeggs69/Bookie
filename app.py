@@ -1,9 +1,14 @@
 """Booker – Docker ebook manager with Material Design 3 UI."""
+import base64
+import hashlib
 import io
 import json
 import os
+import re
 import secrets
 import logging
+import zipfile
+import xml.etree.ElementTree as ET
 from datetime import timedelta, date
 from pathlib import Path
 
@@ -19,6 +24,144 @@ def _get_or_create_secret_key() -> str:
     key = secrets.token_hex(32)
     key_file.write_text(key)
     return key
+
+
+# ---------------------------------------------------------------------------
+# API-key encryption (Fernet, key derived from app SECRET_KEY)
+# ---------------------------------------------------------------------------
+
+def _get_fernet():
+    from cryptography.fernet import Fernet
+    secret = _get_or_create_secret_key()
+    if isinstance(secret, str):
+        secret = secret.encode()
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret).digest())
+    return Fernet(key)
+
+
+def _encrypt_api_key(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        return _get_fernet().encrypt(value.encode()).decode()
+    except Exception:
+        return value  # fallback: store as-is
+
+
+def _decrypt_api_key(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        return _get_fernet().decrypt(value.encode()).decode()
+    except Exception:
+        return value  # legacy unencrypted value
+
+
+# ---------------------------------------------------------------------------
+# Embedded metadata extraction
+# ---------------------------------------------------------------------------
+
+def extract_embedded_metadata(file_path: Path, ext: str) -> dict:
+    """Extract title/author/etc. from embedded EPUB or PDF metadata."""
+    if ext == "epub":
+        return _extract_epub_metadata(file_path)
+    elif ext == "pdf":
+        return _extract_pdf_metadata(file_path)
+    return {}
+
+
+def _extract_epub_metadata(path: Path) -> dict:
+    try:
+        with zipfile.ZipFile(str(path)) as zf:
+            # Locate OPF from container.xml
+            with zf.open("META-INF/container.xml") as f:
+                croot = ET.parse(f).getroot()
+            ns_c = {"c": "urn:oasis:names:tc:opendocument:xmlns:container"}
+            rf = croot.find(".//c:rootfile", ns_c)
+            if rf is None:
+                return {}
+            opf_path = rf.get("full-path", "")
+            with zf.open(opf_path) as f:
+                oroot = ET.parse(f).getroot()
+
+        ns = {
+            "dc": "http://purl.org/dc/elements/1.1/",
+            "opf": "http://www.idpf.org/2007/opf",
+        }
+
+        def dc(tag):
+            el = oroot.find(f".//dc:{tag}", ns)
+            return el.text.strip() if el is not None and el.text else None
+
+        # ISBN from dc:identifier
+        isbn10 = isbn13 = None
+        for el in oroot.findall(".//dc:identifier", ns):
+            scheme = (el.get("{http://www.idpf.org/2007/opf}scheme") or "").lower()
+            val = re.sub(r"[-\s]", "", el.text or "")
+            if val.isdigit():
+                if len(val) == 13 and isbn13 is None:
+                    isbn13 = val
+                elif len(val) == 10 and isbn10 is None:
+                    isbn10 = val
+            elif "isbn" in scheme:
+                val2 = re.sub(r"[-\s]", "", val)
+                if val2.isdigit() and len(val2) == 13:
+                    isbn13 = val2
+                elif val2.isdigit() and len(val2) == 10:
+                    isbn10 = val2
+
+        # Creators: primary author is first without refine role or role=aut
+        authors = []
+        for el in oroot.findall(".//dc:creator", ns):
+            if el.text:
+                authors.append(el.text.strip())
+        author = authors[0] if authors else None
+
+        date_raw = dc("date")
+        pub_date = date_raw[:10] if date_raw else None  # keep YYYY-MM-DD
+
+        return {
+            "title": dc("title"),
+            "author": author,
+            "publisher": dc("publisher"),
+            "language": dc("language"),
+            "description": dc("description"),
+            "published_date": pub_date,
+            "isbn": isbn10,
+            "isbn13": isbn13,
+        }
+    except Exception as exc:
+        logger.debug("EPUB metadata extraction failed: %s", exc)
+        return {}
+
+
+def _extract_pdf_metadata(path: Path) -> dict:
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(str(path))
+        info = reader.metadata or {}
+
+        def clean(val):
+            return val.strip() if isinstance(val, str) and val.strip() else None
+
+        raw_date = info.get("/CreationDate", "")
+        pub_date = None
+        if raw_date and len(raw_date) >= 6:
+            # D:YYYYMMDDHHmmSS format
+            digits = re.sub(r"[^0-9]", "", raw_date[:10])
+            if len(digits) >= 4:
+                pub_date = digits[:4] + ("-" + digits[4:6] if len(digits) >= 6 else "")
+
+        return {
+            "title": clean(info.get("/Title")),
+            "author": clean(info.get("/Author")),
+            "publisher": clean(info.get("/Creator") or info.get("/Producer")),
+            "description": clean(info.get("/Subject")),
+            "published_date": pub_date,
+        }
+    except Exception as exc:
+        logger.debug("PDF metadata extraction failed: %s", exc)
+        return {}
 
 from flask import (
     Flask,
@@ -248,7 +391,12 @@ def create_app():
                 book.cover_filename = cf
                 db.session.commit()
 
-        # Auto-fetch metadata if enabled
+        # Apply embedded metadata first (title, author, ISBN, etc.)
+        embedded = extract_embedded_metadata(dest, ext)
+        if any(embedded.values()):
+            _apply_metadata(book, embedded, replace_missing_only=False)
+
+        # Auto-fetch from online sources to fill remaining gaps
         auto_meta = Settings.get("auto_metadata", "false")
         if auto_meta == "true":
             _auto_fetch_metadata(book)
@@ -405,7 +553,8 @@ def create_app():
         disabled = {s.strip() for s in disabled_raw.split(",") if s.strip()}
         sources = [s for s in requested if s not in disabled]
 
-        api_keys = {"librarything": Settings.get("librarything_key", "")}
+        lt_raw = Settings.get("librarything_key", "")
+        api_keys = {"librarything": _decrypt_api_key(lt_raw) if lt_raw else ""}
         return jsonify(scraper.search_all_sources(query, sources=sources, api_keys=api_keys))
 
     @app.route("/api/metadata/sources", methods=["GET"])
@@ -509,7 +658,18 @@ def create_app():
     @login_required
     def list_shelves():
         shelves = Shelf.query.order_by(Shelf.name).all()
-        return jsonify([s.to_dict() for s in shelves])
+        result = []
+        for s in shelves:
+            if s.is_smart:
+                try:
+                    rules = json.loads(s.rules or "[]")
+                except Exception:
+                    rules = []
+                count = _build_smart_query(Book.query, rules, s.combination or "all").count()
+                result.append(s.to_dict(book_count=count))
+            else:
+                result.append(s.to_dict())
+        return jsonify(result)
 
     @app.route("/api/shelves", methods=["POST"])
     @login_required
@@ -713,14 +873,18 @@ def create_app():
         "rename_scheme", "rename_custom_template",
     ]
 
+    _MASKED = "••••••••"
+    _MASKED_KEYS = {"smtp_password", "librarything_key"}
+
     @app.route("/api/settings", methods=["GET"])
     @login_required
     def get_settings():
         result = {}
         for key in SETTINGS_KEYS:
             val = Settings.get(key)
-            if key == "smtp_password" and val:
-                result[key] = "••••••••"
+            if key in _MASKED_KEYS:
+                # Return bool-indicator instead of raw value
+                result[key] = _MASKED if val else ""
             else:
                 result[key] = val
         return jsonify(result)
@@ -730,10 +894,16 @@ def create_app():
     def update_settings():
         data = request.get_json(force=True) or {}
         for key in SETTINGS_KEYS:
-            if key in data:
-                if key == "smtp_password" and data[key] == "••••••••":
-                    continue
-                Settings.set(key, str(data[key]) if data[key] is not None else None)
+            if key not in data:
+                continue
+            val = data[key]
+            # Skip masked placeholder writes
+            if key in _MASKED_KEYS and val == _MASKED:
+                continue
+            # Encrypt API keys before storing
+            if key == "librarything_key" and val:
+                val = _encrypt_api_key(str(val))
+            Settings.set(key, str(val) if val is not None else None)
         return jsonify({"success": True})
 
     @app.route("/api/settings/test-smtp", methods=["POST"])
@@ -957,15 +1127,38 @@ def _build_smart_query(query, rules: list, combination: str):
 
 
 def _auto_fetch_metadata(book: Book):
-    source = Settings.get("default_metadata_source", "google_books")
-    query = book.isbn or book.isbn13 or book.title or ""
-    if not query:
+    """Search online metadata sources to fill gaps in book record."""
+    # Build the best possible query: prefer ISBN, then clean title + author
+    if book.isbn13:
+        query = book.isbn13
+    elif book.isbn:
+        query = book.isbn
+    else:
+        title = book.title or ""
+        # Strip underscores/dashes that look like filenames, drop trailing year
+        title = re.sub(r"[_]+", " ", title)
+        title = re.sub(r"\s*[-–]\s*\d{4}\s*$", "", title)
+        title = re.sub(r"\s+", " ", title).strip()
+        query = " ".join(filter(None, [title, book.author]))
+
+    if not query.strip():
         return
-    results = []
-    if source == "google_books":
-        results = scraper.search_google_books(query, max_results=1)
-    elif source == "open_library":
-        results = scraper.search_open_library(query, max_results=1)
+
+    # Get enabled sources from settings (same order + disabled list)
+    disabled_raw = Settings.get("sources_disabled", "")
+    disabled = {s.strip() for s in disabled_raw.split(",") if s.strip()}
+    priority_raw = Settings.get("source_priority", "")
+    sources = [
+        s.strip()
+        for s in (priority_raw.split(",") if priority_raw else scraper.DEFAULT_SOURCE_ORDER)
+        if s.strip() and s.strip() not in disabled
+    ]
+
+    # Decrypt API keys
+    lt_raw = Settings.get("librarything_key", "")
+    api_keys = {"librarything": _decrypt_api_key(lt_raw) if lt_raw else ""}
+
+    results = scraper.search_all_sources(query, sources=sources, api_keys=api_keys)
     if results:
         _apply_metadata(book, results[0])
 

@@ -60,9 +60,12 @@ def _parse_google_volume(item: dict) -> dict:
     )
     if cover_url:
         cover_url = cover_url.replace("http://", "https://")
-        # Upgrade to higher resolution
-        cover_url = re.sub(r"zoom=\d+", "zoom=3", cover_url)
+        # Request highest-res image (zoom=0 = full-size, fife override for width)
+        cover_url = re.sub(r"zoom=\d+", "zoom=0", cover_url)
         cover_url = cover_url.replace("&edge=curl", "")
+        # Add fife param for up to 1600px wide if not already present
+        if "fife=" not in cover_url:
+            cover_url += "&fife=w1600"
     return {
         "source": "google_books",
         "google_books_id": item.get("id"),
@@ -147,7 +150,7 @@ def search_itunes(query: str, max_results: int = 10) -> list[dict]:
         for item in data.get("results", []):
             raw_cover = item.get("artworkUrl100", "")
             # Upgrade thumbnail to high-res
-            cover_url = raw_cover.replace("100x100bb", "600x600bb") if raw_cover else None
+            cover_url = raw_cover.replace("100x100bb", "1500x1500bb") if raw_cover else None
             results.append({
                 "source": "itunes",
                 "title": item.get("trackName"),
