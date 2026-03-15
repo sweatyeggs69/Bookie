@@ -55,6 +55,7 @@ function snack(msg, duration = 3500) {
 function navigate(view, opts = {}) {
   state.view = view;
   state.activeShelf = opts.shelf || null;
+  sessionStorage.setItem('lastView', view);
 
   // Sync both nav rail and bottom nav
   document.querySelectorAll('.nav-rail-item, .bottom-nav-item').forEach(btn => {
@@ -341,13 +342,16 @@ async function deleteBook(id) {
 }
 
 // ── Metadata Search ──────────────────────────────────────
-function openMetaSearch(bookId) {
+async function openMetaSearch(bookId) {
   state.selectedBook = state.books.find(b => b.id === bookId) || state.selectedBook;
   state.selectedMeta = null;
   const query = [state.selectedBook?.title, state.selectedBook?.author].filter(Boolean).join(' ');
   document.getElementById('metaQuery').value = query;
   document.getElementById('metaResults').innerHTML = '';
   document.getElementById('applyMetaBtn').disabled = true;
+  // Populate source chips from enabled sources (use cached or fetch fresh)
+  if (!window._srcData) window._srcData = await apiJSON('/api/metadata/sources');
+  renderSourceChips(window._srcData);
   openDialog('metaDialog');
   if (query) searchMeta();
 }
@@ -851,13 +855,24 @@ async function searchCovers() {
 }
 
 function selectSearchCover(el, url) {
-  document.querySelectorAll('.cover-search-item').forEach(i => i.classList.remove('selected'));
-  el.classList.add('selected');
-  state.selectedCoverUrl = url;
-  state.coverFile = null;
-  document.getElementById('coverUrl').value = '';
-  document.getElementById('coverPreviewArea').innerHTML =
-    `<img src="${esc(url)}" style="max-height:160px;border-radius:8px;object-fit:contain;margin-top:8px">`;
+  // Show preview modal – apply only if user confirms
+  const img = document.getElementById('coverPreviewImg');
+  const dims = document.getElementById('coverPreviewDims');
+  img.src = url;
+  dims.textContent = 'Loading…';
+  img.onload = () => { dims.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`; };
+  img.onerror = () => { dims.textContent = 'Could not load image'; };
+  document.getElementById('applyPreviewCoverBtn').onclick = () => {
+    document.querySelectorAll('.cover-search-item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+    state.selectedCoverUrl = url;
+    state.coverFile = null;
+    document.getElementById('coverUrl').value = '';
+    document.getElementById('coverPreviewArea').innerHTML =
+      `<img src="${esc(url)}" style="max-height:160px;border-radius:8px;object-fit:contain;margin-top:8px">`;
+    closeDialog('coverPreviewModal');
+  };
+  openDialog('coverPreviewModal');
 }
 
 async function saveCover() {
@@ -950,6 +965,7 @@ async function loadSettings() {
     apiJSON('/api/settings'),
     apiJSON('/api/metadata/sources'),
   ]);
+  window._srcData = srcData;
   setVal('smtpHost', data.smtp_host || '');
   setVal('smtpPort', data.smtp_port || '587');
   setVal('smtpUser', data.smtp_user || '');
@@ -961,20 +977,42 @@ async function loadSettings() {
   setVal('folderOrganization', data.folder_organization || 'flat');
   setVal('renameScheme', data.rename_scheme || 'original');
   setVal('renameCustomTemplate', data.rename_custom_template || '');
-  // Show API key as placeholder dots if set
+  // Show API key as placeholder dots if set (server always returns '••••••••' or '')
   const ltInput = document.getElementById('librarythingKey');
-  if (ltInput) ltInput.placeholder = data.librarything_key ? '••••••••••••' : 'Your LibraryThing API key';
+  if (ltInput) {
+    ltInput.value = '';
+    ltInput.placeholder = data.librarything_key === '••••••••' ? '••••••••••••' : 'Your LibraryThing API key';
+  }
   toggleCustomScheme();
   renderSourceToggles(srcData);
+}
+
+function renderSourceChips(srcData) {
+  const container = document.getElementById('metaSourceChips');
+  if (!container || !srcData) return;
+  const disabled = new Set(srcData.disabled || []);
+  const priority = (srcData.priority || srcData.all || []).filter(s => !disabled.has(s));
+  container.innerHTML = priority.map(s =>
+    `<button class="filter-chip active" data-src="${s}">${esc(SOURCE_LABELS[s] || s)}</button>`
+  ).join('');
+  container.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => btn.classList.toggle('active'));
+  });
 }
 
 function renderSourceToggles(srcData) {
   const el = document.getElementById('sourceToggles');
   if (!el || !srcData) return;
+  // Use saved priority order, append any unranked sources at end
+  const priority = srcData.priority || [];
   const allSources = srcData.all || [];
+  const ordered = [
+    ...priority.filter(s => allSources.includes(s)),
+    ...allSources.filter(s => !priority.includes(s)),
+  ];
   const disabled = new Set(srcData.disabled || []);
   const labels = srcData.labels || {};
-  el.innerHTML = allSources.map(s => `
+  el.innerHTML = ordered.map(s => `
     <div class="source-toggle-row" data-source="${s}">
       <div class="source-drag-handle">
         <svg viewBox="0 0 24 24"><path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"/></svg>
@@ -1040,15 +1078,15 @@ async function saveMeta() {
 }
 
 async function saveApiKeys() {
-  const ltVal = v('librarythingKey').trim();
-  const body = {};
-  if (ltVal) body.librarything_key = ltVal;
-  if (Object.keys(body).length) {
-    await api('/api/settings', { method: 'PUT', body: JSON.stringify(body) });
-    document.getElementById('librarythingKey').value = '';
-    document.getElementById('librarythingKey').placeholder = '••••••••••••';
-    snack('API keys saved!');
-  }
+  const ltInput = document.getElementById('librarythingKey');
+  const ltVal = ltInput.value.trim();
+  // Skip if user hasn't typed a new key (placeholder dots are just display)
+  if (!ltVal) { snack('Enter a new key to save'); return; }
+  await api('/api/settings', { method: 'PUT', body: JSON.stringify({ librarything_key: ltVal }) });
+  ltInput.value = '';
+  ltInput.placeholder = '••••••••••••';
+  window._srcData = null; // refresh source cache in case LT is now usable
+  snack('API key saved!');
 }
 
 async function saveSources() {
@@ -1056,6 +1094,7 @@ async function saveSources() {
   const priority = rows.map(r => r.dataset.source);
   const disabled = rows.filter(r => !r.querySelector('.source-enabled-chk').checked).map(r => r.dataset.source);
   await api('/api/metadata/sources', { method: 'PUT', body: JSON.stringify({ priority, disabled }) });
+  window._srcData = null; // invalidate cache so chips refresh on next dialog open
   snack('Source settings saved!');
 }
 
@@ -1173,24 +1212,20 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
-  // Nav drawer expand / pin
+  // Nav drawer – hamburger click = toggle pin (expand + lock, or collapse + unlock)
   const navRail = document.getElementById('navRail');
   const navToggle = document.getElementById('navToggle');
-  const navPin = document.getElementById('navPin');
   if (localStorage.getItem('navPinned') === '1') {
     navRail.classList.add('expanded', 'pinned');
   }
   navToggle?.addEventListener('click', e => {
-    navRail.classList.toggle('expanded');
-    e.stopPropagation();
-  });
-  navPin?.addEventListener('click', e => {
-    const pinned = navRail.classList.toggle('pinned');
+    const pinned = navRail.classList.contains('pinned');
     if (pinned) {
-      navRail.classList.add('expanded');
-      localStorage.setItem('navPinned', '1');
-    } else {
+      navRail.classList.remove('pinned', 'expanded');
       localStorage.removeItem('navPinned');
+    } else {
+      navRail.classList.add('expanded', 'pinned');
+      localStorage.setItem('navPinned', '1');
     }
     e.stopPropagation();
   });
@@ -1202,27 +1237,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle PWA shortcut hashes (e.g. /#upload, /#shelves)
   const hash = location.hash.replace('#', '');
-  const validViews = ['library', 'shelves', 'upload', 'settings'];
-  if (validViews.includes(hash)) {
+  const hashViews = ['library', 'shelves', 'upload', 'settings'];
+  if (hashViews.includes(hash)) {
     history.replaceState(null, '', '/');
     navigate(hash);
-    return; // navigate calls loadBooks/etc, skip the default navigate below
+    return;
   }
 
-  // Grid size slider
-  const gridSlider = document.getElementById('gridSizeSlider');
-  if (gridSlider) {
-    const savedSize = localStorage.getItem('gridMin');
-    if (savedSize) {
-      gridSlider.value = savedSize;
-      document.documentElement.style.setProperty('--grid-min', savedSize + 'px');
-    }
-    gridSlider.addEventListener('input', e => {
-      const val = e.target.value;
-      document.documentElement.style.setProperty('--grid-min', val + 'px');
-      localStorage.setItem('gridMin', val);
+  // Grid size buttons (3 levels: Compact / Standard / Large)
+  const GRID_SIZES = [130, 180, 240];
+  const savedGridSize = parseInt(localStorage.getItem('gridMin') || '180', 10);
+  document.documentElement.style.setProperty('--grid-min', savedGridSize + 'px');
+  document.querySelectorAll('.grid-size-btn').forEach(btn => {
+    const sz = parseInt(btn.dataset.size, 10);
+    btn.classList.toggle('active', sz === savedGridSize);
+    btn.addEventListener('click', () => {
+      document.documentElement.style.setProperty('--grid-min', sz + 'px');
+      localStorage.setItem('gridMin', sz);
+      document.querySelectorAll('.grid-size-btn').forEach(b => b.classList.toggle('active', b === btn));
     });
-  }
+  });
 
   // View toggle
   document.getElementById('viewGrid').addEventListener('click', () => {
@@ -1422,8 +1456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (d.username) document.getElementById('userMenuLabel').textContent = 'Signed in as ' + d.username;
   });
 
-  // Initial load
-  navigate('library');
+  // Restore last view (survives page reload)
+  const lastView = sessionStorage.getItem('lastView');
+  const validViews = ['library', 'shelves', 'upload', 'settings'];
+  navigate(validViews.includes(lastView) ? lastView : 'library');
 });
 
 function previewCoverFile(file) {

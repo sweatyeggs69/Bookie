@@ -221,24 +221,8 @@ body {
 }
 .nav-rail-toggle:hover { background: rgba(208,188,255,.1); }
 .nav-rail-toggle svg { width: 20px; height: 20px; fill: currentColor; }
-.nav-rail-pin {
-  display: none; /* shown when expanded */
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--md-sys-shape-corner-full);
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--md-sys-color-on-surface-variant);
-  transition: background 150ms, color 150ms;
-  flex-shrink: 0;
-}
-.nav-rail-pin:hover { background: rgba(208,188,255,.1); }
-.nav-rail-pin svg { width: 18px; height: 18px; fill: currentColor; }
-.nav-rail.expanded .nav-rail-pin { display: flex; }
-.nav-rail.pinned .nav-rail-pin { color: var(--md-sys-color-primary); }
+/* nav-rail-toggle turns primary when pinned */
+.nav-rail.pinned .nav-rail-toggle { color: var(--md-sys-color-primary); }
 
 /* ── Nav items (collapsed rail) ────────────────────────── */
 .nav-rail-item {
@@ -1346,7 +1330,7 @@ textarea.field { resize: vertical; min-height: 80px; }
   }
   .filter-bar.open { display: flex; }
   .filter-bar > .toggle-group,
-  .filter-bar > .grid-size-slider { align-self: flex-start; }
+  .grid-size-btns { display: none; } /* hidden on small tablets */
   .filter-bar > div[style*="flex:1"] { display: none; }
 }
 
@@ -1463,12 +1447,32 @@ textarea.field { resize: vertical; min-height: 80px; }
   text-overflow: ellipsis;
 }
 
-/* ── Grid size slider ──────────────────────────────────── */
-.grid-size-slider {
-  width: 80px;
-  accent-color: var(--md-sys-color-primary);
-  cursor: pointer;
+/* ── Grid size buttons (3-level) ───────────────────────── */
+.grid-size-btns {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
 }
+.grid-size-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--md-sys-shape-corner-small);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: none;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.grid-size-btn:hover { background: rgba(208,188,255,.1); }
+.grid-size-btn.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+}
+.grid-size-btn svg { width: 16px; height: 16px; fill: currentColor; }
 
 /* ── Book cover wrap (for series badge) ────────────────── */
 .book-cover-wrap {

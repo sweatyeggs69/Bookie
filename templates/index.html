@@ -53,11 +53,8 @@
     <!-- Navigation Rail / Drawer -->
     <nav class="nav-rail" id="navRail">
       <div class="nav-rail-header">
-        <button class="nav-rail-toggle" id="navToggle" title="Toggle navigation">
+        <button class="nav-rail-toggle" id="navToggle" title="Pin/unpin navigation">
           <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-        </button>
-        <button class="nav-rail-pin" id="navPin" title="Pin navigation">
-          <svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
         </button>
       </div>
       <button class="nav-rail-item active" data-view="library">
@@ -138,7 +135,17 @@
               <svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
             </button>
           </div>
-          <input type="range" id="gridSizeSlider" min="120" max="280" value="160" title="Grid size" class="grid-size-slider">
+          <div class="grid-size-btns" id="gridSizeBtns" title="Cover size">
+            <button class="grid-size-btn" data-size="130" title="Compact">
+              <svg viewBox="0 0 24 24"><path d="M3 3h4v4H3zm0 7h4v4H3zm0 7h4v4H3zm7-14h4v4h-4zm0 7h4v4h-4zm0 7h4v4h-4zm7-14h4v4h-4zm0 7h4v4h-4zm0 7h4v4h-4z"/></svg>
+            </button>
+            <button class="grid-size-btn" data-size="180" title="Standard">
+              <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/></svg>
+            </button>
+            <button class="grid-size-btn" data-size="240" title="Large">
+              <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- Book grid / list -->
@@ -303,7 +310,7 @@
               <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Metadata Sources</h3>
               <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Enable or disable each source. Drag to reorder search priority.</p>
               <div id="sourceToggles"></div>
-              <button class="btn btn-tonal" id="saveSourcesBtn" style="margin-top:12px">Save Source Settings</button>
+              <button class="btn btn-tonal" id="saveSourcesBtn" style="margin-top:12px">Save</button>
             </div>
 
             <!-- API Keys -->
@@ -483,13 +490,8 @@
         <input class="field" id="metaQuery" type="text" placeholder="Search by title, author, ISBN…" style="flex:1">
         <button class="btn btn-tonal" id="metaSearchBtn">Search</button>
       </div>
-      <!-- Source filter chips -->
-      <div class="meta-source-chips" id="metaSourceChips">
-        <button class="filter-chip active" data-src="google_books">Google Books</button>
-        <button class="filter-chip active" data-src="open_library">Open Library</button>
-        <button class="filter-chip active" data-src="itunes">Apple Books</button>
-        <button class="filter-chip active" data-src="goodreads">GoodReads</button>
-      </div>
+      <!-- Source filter chips – populated dynamically from enabled sources -->
+      <div class="meta-source-chips" id="metaSourceChips"></div>
       <div id="metaResults"></div>
     </div>
     <div class="dialog-footer">
@@ -656,6 +658,24 @@
     <div class="dialog-footer">
       <button class="btn btn-text" id="closeCoverDialogBtn">Cancel</button>
       <button class="btn btn-filled" id="saveCoverBtn">Save Cover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cover Preview Modal -->
+<div class="dialog-scrim" id="coverPreviewModal">
+  <div class="dialog" style="max-width:min(640px,90vw)">
+    <div class="dialog-header">
+      <span class="dialog-title">Preview Cover</span>
+      <button class="icon-btn" onclick="closeDialog('coverPreviewModal')"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    </div>
+    <div class="dialog-body" style="text-align:center;padding:8px 24px 16px">
+      <img id="coverPreviewImg" src="" alt="Cover preview" style="max-width:100%;max-height:65vh;object-fit:contain;border-radius:8px;display:block;margin:0 auto">
+      <div id="coverPreviewDims" style="margin-top:8px;font-size:12px;color:var(--md-sys-color-on-surface-variant)"></div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn btn-text" onclick="closeDialog('coverPreviewModal')">Cancel</button>
+      <button class="btn btn-filled" id="applyPreviewCoverBtn">Apply Cover</button>
     </div>
   </div>
 </div>
