@@ -42,6 +42,23 @@ import renamer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# In-memory log buffer (last 500 lines)
+class _LogBuffer(logging.Handler):
+    def __init__(self, capacity=500):
+        super().__init__()
+        self._buf = []
+        self._cap = capacity
+    def emit(self, record):
+        self._buf.append(self.format(record))
+        if len(self._buf) > self._cap:
+            self._buf = self._buf[-self._cap:]
+    def get_lines(self):
+        return list(self._buf)
+
+_log_buffer = _LogBuffer()
+_log_buffer.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s"))
+logging.getLogger().addHandler(_log_buffer)
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -738,6 +755,26 @@ def create_app():
             "languages": {lang: cnt for lang, cnt in languages},
             "total_size_bytes": total_size,
         })
+
+    @app.route("/api/logs", methods=["GET"])
+    @login_required
+    def get_logs():
+        level = request.args.get("level", "").upper()
+        lines = _log_buffer.get_lines()
+        if level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+            rank = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4}
+            min_rank = rank[level]
+            lines = [l for l in lines if any(l.find(lv) != -1 for lv, r in rank.items() if r >= min_rank)]
+        return jsonify({"logs": lines})
+
+    @app.route("/api/logs/level", methods=["PUT"])
+    @login_required
+    def set_log_level():
+        data = request.get_json() or {}
+        level = data.get("level", "INFO").upper()
+        numeric = getattr(logging, level, logging.INFO)
+        logging.getLogger().setLevel(numeric)
+        return jsonify({"level": level})
 
     return app
 

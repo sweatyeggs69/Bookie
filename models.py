@@ -26,6 +26,8 @@ class Book(db.Model):
     rating = db.Column(db.Float)
     google_books_id = db.Column(db.String(64))
     goodreads_id = db.Column(db.String(64))
+    series = db.Column(db.String(256))
+    series_order = db.Column(db.Float)
 
     # Cover
     cover_filename = db.Column(db.String(256))
@@ -57,6 +59,8 @@ class Book(db.Model):
             "google_books_id": self.google_books_id,
             "goodreads_id": self.goodreads_id,
             "cover_filename": self.cover_filename,
+            "series": self.series,
+            "series_order": self.series_order,
             "date_added": self.date_added.isoformat() if self.date_added else None,
             "date_modified": self.date_modified.isoformat() if self.date_modified else None,
             "shelves": [sb.shelf.name for sb in self.shelf_books],
@@ -72,6 +76,9 @@ class Shelf(db.Model):
     color = db.Column(db.String(16), default="#D0BCFF")
     icon = db.Column(db.String(64), default="shelf")
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
+    is_smart = db.Column(db.Boolean, default=False)
+    rules = db.Column(db.Text, default="[]")
+    combination = db.Column(db.String(8), default="all")
 
     # Smart shelf fields
     is_smart = db.Column(db.Boolean, default=False)

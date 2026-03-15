@@ -1312,3 +1312,61 @@ textarea.field { resize: vertical; min-height: 80px; }
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* ── Grid size slider ──────────────────────────────────── */
+.grid-size-slider {
+  width: 80px;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
+}
+
+/* ── Book cover wrap (for series badge) ────────────────── */
+.book-cover-wrap {
+  position: relative;
+  display: block;
+}
+
+/* ── Series order badge ────────────────────────────────── */
+.series-order-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--md-sys-shape-corner-full);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+/* ── Series label under book title ────────────────────── */
+.book-series {
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── Smart shelf badge ─────────────────────────────────── */
+.smart-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Toggle button rounded corners fix ────────────────── */
+.toggle-group .toggle-btn:first-child {
+  border-radius: var(--md-sys-shape-corner-full) 0 0 var(--md-sys-shape-corner-full);
+}
+.toggle-group .toggle-btn:last-child {
+  border-radius: 0 var(--md-sys-shape-corner-full) var(--md-sys-shape-corner-full) 0;
+}

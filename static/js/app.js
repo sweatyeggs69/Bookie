@@ -226,6 +226,32 @@ async function loadStats() {
   </div>`;
 }
 
+// ── Log Viewer ───────────────────────────────────────────
+async function loadLogs() {
+  const el = document.getElementById('logContent');
+  if (!el) return;
+  const level = document.getElementById('logLevelSelect')?.value || 'INFO';
+  el.textContent = 'Loading…';
+  const data = await apiJSON(`/api/logs?level=${level}`);
+  el.textContent = (data.logs || []).join('\n') || '(no log entries)';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function saveLogLevel() {
+  const level = document.getElementById('logLevelSelect')?.value || 'INFO';
+  await api('/api/logs/level', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level }) });
+  loadLogs();
+}
+
+function exportLogs() {
+  const content = document.getElementById('logContent')?.textContent || '';
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `booker-logs-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
 // ── Book Detail Dialog ───────────────────────────────────
 async function openBook(id) {
   const book = await apiJSON(`/api/books/${id}`);
@@ -1114,15 +1140,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!e.target.closest('.search-bar')) closeSearchDropdown();
   });
 
-  // Format filters
-  document.querySelectorAll('.filter-chip[data-format]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('.filter-chip[data-format]').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      state.filters.format = chip.dataset.format;
-      state.page = 1;
-      loadBooks();
-    });
+  // Format filter dropdown
+  document.getElementById('formatSelect')?.addEventListener('change', e => {
+    state.filters.format = e.target.value;
+    state.page = 1;
+    loadBooks();
   });
 
   // Sort
@@ -1218,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('settingsTabSelect');
     if (sel) sel.value = target;
     if (target === 'libstats') loadStats();
+    if (target === 'logs') loadLogs();
   }
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => activateSettingsTab(tab.dataset.tab));
@@ -1225,6 +1248,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('settingsTabSelect')?.addEventListener('change', e => {
     activateSettingsTab(e.target.value);
   });
+
+  // Log viewer buttons
+  document.getElementById('refreshLogsBtn')?.addEventListener('click', loadLogs);
+  document.getElementById('exportLogsBtn')?.addEventListener('click', exportLogs);
+  document.getElementById('logLevelSelect')?.addEventListener('change', saveLogLevel);
 
   // Smart shelf toggle
   document.getElementById('shelfIsSmart')?.addEventListener('change', e => {
