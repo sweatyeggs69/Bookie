@@ -122,15 +122,16 @@ def save_cover(book_id: int, image_data: bytes, fmt: str = "JPEG") -> str | None
 
 
 def embed_cover_in_epub(epub_path: str, cover_data: bytes) -> bool:
-    """Replace/embed cover image in EPUB file."""
+    """Replace/embed cover image in EPUB file, updating OPF manifest if needed."""
+    import shutil
+    import tempfile
+    import xml.etree.ElementTree as ET
+
     try:
         img = Image.open(io.BytesIO(cover_data)).convert("RGB")
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=90)
         cover_jpeg = buf.getvalue()
-
-        # Re-zip with replaced cover
-        import shutil, tempfile
 
         tmp = tempfile.mktemp(suffix=".epub")
         shutil.copy2(epub_path, tmp)
@@ -138,27 +139,93 @@ def embed_cover_in_epub(epub_path: str, cover_data: bytes) -> bool:
         with zipfile.ZipFile(tmp, "r") as zin:
             names = zin.namelist()
             infos = {n: zin.getinfo(n) for n in names}
-            contents = {}
-            for n in names:
-                contents[n] = zin.read(n)
+            contents = {n: zin.read(n) for n in names}
 
-        opf_path = _find_opf(zipfile.ZipFile(tmp, "r"))
-        cover_item = _find_cover_in_opf(zipfile.ZipFile(tmp, "r"), opf_path) if opf_path else None
+        # Find OPF
+        opf_path = None
+        try:
+            container = contents.get("META-INF/container.xml", b"").decode("utf-8", errors="replace")
+            m = re.search(r'full-path="([^"]+\.opf)"', container)
+            if m:
+                opf_path = m.group(1)
+        except Exception:
+            pass
 
+        # Try to find existing cover item via OPF
+        cover_item = None
+        if opf_path and opf_path in contents:
+            opf_text = contents[opf_path].decode("utf-8", errors="replace")
+            # Try OPF2 <meta name="cover" content="..."/>
+            meta_m = re.search(r'<meta\s+name=["\']cover["\'][^>]+content=["\']([^"\']+)["\']', opf_text, re.IGNORECASE)
+            if meta_m:
+                item_id = meta_m.group(1)
+                item_m = re.search(
+                    r'<item[^>]+id=["\']' + re.escape(item_id) + r'["\'][^>]+href=["\']([^"\']+)["\']',
+                    opf_text,
+                )
+                if item_m:
+                    href = item_m.group(1)
+                    base = str(Path(opf_path).parent)
+                    cover_item = (str(Path(base) / href) if base != "." else href)
+            if not cover_item:
+                # Try properties="cover-image"
+                prop_m = re.search(
+                    r'<item[^>]+properties=["\']cover-image["\'][^>]+href=["\']([^"\']+)["\']',
+                    opf_text, re.IGNORECASE,
+                )
+                if prop_m:
+                    href = prop_m.group(1)
+                    base = str(Path(opf_path).parent)
+                    cover_item = (str(Path(base) / href) if base != "." else href)
+
+        # Fallback: look for cover-named images in the zip
         if not cover_item:
-            # Find any cover-like image
             for name in names:
                 low = name.lower()
                 if any(k in low for k in ("cover", "front")) and low.endswith((".jpg", ".jpeg", ".png")):
                     cover_item = name
                     break
 
-        if cover_item:
+        if cover_item and cover_item in contents:
+            # Replace existing cover bytes
             contents[cover_item] = cover_jpeg
+        elif opf_path and opf_path in contents:
+            # Add new cover.jpg to zip, update OPF
+            opf_dir = str(Path(opf_path).parent)
+            new_cover_zip_path = (str(Path(opf_dir) / "cover.jpg") if opf_dir != "." else "cover.jpg")
+            contents[new_cover_zip_path] = cover_jpeg
 
+            # Update OPF XML
+            opf_text = contents[opf_path].decode("utf-8", errors="replace")
+            # Add <meta name="cover" content="booker-cover"/> to <metadata> if not present
+            if 'name="cover"' not in opf_text and "name='cover'" not in opf_text:
+                opf_text = re.sub(
+                    r'(</metadata>)',
+                    '  <meta name="cover" content="booker-cover"/>\n\\1',
+                    opf_text,
+                    count=1,
+                )
+            # Add <item> to <manifest> if id not present
+            if 'id="booker-cover"' not in opf_text:
+                opf_text = re.sub(
+                    r'(</manifest>)',
+                    '  <item id="booker-cover" href="cover.jpg" media-type="image/jpeg"/>\n\\1',
+                    opf_text,
+                    count=1,
+                )
+            contents[opf_path] = opf_text.encode("utf-8")
+        else:
+            # Last resort: just add cover.jpg at root
+            contents["cover.jpg"] = cover_jpeg
+
+        # Write updated zip
         with zipfile.ZipFile(epub_path, "w", zipfile.ZIP_DEFLATED) as zout:
             for name in names:
                 zout.writestr(infos[name], contents[name])
+            # Write any new files added (not in original names)
+            for name, data in contents.items():
+                if name not in names:
+                    zout.writestr(name, data)
 
         os.unlink(tmp)
         return True

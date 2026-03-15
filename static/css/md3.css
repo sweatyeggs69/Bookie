@@ -81,6 +81,9 @@
   --md-sys-motion-duration-long2:   500ms;
   --md-sys-motion-easing-standard:  cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Grid sizing */
+  --grid-min: 160px;
 }
 
 /* ── Reset ─────────────────────────────────────────────── */
@@ -145,6 +148,7 @@ body {
   flex: 1;
   max-width: 560px;
   display: flex;
+  position: relative;
   align-items: center;
   background: var(--md-sys-color-surface-container-highest);
   border-radius: var(--md-sys-shape-corner-full);
@@ -294,7 +298,7 @@ select.filter-select {
 /* ── Book Grid ─────────────────────────────────────────── */
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min), 1fr));
   gap: 16px;
 }
 .book-card {
@@ -623,8 +627,8 @@ select.filter-select {
 .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
 .icon-btn:hover { background: rgba(208,188,255,.08); }
 
-/* FAB */
-.fab {
+/* FAB - removed */
+._fab_unused {
   position: fixed;
   bottom: 32px;
   right: 32px;
@@ -644,8 +648,46 @@ select.filter-select {
   transition: box-shadow 150ms, transform 150ms;
   z-index: 50;
 }
-.fab svg { width: 24px; height: 24px; fill: currentColor; }
-.fab:hover { box-shadow: 0 6px 20px rgba(0,0,0,.6); transform: translateY(-1px); }
+/* Search Dropdown */
+.search-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: var(--md-sys-shape-corner-medium);
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  z-index: 150;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.search-dropdown.open { display: block; }
+.search-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.search-dropdown-item:hover { background: rgba(208,188,255,.08); }
+.search-dropdown-cover {
+  width: 32px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.search-dropdown-cover img { width: 100%; height: 100%; object-fit: cover; }
+.search-dropdown-cover svg { width: 20px; height: 20px; }
+.search-dropdown-info { flex: 1; min-width: 0; }
+.search-dropdown-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-dropdown-author { font-size: 12px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Cards / Surfaces ──────────────────────────────────── */
 .card {
@@ -796,6 +838,37 @@ textarea.field { resize: vertical; min-height: 80px; }
 .tab svg { width: 18px; height: 18px; fill: currentColor; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+/* ── Settings Layout ───────────────────────────────────── */
+.settings-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.settings-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: 8px;
+  position: sticky;
+  top: 16px;
+}
+.settings-sidebar .tab {
+  padding: 10px 16px;
+  border-radius: var(--md-sys-shape-corner-small);
+  justify-content: flex-start;
+  white-space: normal;
+}
+.settings-sidebar .tab.active::after { display: none; }
+.settings-sidebar .tab.active {
+  background: var(--md-sys-color-secondary-container);
+}
+.settings-content { flex: 1; min-width: 0; }
+.settings-tab-select { display: none; margin-bottom: 16px; }
 
 /* ── Shelf Pills ───────────────────────────────────────── */
 .shelf-pill {
@@ -1070,9 +1143,9 @@ textarea.field { resize: vertical; min-height: 80px; }
   .filter-bar .filter-select { flex-shrink: 0; }
   .filter-bar > div[style*="flex:1"] { display: none; } /* hide spacer on mobile */
   .content-area { padding: 0 16px 16px; }
-  .fab { bottom: calc(80px + env(safe-area-inset-bottom)); right: 16px; padding: 14px 16px; }
-  .fab span { display: none; }
-  .search-bar { max-width: none; }
+  .search-bar { max-width: none; flex: 1; }
+  .settings-sidebar { display: none; }
+  .settings-tab-select { display: block; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
   /* Dialogs go full-screen on small tablets */
@@ -1101,8 +1174,8 @@ textarea.field { resize: vertical; min-height: 80px; }
   /* Top app bar: collapse search */
   .top-app-bar { padding: 0 8px; gap: 4px; }
   .top-app-bar .logo-text { display: none; }
-  .search-bar { flex: 1; }
-  .toggle-group { display: none; } /* hide view toggle, always grid on mobile */
+  .search-bar { flex: 1; max-width: none; }
+  .toggle-group { padding: 4px 8px; } /* keep visible, just smaller */
 
   /* Book grid: 2 columns minimum */
   .book-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
@@ -1112,9 +1185,6 @@ textarea.field { resize: vertical; min-height: 80px; }
   .content-area { padding: 0 12px calc(80px + env(safe-area-inset-bottom) + 16px); }
   .filter-bar { padding: 0 12px 10px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-
-  /* FAB above bottom nav */
-  .fab { bottom: calc(72px + env(safe-area-inset-bottom)); right: 16px; }
 
   /* Shelf grid: 1 column */
   .shelf-grid { grid-template-columns: 1fr; }

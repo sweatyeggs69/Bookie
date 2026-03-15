@@ -1,9 +1,10 @@
 """Booker – Docker ebook manager with Material Design 3 UI."""
 import io
+import json
 import os
 import secrets
 import logging
-from datetime import timedelta
+from datetime import timedelta, date
 from pathlib import Path
 
 
@@ -113,7 +114,15 @@ def create_app():
             query = query.filter(Book.file_format == fmt.lower())
         shelf_id = request.args.get("shelf_id", type=int)
         if shelf_id:
-            query = query.join(ShelfBook).filter(ShelfBook.shelf_id == shelf_id)
+            shelf = Shelf.query.get(shelf_id)
+            if shelf and shelf.is_smart:
+                try:
+                    rules = json.loads(shelf.rules or "[]")
+                except Exception:
+                    rules = []
+                query = _build_smart_query(query, rules, shelf.combination or "all")
+            else:
+                query = query.join(ShelfBook).filter(ShelfBook.shelf_id == shelf_id)
         lang = request.args.get("language")
         if lang:
             query = query.filter(Book.language == lang)
@@ -395,6 +404,16 @@ def create_app():
             return jsonify({"error": "Failed to process image"}), 500
         book.cover_filename = cf
         db.session.commit()
+
+        # Auto-embed cover in EPUB
+        if book.file_format == "epub":
+            epub_path = str(BOOKS_DIR / book.filename)
+            cover_path = cover_mgr.get_cover_path(book_id)
+            if cover_path:
+                with open(str(cover_path), "rb") as fh:
+                    cover_bytes = fh.read()
+                cover_mgr.embed_cover_in_epub(epub_path, cover_bytes)
+
         return jsonify({"success": True, "cover_filename": cf})
 
     @app.route("/api/books/<int:book_id>/cover/embed", methods=["POST"])
@@ -446,6 +465,9 @@ def create_app():
             description=data.get("description", ""),
             color=data.get("color", "#D0BCFF"),
             icon=data.get("icon", "shelf"),
+            is_smart=bool(data.get("is_smart", False)),
+            rules=data.get("rules", "[]"),
+            combination=data.get("combination", "all"),
         )
         db.session.add(shelf)
         db.session.commit()
@@ -456,7 +478,7 @@ def create_app():
     def update_shelf(shelf_id):
         shelf = Shelf.query.get_or_404(shelf_id)
         data = request.get_json(force=True)
-        for f in ("name", "description", "color", "icon"):
+        for f in ("name", "description", "color", "icon", "is_smart", "rules", "combination"):
             if f in data:
                 setattr(shelf, f, data[f])
         db.session.commit()
@@ -495,7 +517,14 @@ def create_app():
     @app.route("/api/shelves/<int:shelf_id>/books", methods=["GET"])
     @login_required
     def list_shelf_books(shelf_id):
-        Shelf.query.get_or_404(shelf_id)
+        shelf = Shelf.query.get_or_404(shelf_id)
+        if shelf.is_smart:
+            try:
+                rules = json.loads(shelf.rules or "[]")
+            except Exception:
+                rules = []
+            query = _build_smart_query(Book.query, rules, shelf.combination or "all")
+            return jsonify([b.to_dict() for b in query.all()])
         sbs = ShelfBook.query.filter_by(shelf_id=shelf_id).all()
         return jsonify([sb.book.to_dict() for sb in sbs])
 
@@ -617,7 +646,7 @@ def create_app():
     SETTINGS_KEYS = [
         "smtp_host", "smtp_port", "smtp_user", "smtp_password",
         "smtp_tls", "smtp_sender", "kindle_email",
-        "auto_metadata", "default_metadata_source",
+        "auto_metadata", "default_metadata_source", "meta_replace_missing",
         "books_per_page", "default_view",
         "rename_scheme", "rename_custom_template",
     ]
@@ -659,6 +688,28 @@ def create_app():
         if not host or not user or not pwd:
             return jsonify({"error": "Incomplete SMTP settings"}), 400
         ok, msg = mailer.test_smtp_connection(host, port, user, pwd, tls)
+        if ok:
+            return jsonify({"success": True, "message": msg})
+        return jsonify({"success": False, "error": msg})
+
+    @app.route("/api/settings/test-smtp-send", methods=["POST"])
+    @login_required
+    def test_smtp_send():
+        data = request.get_json(force=True) or {}
+        host = data.get("smtp_host") or Settings.get("smtp_host")
+        port = int(data.get("smtp_port") or Settings.get("smtp_port") or 587)
+        user = data.get("smtp_user") or Settings.get("smtp_user")
+        pwd = data.get("smtp_password")
+        if pwd == "••••••••":
+            pwd = Settings.get("smtp_password")
+        tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
+        recipient = data.get("recipient", "").strip()
+        sender = data.get("sender_email") or Settings.get("smtp_sender") or user
+        if not host or not user or not pwd:
+            return jsonify({"error": "Incomplete SMTP settings"}), 400
+        if not recipient:
+            return jsonify({"error": "Recipient email is required"}), 400
+        ok, msg = mailer.send_test_email(host, port, user, pwd, tls, recipient, sender)
         if ok:
             return jsonify({"success": True, "message": msg})
         return jsonify({"success": False, "error": msg})
@@ -721,6 +772,42 @@ def _apply_metadata(book: Book, meta: dict, replace_missing_only: bool = None):
                 if cf:
                     book.cover_filename = cf
     db.session.commit()
+
+
+def _build_smart_query(query, rules: list, combination: str):
+    """Apply smart shelf rules to a Book query."""
+    filters = []
+    for rule in rules:
+        field = rule.get("field", "")
+        op = rule.get("op", "")
+        value = rule.get("value", "")
+        if not field or not op or value == "":
+            continue
+        col = getattr(Book, field, None)
+        if col is None:
+            continue
+        try:
+            if op == "contains":
+                filters.append(col.ilike(f"%{value}%"))
+            elif op == "equals":
+                filters.append(col.ilike(value))
+            elif op == "startswith":
+                filters.append(col.ilike(f"{value}%"))
+            elif op == "before":
+                filters.append(col < str(value))
+            elif op == "after":
+                filters.append(col > str(value))
+            elif op == "gte":
+                filters.append(col >= float(value))
+            elif op == "lte":
+                filters.append(col <= float(value))
+        except Exception:
+            continue
+    if not filters:
+        return query
+    if combination == "any":
+        return query.filter(db.or_(*filters))
+    return query.filter(db.and_(*filters))
 
 
 def _auto_fetch_metadata(book: Book):

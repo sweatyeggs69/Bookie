@@ -73,16 +73,24 @@ class Shelf(db.Model):
     icon = db.Column(db.String(64), default="shelf")
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Smart shelf fields
+    is_smart = db.Column(db.Boolean, default=False)
+    rules = db.Column(db.Text, default="[]")          # JSON array of rule objects
+    combination = db.Column(db.String(8), default="all")  # "all" (AND) or "any" (OR)
+
     shelf_books = db.relationship("ShelfBook", back_populates="shelf", cascade="all, delete-orphan")
 
-    def to_dict(self):
+    def to_dict(self, book_count=None):
         return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
             "color": self.color,
             "icon": self.icon,
-            "book_count": len(self.shelf_books),
+            "is_smart": self.is_smart,
+            "rules": self.rules or "[]",
+            "combination": self.combination or "all",
+            "book_count": book_count if book_count is not None else len(self.shelf_books),
             "date_created": self.date_created.isoformat() if self.date_created else None,
         }
 

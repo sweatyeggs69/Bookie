@@ -65,7 +65,7 @@ function navigate(view, opts = {}) {
     document.getElementById(`view${cap(v)}`).style.display = v === view ? '' : 'none';
   });
 
-  document.getElementById('uploadFab').style.display = view === 'upload' ? 'none' : '';
+  // (FAB removed)
 
   if (view === 'library') {
     document.getElementById('libraryTitle').textContent = opts.shelf ? opts.shelf.name : 'All Books';
@@ -381,7 +381,7 @@ async function loadShelves() {
   }
   grid.innerHTML = data.map(s => `
     <div class="shelf-card" style="border-color:${s.color}" onclick="browseShelf(${s.id},'${esc(s.name)}')">
-      <div class="shelf-card-name">${esc(s.name)}</div>
+      <div class="shelf-card-name">${esc(s.name)}${s.is_smart ? ' <span title="Smart shelf" style="font-size:14px">⚡</span>' : ''}</div>
       <div class="shelf-card-count">${s.book_count} book${s.book_count !== 1 ? 's' : ''}</div>
       ${s.description ? `<div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-top:4px">${esc(s.description)}</div>` : ''}
       <div class="shelf-card-actions" onclick="event.stopPropagation()">
@@ -399,12 +399,57 @@ function browseShelf(id, name) {
   navigate('library', { shelf: { id, name } });
 }
 
+const SMART_RULE_FIELDS = [
+  { value: 'author', label: 'Author' },
+  { value: 'title', label: 'Title' },
+  { value: 'categories', label: 'Categories' },
+  { value: 'publisher', label: 'Publisher' },
+  { value: 'language', label: 'Language' },
+  { value: 'file_format', label: 'Format' },
+  { value: 'published_date', label: 'Published Year' },
+  { value: 'rating', label: 'Rating' },
+];
+const SMART_RULE_OPS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'equals', label: 'equals' },
+  { value: 'startswith', label: 'starts with' },
+  { value: 'before', label: 'before' },
+  { value: 'after', label: 'after' },
+  { value: 'gte', label: '≥' },
+  { value: 'lte', label: '≤' },
+];
+
+let _shelfRules = [];
+
+function renderShelfRules() {
+  const list = document.getElementById('shelfRulesList');
+  if (!list) return;
+  list.innerHTML = _shelfRules.map((r, i) => `
+    <div class="shelf-rule-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      <select class="field" style="flex:1;padding:4px 8px;font-size:13px" onchange="_shelfRules[${i}].field=this.value">
+        ${SMART_RULE_FIELDS.map(f => `<option value="${f.value}"${r.field===f.value?' selected':''}>${f.label}</option>`).join('')}
+      </select>
+      <select class="field" style="flex:1;padding:4px 8px;font-size:13px" onchange="_shelfRules[${i}].op=this.value">
+        ${SMART_RULE_OPS.map(o => `<option value="${o.value}"${r.op===o.value?' selected':''}>${o.label}</option>`).join('')}
+      </select>
+      <input class="field" style="flex:1.5;padding:4px 8px;font-size:13px" type="text" value="${esc(r.value)}" oninput="_shelfRules[${i}].value=this.value" placeholder="value">
+      <button class="icon-btn" onclick="_shelfRules.splice(${i},1);renderShelfRules()" title="Remove">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>`).join('');
+}
+
 function openNewShelf() {
   state.shelfEditId = null;
+  _shelfRules = [];
   document.getElementById('shelfDialogTitle').textContent = 'New Shelf';
   document.getElementById('shelfName').value = '';
   document.getElementById('shelfDesc').value = '';
   document.getElementById('shelfColor').value = '#D0BCFF';
+  document.getElementById('shelfIsSmart').checked = false;
+  document.getElementById('shelfCombination').value = 'all';
+  document.getElementById('shelfRulesPanel').style.display = 'none';
+  renderShelfRules();
   openDialog('shelfDialog');
 }
 
@@ -412,16 +457,26 @@ async function editShelf(id) {
   const shelf = state.shelves.find(s => s.id === id);
   if (!shelf) return;
   state.shelfEditId = id;
+  _shelfRules = [];
+  try { _shelfRules = JSON.parse(shelf.rules || '[]'); } catch(e) {}
   document.getElementById('shelfDialogTitle').textContent = 'Edit Shelf';
   document.getElementById('shelfName').value = shelf.name;
   document.getElementById('shelfDesc').value = shelf.description || '';
   document.getElementById('shelfColor').value = shelf.color || '#D0BCFF';
+  document.getElementById('shelfIsSmart').checked = !!shelf.is_smart;
+  document.getElementById('shelfCombination').value = shelf.combination || 'all';
+  document.getElementById('shelfRulesPanel').style.display = shelf.is_smart ? '' : 'none';
+  renderShelfRules();
   openDialog('shelfDialog');
 }
 
 async function saveShelf() {
+  const isSmart = document.getElementById('shelfIsSmart').checked;
   const body = {
     name: v('shelfName'), description: v('shelfDesc'), color: v('shelfColor'),
+    is_smart: isSmart,
+    rules: JSON.stringify(_shelfRules),
+    combination: v('shelfCombination') || 'all',
   };
   if (!body.name) { snack('Name is required'); return; }
   if (state.shelfEditId) {
@@ -879,6 +934,28 @@ async function saveMeta() {
   snack('Metadata settings saved!');
 }
 
+async function sendTestEmail() {
+  const result = document.getElementById('smtpTestResult');
+  const recipient = v('smtpTestRecipient').trim();
+  if (!recipient) { snack('Enter a test recipient email'); return; }
+  result.textContent = 'Sending…';
+  result.style.color = 'var(--md-sys-color-on-surface-variant)';
+  const body = {
+    smtp_host: v('smtpHost'), smtp_port: v('smtpPort'), smtp_user: v('smtpUser'),
+    smtp_password: v('smtpPassword'), use_tls: document.getElementById('smtpTls').checked,
+    sender_email: v('smtpSender'), recipient,
+  };
+  const res = await api('/api/settings/test-smtp-send', { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (data.success) {
+    result.style.color = 'var(--md-sys-color-primary)';
+    result.textContent = '✓ ' + (data.message || 'Test email sent!');
+  } else {
+    result.style.color = 'var(--md-sys-color-error)';
+    result.textContent = '✗ ' + (data.error || 'Failed');
+  }
+}
+
 async function saveRename() {
   await api('/api/settings', { method: 'PUT', body: JSON.stringify({
     rename_scheme: v('renameScheme'),
@@ -909,6 +986,43 @@ async function changePassword() {
 async function doLogout() {
   await api('/api/auth/logout', { method: 'POST' });
   window.location.href = '/login';
+}
+
+// ── Live Search Dropdown ─────────────────────────────────
+async function searchLive(q) {
+  const dropdown = document.getElementById('searchDropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant)">Searching…</div>';
+  dropdown.classList.add('open');
+  try {
+    const data = await apiJSON(`/api/books?q=${encodeURIComponent(q)}&per_page=8`);
+    const books = data.books || [];
+    if (!books.length) {
+      dropdown.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant)">No results</div>';
+      return;
+    }
+    dropdown.innerHTML = books.map(b => `
+      <div class="search-dropdown-item" onclick="openBook(${b.id});closeSearchDropdown()">
+        <div class="search-dropdown-cover">
+          ${b.cover_filename
+            ? `<img src="/api/books/${b.id}/cover?thumb=true" alt="" onerror="this.style.display='none'">`
+            : `<svg viewBox="0 0 24 24" fill="currentColor" style="color:var(--md-sys-color-outline)"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>`
+          }
+        </div>
+        <div class="search-dropdown-info">
+          <div class="search-dropdown-title">${esc(b.title || b.filename)}</div>
+          <div class="search-dropdown-author">${esc(b.author || '')}</div>
+        </div>
+        <span class="format-badge">${esc(b.file_format || '')}</span>
+      </div>`).join('');
+  } catch(e) {
+    dropdown.classList.remove('open');
+  }
+}
+
+function closeSearchDropdown() {
+  const dropdown = document.getElementById('searchDropdown');
+  if (dropdown) dropdown.classList.remove('open');
 }
 
 // ── Dialog helpers ───────────────────────────────────────
@@ -943,8 +1057,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return; // navigate calls loadBooks/etc, skip the default navigate below
   }
 
-  // Upload FAB
-  document.getElementById('uploadFab').addEventListener('click', () => navigate('upload'));
+  // Grid size slider
+  const gridSlider = document.getElementById('gridSizeSlider');
+  if (gridSlider) {
+    const savedSize = localStorage.getItem('gridMin');
+    if (savedSize) {
+      gridSlider.value = savedSize;
+      document.documentElement.style.setProperty('--grid-min', savedSize + 'px');
+    }
+    gridSlider.addEventListener('input', e => {
+      const val = e.target.value;
+      document.documentElement.style.setProperty('--grid-min', val + 'px');
+      localStorage.setItem('gridMin', val);
+    });
+  }
 
   // View toggle
   document.getElementById('viewGrid').addEventListener('click', () => {
@@ -960,15 +1086,32 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBooks(document.getElementById('bookContainer'));
   });
 
-  // Search
-  let searchTimeout;
-  document.getElementById('searchInput').addEventListener('input', e => {
+  // Search (grid filter + live dropdown)
+  let searchTimeout, liveSearchTimeout;
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', e => {
+    const q = e.target.value.trim();
+    // Live dropdown (200ms debounce, min 2 chars)
+    clearTimeout(liveSearchTimeout);
+    if (q.length >= 2) {
+      liveSearchTimeout = setTimeout(() => searchLive(q), 200);
+    } else {
+      closeSearchDropdown();
+    }
+    // Grid filter (350ms debounce)
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      state.filters.q = e.target.value.trim();
+      state.filters.q = q;
       state.page = 1;
       loadBooks();
     }, 350);
+  });
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSearchDropdown();
+    if (e.key === 'Enter') closeSearchDropdown();
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-bar')) closeSearchDropdown();
   });
 
   // Format filters
@@ -1060,22 +1203,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Settings
   document.getElementById('saveSmtpBtn')?.addEventListener('click', saveSmtp);
   document.getElementById('testSmtpBtn')?.addEventListener('click', testSmtp);
+  document.getElementById('sendTestEmailBtn')?.addEventListener('click', sendTestEmail);
   document.getElementById('saveMetaBtn')?.addEventListener('click', saveMeta);
   document.getElementById('saveRenameBtn')?.addEventListener('click', saveRename);
   document.getElementById('renameScheme')?.addEventListener('change', toggleCustomScheme);
   document.getElementById('changePwdBtn')?.addEventListener('click', changePassword);
   document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
 
-  // Settings tabs
+  // Settings tabs (sidebar buttons + mobile dropdown in sync)
+  function activateSettingsTab(target) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab${cap(target)}`)?.classList.add('active');
+    const sel = document.getElementById('settingsTabSelect');
+    if (sel) sel.value = target;
+    if (target === 'libstats') loadStats();
+  }
   document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab;
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(`tab${cap(target)}`)?.classList.add('active');
-      if (target === 'libstats') loadStats();
-    });
+    tab.addEventListener('click', () => activateSettingsTab(tab.dataset.tab));
+  });
+  document.getElementById('settingsTabSelect')?.addEventListener('change', e => {
+    activateSettingsTab(e.target.value);
+  });
+
+  // Smart shelf toggle
+  document.getElementById('shelfIsSmart')?.addEventListener('change', e => {
+    document.getElementById('shelfRulesPanel').style.display = e.target.checked ? '' : 'none';
+  });
+  document.getElementById('addShelfRuleBtn')?.addEventListener('click', () => {
+    _shelfRules.push({ field: 'author', op: 'contains', value: '' });
+    renderShelfRules();
   });
 
   // User menu

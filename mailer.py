@@ -77,6 +77,42 @@ def send_book(
         return False, msg_err
 
 
+def send_test_email(
+    smtp_host: str,
+    smtp_port: int,
+    smtp_user: str,
+    smtp_password: str,
+    use_tls: bool,
+    recipient: str,
+    sender_email: str | None = None,
+) -> tuple[bool, str]:
+    """Send a test email to verify SMTP configuration."""
+    sender = sender_email or smtp_user
+    msg = MIMEMultipart()
+    msg["From"] = sender
+    msg["To"] = recipient
+    msg["Subject"] = "Booker – SMTP Test Email"
+    msg.attach(MIMEText("This is a test email sent from Booker to verify your SMTP configuration.", "plain"))
+    try:
+        if use_tls:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+            server.ehlo()
+            server.starttls()
+        else:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(sender, [recipient], msg.as_string())
+        server.quit()
+        return True, f"Test email sent successfully to {recipient}"
+    except smtplib.SMTPAuthenticationError:
+        return False, "SMTP authentication failed. Check username and password."
+    except smtplib.SMTPConnectError:
+        return False, f"Could not connect to SMTP server {smtp_host}:{smtp_port}"
+    except Exception as exc:
+        return False, f"Failed to send test email: {exc}"
+
+
 def test_smtp_connection(
     smtp_host: str,
     smtp_port: int,
