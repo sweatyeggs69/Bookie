@@ -185,19 +185,69 @@ body {
   width: 80px;
   background: var(--md-sys-color-surface-container-low);
   border-right: 1px solid var(--md-sys-color-outline-variant);
-  padding: 12px 0;
-  gap: 4px;
+  padding: 8px 0;
+  gap: 2px;
   align-items: center;
   flex-shrink: 0;
+  overflow: hidden;
   overflow-y: auto;
+  transition: width 200ms var(--md-sys-motion-easing-standard);
+  z-index: 10;
 }
+
+/* ── Nav rail header (hamburger + pin) ─────────────────── */
+.nav-rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 4px 0 8px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.nav-rail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant);
+  transition: background 150ms;
+  flex-shrink: 0;
+}
+.nav-rail-toggle:hover { background: rgba(208,188,255,.1); }
+.nav-rail-toggle svg { width: 20px; height: 20px; fill: currentColor; }
+.nav-rail-pin {
+  display: none; /* shown when expanded */
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant);
+  transition: background 150ms, color 150ms;
+  flex-shrink: 0;
+}
+.nav-rail-pin:hover { background: rgba(208,188,255,.1); }
+.nav-rail-pin svg { width: 18px; height: 18px; fill: currentColor; }
+.nav-rail.expanded .nav-rail-pin { display: flex; }
+.nav-rail.pinned .nav-rail-pin { color: var(--md-sys-color-primary); }
+
+/* ── Nav items (collapsed rail) ────────────────────────── */
 .nav-rail-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 12px 0;
+  padding: 8px 0;
   cursor: pointer;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 11px;
@@ -208,6 +258,7 @@ body {
   background: none;
   position: relative;
   transition: color var(--md-sys-motion-duration-short1);
+  white-space: nowrap;
 }
 .nav-rail-item .indicator {
   display: flex;
@@ -219,10 +270,53 @@ body {
   transition: background var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
 }
 .nav-rail-item svg { width: 24px; height: 24px; fill: currentColor; }
+.nav-label { pointer-events: none; }
 .nav-rail-item.active { color: var(--md-sys-color-on-secondary-container); }
 .nav-rail-item.active .indicator { background: var(--md-sys-color-secondary-container); }
 .nav-rail-item:hover .indicator { background: rgba(208,188,255,.08); }
 .nav-rail-item.active:hover .indicator { background: var(--md-sys-color-secondary-container); }
+
+/* ── Expanded drawer mode ───────────────────────────────── */
+.nav-rail.expanded {
+  width: 240px;
+  align-items: stretch;
+}
+.nav-rail.expanded .nav-rail-header {
+  justify-content: flex-start;
+  padding: 4px 12px 8px;
+}
+.nav-rail.expanded .nav-rail-item {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 56px;
+  margin: 1px 8px;
+  width: auto;
+  border-radius: 28px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.nav-rail.expanded .nav-rail-item .indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  background: none !important;
+  flex-shrink: 0;
+}
+.nav-rail.expanded .nav-rail-item.active {
+  background: var(--md-sys-color-secondary-container);
+}
+.nav-rail.expanded .nav-rail-item:not(.active):hover {
+  background: rgba(208,188,255,.08);
+}
+.nav-rail.expanded .nav-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
 
 /* ── Main Content ──────────────────────────────────────── */
 .main-content {
@@ -1128,7 +1222,7 @@ textarea.field { resize: vertical; min-height: 80px; }
 
 /* ── Responsive ────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .nav-rail { width: 64px; }
+  .nav-rail:not(.expanded) { width: 64px; }
   .book-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .content-header { padding: 16px 16px 12px; }
   .filter-bar {

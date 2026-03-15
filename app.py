@@ -85,6 +85,7 @@ def create_app():
         BOOKS_DIR.mkdir(parents=True, exist_ok=True)
         COVERS_DIR.mkdir(parents=True, exist_ok=True)
         db.create_all()
+        _migrate_db(app)
 
     # Register auth routes
     register_auth_routes(app, Settings)
@@ -782,6 +783,26 @@ def create_app():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _migrate_db(app):
+    """Add columns introduced in newer schema versions to existing databases."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE books ADD COLUMN series TEXT",
+        "ALTER TABLE books ADD COLUMN series_order REAL",
+        "ALTER TABLE shelves ADD COLUMN is_smart BOOLEAN DEFAULT 0",
+        "ALTER TABLE shelves ADD COLUMN rules TEXT DEFAULT '[]'",
+        "ALTER TABLE shelves ADD COLUMN combination TEXT DEFAULT 'all'",
+    ]
+    with app.app_context():
+        with db.engine.connect() as conn:
+            for stmt in migrations:
+                try:
+                    conn.execute(text(stmt))
+                    conn.commit()
+                except Exception:
+                    pass  # column already exists
+
 
 def _apply_metadata(book: Book, meta: dict, replace_missing_only: bool = None):
     if replace_missing_only is None:

@@ -1074,6 +1074,33 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
+  // Nav drawer expand / pin
+  const navRail = document.getElementById('navRail');
+  const navToggle = document.getElementById('navToggle');
+  const navPin = document.getElementById('navPin');
+  if (localStorage.getItem('navPinned') === '1') {
+    navRail.classList.add('expanded', 'pinned');
+  }
+  navToggle?.addEventListener('click', e => {
+    navRail.classList.toggle('expanded');
+    e.stopPropagation();
+  });
+  navPin?.addEventListener('click', e => {
+    const pinned = navRail.classList.toggle('pinned');
+    if (pinned) {
+      navRail.classList.add('expanded');
+      localStorage.setItem('navPinned', '1');
+    } else {
+      localStorage.removeItem('navPinned');
+    }
+    e.stopPropagation();
+  });
+  document.addEventListener('click', e => {
+    if (!navRail.contains(e.target) && !navRail.classList.contains('pinned')) {
+      navRail.classList.remove('expanded');
+    }
+  });
+
   // Handle PWA shortcut hashes (e.g. /#upload, /#shelves)
   const hash = location.hash.replace('#', '');
   const validViews = ['library', 'shelves', 'upload', 'settings'];
