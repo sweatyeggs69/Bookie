@@ -45,14 +45,9 @@ COPY static/ static/
 # Create data directories
 RUN mkdir -p data/books data/covers
 
-# Non-root user
-RUN useradd -r -u 1001 -g root booker && chown -R booker:root /app
-USER booker
-
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    BOOKS_DIR=/app/data/books \
-    COVERS_DIR=/app/data/covers \
+    DATA_DIR=/app/data \
     FLASK_APP=app.py
 
 EXPOSE 5000
