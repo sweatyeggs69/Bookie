@@ -11,13 +11,6 @@ services:
     volumes:
       - booker_data:/app/data
     environment:
-      # ── Security ──────────────────────────────────────
-      SECRET_KEY: "${SECRET_KEY:-change-me-to-a-long-random-string}"
-
-      # ── Default credentials (change after first login) ─
-      BOOKER_USERNAME: "${BOOKER_USERNAME:-admin}"
-      BOOKER_PASSWORD: "${BOOKER_PASSWORD:-booker}"
-
       # ── Upload limits ──────────────────────────────────
       MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-500}"
 

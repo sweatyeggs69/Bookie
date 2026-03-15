@@ -1,9 +1,20 @@
 """Booker – Docker ebook manager with Material Design 3 UI."""
 import io
 import os
+import secrets
 import logging
 from datetime import timedelta
 from pathlib import Path
+
+
+def _get_or_create_secret_key() -> str:
+    key_file = Path("data/secret_key")
+    key_file.parent.mkdir(parents=True, exist_ok=True)
+    if key_file.exists():
+        return key_file.read_text().strip()
+    key = secrets.token_hex(32)
+    key_file.write_text(key)
+    return key
 
 from flask import (
     Flask,
@@ -44,7 +55,7 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me-in-production")
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or _get_or_create_secret_key()
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
     db.init_app(app)
@@ -74,12 +85,6 @@ def create_app():
         resp.headers["Service-Worker-Allowed"] = "/"
         resp.headers["Cache-Control"] = "no-cache"
         return resp
-
-    @app.route("/login")
-    def login_page():
-        if session.get("authenticated"):
-            return redirect("/")
-        return render_template("login.html")
 
     # -----------------------------------------------------------------------
     # Books – CRUD
