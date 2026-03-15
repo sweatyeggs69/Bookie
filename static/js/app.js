@@ -57,7 +57,8 @@ function navigate(view, opts = {}) {
   state.view = view;
   state.activeShelf = opts.shelf || null;
 
-  document.querySelectorAll('.nav-rail-item').forEach(btn => {
+  // Sync both nav rail and bottom nav
+  document.querySelectorAll('.nav-rail-item, .bottom-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
 
@@ -68,11 +69,7 @@ function navigate(view, opts = {}) {
   document.getElementById('uploadFab').style.display = view === 'upload' ? 'none' : '';
 
   if (view === 'library') {
-    if (opts.shelf) {
-      document.getElementById('libraryTitle').textContent = opts.shelf.name;
-    } else {
-      document.getElementById('libraryTitle').textContent = 'All Books';
-    }
+    document.getElementById('libraryTitle').textContent = opts.shelf ? opts.shelf.name : 'All Books';
     state.page = 1;
     loadBooks();
   } else if (view === 'shelves') {
@@ -690,10 +687,19 @@ function closeMenu() { document.getElementById('userMenu').style.display = 'none
 // ── Event Listeners ──────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Nav rail
-  document.querySelectorAll('.nav-rail-item').forEach(btn => {
+  // Nav rail + bottom nav (same data-view attribute)
+  document.querySelectorAll('.nav-rail-item, .bottom-nav-item').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
+
+  // Handle PWA shortcut hashes (e.g. /#upload, /#shelves)
+  const hash = location.hash.replace('#', '');
+  const validViews = ['library', 'shelves', 'upload', 'settings'];
+  if (validViews.includes(hash)) {
+    history.replaceState(null, '', '/');
+    navigate(hash);
+    return; // navigate calls loadBooks/etc, skip the default navigate below
+  }
 
   // Upload FAB
   document.getElementById('uploadFab').addEventListener('click', () => navigate('upload'));

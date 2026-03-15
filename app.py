@@ -66,6 +66,15 @@ def create_app():
     def index():
         return render_template("index.html", username=session.get("username", ""))
 
+    @app.route("/sw.js")
+    def service_worker():
+        """Serve SW from root scope so it can control all pages."""
+        from flask import send_from_directory
+        resp = send_from_directory("static", "sw.js")
+        resp.headers["Service-Worker-Allowed"] = "/"
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
     @app.route("/login")
     def login_page():
         if session.get("authenticated"):

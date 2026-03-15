@@ -1,0 +1,44 @@
+{
+  "name": "Booker",
+  "short_name": "Booker",
+  "description": "Self-hosted ebook manager",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1C1B1F",
+  "theme_color": "#1C1B1F",
+  "lang": "en",
+  "categories": ["books", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Upload Book",
+      "short_name": "Upload",
+      "description": "Upload a new ebook",
+      "url": "/#upload",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Shelves",
+      "short_name": "Shelves",
+      "description": "Browse your shelves",
+      "url": "/#shelves",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
