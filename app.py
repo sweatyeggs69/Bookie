@@ -7,8 +7,11 @@ from datetime import timedelta
 from pathlib import Path
 
 
+DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
+
+
 def _get_or_create_secret_key() -> str:
-    key_file = Path("data/secret_key")
+    key_file = DATA_DIR / "secret_key"
     key_file.parent.mkdir(parents=True, exist_ok=True)
     if key_file.exists():
         return key_file.read_text().strip()
@@ -42,16 +45,16 @@ logger = logging.getLogger(__name__)
 # Config
 # ---------------------------------------------------------------------------
 
-BOOKS_DIR = Path(os.environ.get("BOOKS_DIR", "data/books"))
-COVERS_DIR = Path(os.environ.get("COVERS_DIR", "data/covers"))
+BOOKS_DIR = DATA_DIR / "books"
+COVERS_DIR = DATA_DIR / "covers"
 ALLOWED_EXTENSIONS = {"epub", "pdf", "mobi", "azw", "azw3", "fb2", "djvu", "cbz", "cbr", "txt"}
-MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "500"))
+MAX_UPLOAD_MB = 35
 
 
 def create_app():
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{Path('data/booker.db').absolute()}"
+        "DATABASE_URL", f"sqlite:///{(DATA_DIR / 'booker.db').absolute()}"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
