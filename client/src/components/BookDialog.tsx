@@ -5,6 +5,7 @@ import * as api from '../api/client'
 import { Book, Tag, EmailAddress } from '../types'
 import Dialog from './Dialog'
 import MetaDialog from './MetaDialog'
+import CoverDialog from './CoverDialog'
 import Spinner from './Spinner'
 import { useToast } from '../App'
 
@@ -143,10 +144,10 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
   const [hoverRating, setHoverRating] = useState<number | null>(null)
   const [imgError, setImgError] = useState(false)
   const [showMetaDialog, setShowMetaDialog] = useState(false)
+  const [showCoverDialog, setShowCoverDialog] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [emailMenuOpen, setEmailMenuOpen] = useState(false)
 
-  const coverInputRef = useRef<HTMLInputElement>(null)
   const emailMenuRef = useRef<HTMLDivElement>(null)
 
   // Close email menu on outside click
@@ -215,29 +216,6 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
     },
   })
 
-  const coverUploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData()
-      formData.append('cover', file)
-      const res = await fetch(`/api/books/${bookId}/cover`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body?.error ?? `Upload failed (HTTP ${res.status})`)
-      }
-      return res.json() as Promise<Book>
-    },
-    onSuccess: () => {
-      setImgError(false)
-      qc.invalidateQueries({ queryKey: ['book', bookId] })
-      qc.invalidateQueries({ queryKey: ['books'] })
-    },
-  })
-
-
   const sendMutation = useMutation({
     mutationFn: (recipient: string) => api.sendBook(bookId, recipient),
     onSuccess: () => {
@@ -248,12 +226,6 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
       addToast('error', e.message)
     },
   })
-
-  const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) coverUploadMutation.mutate(file)
-    e.target.value = ''
-  }
 
   const handleDelete = () => {
     if (!confirmDelete) {
@@ -377,21 +349,12 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                 )}
               </div>
 
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={handleCoverFileChange}
-                tabIndex={-1}
-              />
               <button
                 type="button"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={coverUploadMutation.isPending}
+                onClick={() => setShowCoverDialog(true)}
                 className="flex items-center gap-1.5 w-full justify-center px-3 py-1.5 rounded text-xs font-medium text-ink-muted border border-line hover:bg-surface-raised hover:text-ink transition-colors"
               >
-                {coverUploadMutation.isPending ? <Spinner size={12} /> : <Image size={12} />}
+                <Image size={12} />
                 Change Cover
               </button>
             </div>
@@ -558,6 +521,20 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
           </div>
         )}
       </Dialog>
+
+      {showCoverDialog && book && (
+        <CoverDialog
+          bookId={bookId}
+          bookTitle={book.title ?? undefined}
+          bookAuthor={book.author ?? undefined}
+          fileFormat={book.file_format ?? undefined}
+          onClose={() => {
+            setShowCoverDialog(false)
+            setImgError(false)
+            qc.invalidateQueries({ queryKey: ['book', bookId] })
+          }}
+        />
+      )}
 
       {showMetaDialog && book && (
         <MetaDialog

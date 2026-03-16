@@ -100,6 +100,21 @@ export default function App() {
 
   useEffect(() => {
     checkAuth();
+    // Restore color theme from localStorage
+    const savedTheme = localStorage.getItem('colorTheme') || 'violet';
+    const themeVars: Record<string, Record<string, string>> = {
+      violet: { '--color-accent': '#a78bfa', '--color-accent-muted': '#a78bfa1a', '--color-accent-hover': '#8b5cf6' },
+      teal:   { '--color-accent': '#2dd4bf', '--color-accent-muted': '#2dd4bf1a', '--color-accent-hover': '#14b8a6' },
+      green:  { '--color-accent': '#4ade80', '--color-accent-muted': '#4ade801a', '--color-accent-hover': '#22c55e' },
+      rose:   { '--color-accent': '#fb7185', '--color-accent-muted': '#fb71851a', '--color-accent-hover': '#f43f5e' },
+      amber:  { '--color-accent': '#fbbf24', '--color-accent-muted': '#fbbf241a', '--color-accent-hover': '#f59e0b' },
+    };
+    const vars = themeVars[savedTheme];
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) {
+        document.documentElement.style.setProperty(k, v);
+      }
+    }
   }, [checkAuth]);
 
   return (

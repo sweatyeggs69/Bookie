@@ -278,6 +278,82 @@ export function getStats(): Promise<Stats> {
   return api<Stats>('/api/stats')
 }
 
+// ─── Metadata sources ─────────────────────────────────────────────────────────
+
+export interface MetadataSources {
+  all: string[]
+  priority: string[]
+  disabled: string[]
+  labels: Record<string, string>
+}
+
+export function getMetadataSources(): Promise<MetadataSources> {
+  return api<MetadataSources>('/api/metadata/sources')
+}
+
+export function saveMetadataSources(data: { priority: string[]; disabled: string[] }): Promise<MetadataSources> {
+  return api<MetadataSources>('/api/metadata/sources', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+// ─── Bulk rename ──────────────────────────────────────────────────────────────
+
+export interface BulkRenameResult {
+  original: string
+  new: string
+  changed: boolean
+  error?: string
+}
+
+export interface BulkRenameResponse {
+  results: BulkRenameResult[]
+  errors: { original: string; error: string }[]
+}
+
+export function bulkRename(apply: boolean): Promise<BulkRenameResponse> {
+  return api<BulkRenameResponse>('/api/rename/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ apply }),
+  })
+}
+
+// ─── Logs ─────────────────────────────────────────────────────────────────────
+
+export function getLogs(level: string): Promise<{ logs: string[] }> {
+  return api<{ logs: string[] }>(`/api/logs?level=${encodeURIComponent(level)}`)
+}
+
+export function setLogLevel(level: string): Promise<void> {
+  return api<void>('/api/logs/level', {
+    method: 'PUT',
+    body: JSON.stringify({ level }),
+  })
+}
+
+// ─── Cover ────────────────────────────────────────────────────────────────────
+
+export function setCoverFromUrl(bookId: number, url: string): Promise<Book> {
+  return api<Book>(`/api/books/${bookId}/cover`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+}
+
+export function embedCover(bookId: number): Promise<{ success: boolean }> {
+  return api<{ success: boolean }>(`/api/books/${bookId}/cover/embed`, { method: 'POST' })
+}
+
+// ─── Send test email ──────────────────────────────────────────────────────────
+
+export function sendTestEmail(data: {
+  smtp_host: string; smtp_port: string; smtp_user: string
+  smtp_password: string; use_tls: boolean; sender_email: string; recipient: string
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  return api('/api/settings/test-smtp-send', { method: 'POST', body: JSON.stringify(data) })
+}
+
 // ─── Email addresses ──────────────────────────────────────────────────────────
 
 export function getEmailAddresses(): Promise<EmailAddress[]> {
@@ -355,6 +431,19 @@ export default {
   getStats,
   // Download
   getDownloadUrl,
+  // Metadata sources
+  getMetadataSources,
+  saveMetadataSources,
+  // Bulk rename
+  bulkRename,
+  // Logs
+  getLogs,
+  setLogLevel,
+  // Cover extended
+  setCoverFromUrl,
+  embedCover,
+  // Send test email
+  sendTestEmail,
   // Email addresses
   getEmailAddresses,
   addEmailAddress,
