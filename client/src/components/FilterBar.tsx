@@ -130,7 +130,7 @@ export default function FilterBar() {
   )
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="sticky top-14 z-30 bg-surface border-b border-line px-4 py-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         {/* Mobile toggle */}
         <button
@@ -203,7 +203,7 @@ export default function FilterBar() {
 
       {/* Mobile: collapsible filters */}
       {mobileOpen && (
-        <div className="sm:hidden">
+        <div className="sm:hidden pb-1">
           {filterControls}
         </div>
       )}

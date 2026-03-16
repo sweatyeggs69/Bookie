@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, X, Loader2 } from 'lucide-react';
 import api from './api/client';
 import { useStore } from './store';
 import LoginPage from './pages/LoginPage';
@@ -39,13 +39,14 @@ function ToastList({ toasts, remove }: { toasts: Toast[]; remove: (id: number) =
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border border-line bg-surface-raised text-ink text-sm ${
-            t.type === 'error' ? 'border-danger/30' : t.type === 'success' ? 'border-success/30' : ''
-          }`}
+          className={[
+            'toast-item flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border bg-surface-raised text-ink text-sm',
+            t.type === 'error' ? 'border-danger/30' : t.type === 'success' ? 'border-success/30' : 'border-line',
+          ].join(' ')}
         >
           {t.type === 'success' && <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />}
           {t.type === 'error' && <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />}
-          {t.type === 'info' && <AlertCircle className="w-4 h-4 text-accent mt-0.5 shrink-0" />}
+          {t.type === 'info' && <Info className="w-4 h-4 text-accent mt-0.5 shrink-0" />}
           <span className="flex-1">{t.message}</span>
           <button
             onClick={() => remove(t.id)}

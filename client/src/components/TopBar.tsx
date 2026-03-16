@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function TopBar({ onAuthChange }: Props) {
-  const { user, setView } = useStore();
+  const { user, view, setView } = useStore();
   const { addToast } = useToast();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -94,7 +94,12 @@ export default function TopBar({ onAuthChange }: Props) {
         <button
           onClick={() => setView('upload')}
           title="Upload books"
-          className="w-9 h-9 flex items-center justify-center rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
+          className={[
+            'w-9 h-9 flex items-center justify-center rounded transition-colors',
+            view === 'upload'
+              ? 'text-accent bg-accent-muted'
+              : 'text-ink-muted hover:text-ink hover:bg-surface-raised',
+          ].join(' ')}
         >
           <Upload className="w-4 h-4" />
         </button>
@@ -103,7 +108,12 @@ export default function TopBar({ onAuthChange }: Props) {
         <button
           onClick={() => setView('settings')}
           title="Settings"
-          className="w-9 h-9 flex items-center justify-center rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
+          className={[
+            'w-9 h-9 flex items-center justify-center rounded transition-colors',
+            view === 'settings'
+              ? 'text-accent bg-accent-muted'
+              : 'text-ink-muted hover:text-ink hover:bg-surface-raised',
+          ].join(' ')}
         >
           <Settings className="w-4 h-4" />
         </button>

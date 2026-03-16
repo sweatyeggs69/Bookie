@@ -31,10 +31,10 @@ export default function LibraryPage() {
   const pages = data?.pages ?? 1
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       <FilterBar />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="px-4 py-4">
         {/* Loading overlay for transitions */}
         {isFetching && books.length > 0 && (
           <div className="flex justify-center mb-3">

@@ -74,13 +74,13 @@ export default function MetaDialog({ bookId, bookTitle, onClose, onApplied }: Me
               onChange={e => setQuery(e.target.value)}
               placeholder="Search by title, author, ISBN…"
               autoFocus
-              className="w-full pl-9 pr-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+              className="field pl-9"
             />
           </div>
           <button
             type="submit"
             disabled={searchMutation.isPending || !query.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+            className="btn-primary"
           >
             {searchMutation.isPending ? <Spinner size={14} className="text-white" /> : <Search size={14} />}
             Search

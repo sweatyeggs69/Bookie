@@ -338,7 +338,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Unknown title"
-                  className="w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                  className="field"
                 />
               </div>
 
@@ -351,7 +351,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                     value={author}
                     onChange={e => setAuthor(e.target.value)}
                     placeholder="Unknown author"
-                    className="w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                    className="field"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -361,7 +361,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                     value={publishedDate}
                     onChange={e => setPublishedDate(e.target.value)}
                     placeholder="YYYY-MM-DD"
-                    className="w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                    className="field"
                   />
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                     value={series}
                     onChange={e => setSeries(e.target.value)}
                     placeholder="Series name"
-                    className="w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                    className="field"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -387,7 +387,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                     placeholder="—"
                     min={0}
                     step={0.1}
-                    className="w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                    className="field"
                   />
                 </div>
               </div>

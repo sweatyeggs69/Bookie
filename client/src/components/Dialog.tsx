@@ -46,7 +46,7 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
       aria-label={title}
     >
       {/* Scrim */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm dialog-scrim" />
 
       {/* Panel */}
       <div
@@ -55,10 +55,9 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
           'relative z-10 flex flex-col bg-surface-card border border-line',
           'w-full sm:rounded-xl rounded-t-2xl',
           'max-h-[95dvh] sm:max-h-[88vh]',
-          'animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 fade-in duration-250',
+          'dialog-panel',
           wide ? 'sm:max-w-3xl' : 'sm:max-w-xl',
         ].join(' ')}
-        style={{ animationFillMode: 'both' }}
       >
         {/* Mobile drag handle */}
         <div className="flex sm:hidden justify-center pt-3 pb-1">
