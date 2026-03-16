@@ -995,9 +995,21 @@ textarea.field { resize: vertical; min-height: 80px; }
 /* Desktop: hide mobile-only user menu items */
 .user-menu-mobile-only { display: none !important; }
 
-/* ── Filter controls (selects) – always visible on desktop ─ */
+/* ── Right-side filter group – always right-aligned ─────── */
+.filter-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .filter-controls {
-  display: contents; /* renders children as direct flex items of .filter-bar */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* ── Filter bar toggle button (shown only on mobile) ──────── */
@@ -1075,8 +1087,6 @@ textarea.field { resize: vertical; min-height: 80px; }
     align-items: center;
   }
   .filter-bar .filter-chip { flex-shrink: 0; }
-  .filter-bar .filter-select { flex-shrink: 0; }
-  .filter-bar > div[style*="flex:1"] { display: none; }
   .content-area { padding: 0 16px 16px; }
   .search-bar { max-width: none; flex: 1; }
   .settings-sidebar { display: none; }

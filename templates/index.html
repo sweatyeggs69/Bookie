@@ -60,48 +60,49 @@
         <!-- Filter bar -->
         <div class="filter-bar" id="filterBar">
           <span id="bookCount" class="book-count-label"></span>
-          <div style="flex:1"></div>
 
-          <!-- View dropdown button -->
-          <button class="filter-select-btn view-dropdown-btn" id="viewDropdownBtn" title="View options">
-            <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/></svg>
-            View
-            <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-          </button>
+          <!-- Right-side controls: view + filters, always right-aligned -->
+          <div class="filter-bar-right">
+            <button class="filter-select-btn view-dropdown-btn" id="viewDropdownBtn" title="View options">
+              <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/></svg>
+              View
+              <svg class="chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
 
-          <!-- Filters button (mobile only) -->
-          <button class="filter-bar-toggle-btn" id="filterBarToggle">
-            <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
-            Filters
-          </button>
+            <!-- Filters button (mobile only) -->
+            <button class="filter-bar-toggle-btn" id="filterBarToggle">
+              <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+              Filters
+            </button>
 
-          <!-- Collapsible on mobile, always shown on desktop -->
-          <div class="filter-controls" id="filterControls">
-            <select class="filter-select" id="tagSelect" style="display:none">
-              <option value="">All Tags</option>
-            </select>
-            <select class="filter-select" id="formatSelect">
-              <option value="">All Formats</option>
-              <option value="epub">EPUB</option>
-              <option value="pdf">PDF</option>
-              <option value="mobi">MOBI</option>
-              <option value="azw3">AZW3</option>
-              <option value="fb2">FB2</option>
-              <option value="djvu">DJVU</option>
-              <option value="cbz">CBZ</option>
-              <option value="cbr">CBR</option>
-              <option value="txt">TXT</option>
-            </select>
-            <select class="filter-select" id="sortSelect">
-              <option value="author">Author</option>
-              <option value="title">Title</option>
-              <option value="series">Series</option>
-              <option value="published_date">Release Date</option>
-              <option value="date_added">Date Added</option>
-              <option value="file_size">File Size</option>
-            </select>
-            <button class="filter-select-btn order-toggle" id="orderToggle" title="Toggle sort order">↑ Asc</button>
-            <button class="filter-select-btn" id="clearFiltersBtn" title="Clear all filters" style="display:none">✕ Clear</button>
+            <!-- Collapsible on mobile, always shown on desktop -->
+            <div class="filter-controls" id="filterControls">
+              <select class="filter-select" id="tagSelect" style="display:none">
+                <option value="">All Tags</option>
+              </select>
+              <select class="filter-select" id="formatSelect">
+                <option value="">All Formats</option>
+                <option value="epub">EPUB</option>
+                <option value="pdf">PDF</option>
+                <option value="mobi">MOBI</option>
+                <option value="azw3">AZW3</option>
+                <option value="fb2">FB2</option>
+                <option value="djvu">DJVU</option>
+                <option value="cbz">CBZ</option>
+                <option value="cbr">CBR</option>
+                <option value="txt">TXT</option>
+              </select>
+              <select class="filter-select" id="sortSelect">
+                <option value="author">Author</option>
+                <option value="title">Title</option>
+                <option value="series">Series</option>
+                <option value="published_date">Release Date</option>
+                <option value="date_added">Date Added</option>
+                <option value="file_size">File Size</option>
+              </select>
+              <button class="filter-select-btn order-toggle" id="orderToggle" title="Toggle sort order">↑ Asc</button>
+              <button class="filter-select-btn" id="clearFiltersBtn" title="Clear all filters" style="display:none">✕ Clear</button>
+            </div>
           </div>
         </div>
 
