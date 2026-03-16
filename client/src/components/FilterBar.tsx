@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Grid2x2, List, SlidersHorizontal, ChevronDown, X, CheckSquare, Tag as TagIcon, Trash2 } from 'lucide-react'
+import { Grid2x2, List, SlidersHorizontal, ChevronDown, X, Tag as TagIcon, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import * as api from '../api/client'
 import { Tag, BooksResponse } from '../types'
@@ -28,6 +28,8 @@ const SORT_OPTIONS = [
   { value: 'file_size', label: 'File Size' },
 ]
 
+const PER_PAGE_OPTIONS = [10, 25, 50, 100]
+
 const GRID_SIZES = [
   { value: 120, label: 'Small' },
   { value: 160, label: 'Medium' },
@@ -45,6 +47,7 @@ const selectCls = [
 export default function FilterBar() {
   const {
     filters, page, setFilters, viewMode, setViewMode, gridSize, setGridSize,
+    perPage, setPerPage,
     selectionMode, selectedBookIds, setSelectionMode, clearSelection, selectAllBooks,
   } = useStore()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -335,19 +338,22 @@ export default function FilterBar() {
               {filterControls}
             </div>
 
-            {/* Right: select mode toggle + view mode + grid size */}
+            {/* Right: per-page + grid size + view mode */}
             <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-              {/* Enter selection mode */}
-              <button
-                type="button"
-                onClick={() => setSelectionMode(true)}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                aria-label="Select books"
-                title="Select books"
-              >
-                <CheckSquare size={14} />
-                <span className="hidden sm:inline">Select</span>
-              </button>
+              {/* Per-page dropdown */}
+              <div className="relative">
+                <select
+                  value={perPage}
+                  onChange={e => setPerPage(Number(e.target.value))}
+                  className={selectCls}
+                  aria-label="Books per page"
+                >
+                  {PER_PAGE_OPTIONS.map(n => (
+                    <option key={n} value={n}>{n} / page</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              </div>
 
               {viewMode === 'grid' && (
                 <div className="relative">

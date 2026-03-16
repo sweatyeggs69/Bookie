@@ -8,8 +8,6 @@ import BookCard from '../components/BookCard'
 import BookListItem from '../components/BookListItem'
 import BookDialog from '../components/BookDialog'
 
-const PER_PAGE_OPTIONS = [10, 25, 50, 100]
-
 function getPageNumbers(current: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
   const result: (number | '…')[] = [1]
@@ -23,7 +21,7 @@ function getPageNumbers(current: number, total: number): (number | '…')[] {
 }
 
 export default function LibraryPage() {
-  const { filters, page, setPage, perPage, setPerPage, viewMode, gridSize, selectedBookId, setSelectedBookId, setVisibleBookIds } = useStore()
+  const { filters, page, setPage, perPage, viewMode, gridSize, selectedBookId, setSelectedBookId, setVisibleBookIds } = useStore()
 
   const queryKey = ['books', filters, page, perPage]
   const { data, isFetching, isError, error } = useQuery({
@@ -43,7 +41,6 @@ export default function LibraryPage() {
   })
 
   const books = data?.books ?? []
-  const total = data?.total ?? 0
   const pages = data?.pages ?? 1
 
   useEffect(() => {
@@ -106,73 +103,44 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Bottom controls: pagination + per-page */}
-        {books.length > 0 && (
-          <div className="flex flex-col items-center gap-3 mt-6 pb-6">
+        {pages > 1 && books.length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-6 pb-6">
+            <button
+              className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
+              onClick={() => setPage(page - 1)}
+              disabled={page <= 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={14} />
+            </button>
 
-            {/* Page navigation */}
-            {pages > 1 && (
-              <div className="flex items-center gap-1">
+            {pageNumbers.map((p, i) =>
+              p === '…' ? (
+                <span key={`ellipsis-${i}`} className="px-1 text-ink-faint text-sm select-none">…</span>
+              ) : (
                 <button
-                  className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
-                  onClick={() => setPage(page - 1)}
-                  disabled={page <= 1}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-
-                {pageNumbers.map((p, i) =>
-                  p === '…' ? (
-                    <span key={`ellipsis-${i}`} className="px-1 text-ink-faint text-sm select-none">…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p as number)}
-                      className={[
-                        'min-w-[2rem] px-2 py-1.5 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                        page === p
-                          ? 'bg-accent text-white font-medium'
-                          : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
-                      ].join(' ')}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-
-                <button
-                  className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= pages}
-                  aria-label="Next page"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
-
-            {/* Per-page selector + total count */}
-            <div className="flex items-center gap-2 text-sm text-ink-muted">
-              <span>Show</span>
-              {PER_PAGE_OPTIONS.map(n => (
-                <button
-                  key={n}
-                  onClick={() => setPerPage(n)}
+                  key={p}
+                  onClick={() => setPage(p as number)}
                   className={[
-                    'min-w-[2rem] px-2 py-1 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                    perPage === n
+                    'min-w-[2rem] px-2 py-1.5 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                    page === p
                       ? 'bg-accent text-white font-medium'
                       : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
                   ].join(' ')}
                 >
-                  {n}
+                  {p}
                 </button>
-              ))}
-              <span>per page</span>
-              {total > 0 && <span className="text-ink-faint ml-1">· {total.toLocaleString()} total</span>}
-            </div>
+              )
+            )}
 
+            <button
+              className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
+              onClick={() => setPage(page + 1)}
+              disabled={page >= pages}
+              aria-label="Next page"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         )}
       </div>

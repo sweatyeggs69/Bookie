@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, MoreVertical, Download, Send, Check } from 'lucide-react'
+import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
 import * as api from '../api/client'
@@ -32,7 +32,7 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery } = useStore()
+  const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
   const coverUrl = book.cover_filename && !imgError
     ? `/api/books/${book.id}/cover`
@@ -176,6 +176,10 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
 
             {menuOpen && (
               <div className="absolute right-0 top-full mt-0.5 w-44 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
+                <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                  <CheckSquare size={14} className="text-ink-muted" /> Select
+                </button>
                 <a href={api.getDownloadUrl(book.id)} download onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                   <Download size={14} className="text-ink-muted" /> Download

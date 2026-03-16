@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, MoreVertical, Download, Send, Check } from 'lucide-react'
+import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
 import * as api from '../api/client'
@@ -16,7 +16,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery } = useStore()
+  const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
   const coverUrl = book.cover_filename && !imgError
     ? `/api/books/${book.id}/cover`
@@ -74,7 +74,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           'cursor-pointer min-w-0',
           isSelected
             ? 'bg-accent/10 border-accent shadow-lg shadow-accent/20'
-            : 'bg-surface-card border-line [@media(hover:hover)]:hover:border-line-strong [@media(hover:hover)]:hover:shadow-lg [@media(hover:hover)]:hover:shadow-black/40 [@media(hover:hover)]:hover:scale-[1.02] active:scale-[0.98]',
+            : 'bg-surface-card border-line [@media(hover:hover)]:hover:border-line-strong [@media(hover:hover)]:hover:shadow-md [@media(hover:hover)]:hover:shadow-black/20 [@media(hover:hover)]:hover:scale-[1.02] active:scale-[0.98]',
         ].join(' ')}
         aria-label={`${selectionMode ? 'Select' : 'Open'} ${book.title ?? book.filename}`}
       >
@@ -128,6 +128,10 @@ export default function BookCard({ book, onClick }: BookCardProps) {
 
             {menuOpen && (
               <div className="absolute left-0 top-full mt-0.5 w-44 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
+                <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                  <CheckSquare size={14} className="text-ink-muted" /> Select
+                </button>
                 <a href={api.getDownloadUrl(book.id)} download onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                   <Download size={14} className="text-ink-muted" /> Download

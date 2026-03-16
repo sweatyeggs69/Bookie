@@ -98,7 +98,7 @@ export const useStore = create<StoreState>()(
       // Pagination
       page: 1,
       setPage: (page) => set((state) => ({ page, lastSelectedId: state.selectionMode ? null : state.lastSelectedId })),
-      perPage: 40,
+      perPage: 25,
       setPerPage: (perPage) => set({ perPage, page: 1 }),
 
       // View preferences (initial values — overridden by persisted storage)
