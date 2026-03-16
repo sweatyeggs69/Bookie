@@ -2,7 +2,7 @@
 
 Bookie is a stupidly simple eBook management, designed for those who only need to organize books and send files to their eReader.
 
-<img width="100%" alt="image" src="https://github.com/user-attachments/assets/4c2c60f5-c55a-432c-af33-ed4fe8b4253a" />
+<img width="100%" alt="bookie-ui" src="https://github.com/user-attachments/assets/e0755ecb-c6f7-4ed3-b57e-337dd64876e7" />
 
 ## Features
 
@@ -18,8 +18,6 @@ Bookie is a stupidly simple eBook management, designed for those who only need t
 
 ## Metadata Basics
 Everything you need for eReader-relevant metadata
-
-<img width="100%" alt="image" src="https://github.com/user-attachments/assets/9d74ab24-ccd5-47b9-a366-6731eb7e1661" />
 
 ## Docker Compose
 
