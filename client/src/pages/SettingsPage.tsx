@@ -18,6 +18,11 @@ export default function SettingsPage() {
   const [tab, setTabState] = useState<Tab>(getHashTab)
 
   useEffect(() => {
+    // Set hash on mount if missing or invalid
+    const hash = window.location.hash.replace('#', '')
+    if (!VALID_TABS.includes(hash as Tab)) {
+      window.location.replace(`${window.location.pathname}${window.location.search}#${DEFAULT_TAB}`)
+    }
     const onHashChange = () => setTabState(getHashTab())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
