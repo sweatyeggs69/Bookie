@@ -711,7 +711,7 @@ def create_app():
         scheme = Settings.get("rename_scheme", "original")
         custom_tpl = Settings.get("rename_custom_template", "")
         folder_mode = Settings.get("folder_organization", "flat")
-        books = Book.query.yield_per(200)
+        books = Book.query.all()
         results = []
         errors = []
         for book in books:
