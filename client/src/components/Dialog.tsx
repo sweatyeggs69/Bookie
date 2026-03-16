@@ -59,18 +59,13 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
       <div
         ref={panelRef}
         className={[
-          'relative z-10 flex flex-col bg-surface-card border border-line',
+          'relative z-10 flex flex-col bg-surface-card border border-line overflow-hidden',
           'w-full rounded-t-2xl sm:rounded-2xl',
           'max-h-[95dvh] sm:max-h-[88vh]',
           'dialog-panel',
           wide ? 'sm:max-w-3xl' : 'sm:max-w-xl',
         ].join(' ')}
       >
-        {/* Mobile drag handle */}
-        <div className="flex sm:hidden justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-line-strong" />
-        </div>
-
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
           <h2 className="text-ink font-semibold text-base leading-snug">{title}</h2>
