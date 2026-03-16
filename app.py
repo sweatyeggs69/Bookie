@@ -1102,7 +1102,7 @@ def create_app():
         port = int(data.get("smtp_port") or Settings.get("smtp_port") or 587)
         user = data.get("smtp_user") or Settings.get("smtp_user")
         pwd = data.get("smtp_password")
-        if pwd == "••••••••":
+        if not pwd or pwd == "••••••••":
             pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
         tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
         if not host or not user or not pwd:
@@ -1120,7 +1120,7 @@ def create_app():
         port = int(data.get("smtp_port") or Settings.get("smtp_port") or 587)
         user = data.get("smtp_user") or Settings.get("smtp_user")
         pwd = data.get("smtp_password")
-        if pwd == "••••••••":
+        if not pwd or pwd == "••••••••":
             pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
         tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
         recipient = data.get("recipient", "").strip()
