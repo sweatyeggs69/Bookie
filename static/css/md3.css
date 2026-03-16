@@ -441,7 +441,7 @@ select.filter-select {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .send-picker-header {
-  padding: 12px 16px 8px;
+  padding: 10px 16px 6px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .8px;
@@ -452,7 +452,7 @@ select.filter-select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 11px 16px;
   cursor: pointer;
   transition: background 100ms;
   border: none;
@@ -495,7 +495,7 @@ select.filter-select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 11px 16px;
   cursor: pointer;
   color: var(--md-sys-color-primary);
   font-size: 14px;
@@ -657,11 +657,21 @@ select.filter-select {
 .dialog-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding: 20px 24px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
   flex-shrink: 0;
+}
+.dialog-footer-delete {
+  color: var(--md-sys-color-error) !important;
+  flex-shrink: 0;
+}
+.dialog-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* ── Forms ─────────────────────────────────────────────── */
@@ -757,31 +767,26 @@ textarea.field { resize: vertical; min-height: 80px; }
 .settings-content { flex: 1; min-width: 0; }
 .settings-tab-select { display: none; margin-bottom: 16px; }
 
-/* ── Tag Filter Row ────────────────────────────────────── */
-.tag-filter-row {
+/* ── Tag Management (settings) ─────────────────────────── */
+.tag-manage-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 24px 12px;
-}
-.tag-filter-chip {
-  display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: var(--md-sys-shape-corner-full);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background: none;
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 150ms;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
-.tag-filter-chip:hover { background: rgba(208,188,255,.08); }
-.tag-filter-chip.active {
-  background: var(--md-sys-color-secondary-container);
-  border-color: transparent;
-  color: var(--md-sys-color-on-secondary-container);
+.tag-manage-row:last-child { border-bottom: none; }
+.tag-manage-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ── Cover dialog: body becomes drop target ─────────────── */
+.cover-drag-over {
+  outline: 2px dashed var(--md-sys-color-primary);
+  outline-offset: -4px;
+  background: rgba(208,188,255,.04);
 }
 
 /* ── Tag Chips (book dialog) ───────────────────────────── */
@@ -1011,7 +1016,6 @@ textarea.field { resize: vertical; min-height: 80px; }
   .filter-bar .filter-select { flex-shrink: 0; }
   .filter-bar > div[style*="flex:1"] { display: none; }
   .content-area { padding: 0 16px 16px; }
-  .tag-filter-row { padding: 0 16px 10px; }
   .search-bar { max-width: none; flex: 1; }
   .settings-sidebar { display: none; }
   .settings-tab-select { display: block; }
@@ -1032,7 +1036,6 @@ textarea.field { resize: vertical; min-height: 80px; }
   .book-grid { gap: 8px; }
 
   .content-area { padding: 0 12px 24px; }
-  .tag-filter-row { padding: 0 12px 8px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
 
   .drop-zone { padding: 32px 20px; }
@@ -1040,7 +1043,6 @@ textarea.field { resize: vertical; min-height: 80px; }
 
   .dialog-body [style*="display:flex;gap:20px"] { flex-direction: column !important; }
   .dialog-footer { flex-wrap: wrap; padding: 12px 16px; gap: 6px; overflow: visible; }
-  .dialog-footer > [style*="flex:1"] { display: none; }
 
   .filter-bar {
     display: flex;
@@ -1200,7 +1202,7 @@ textarea.field { resize: vertical; min-height: 80px; }
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 11px 16px;
   background: none;
   border: none;
   cursor: pointer;
@@ -1330,7 +1332,7 @@ body.modal-open { overflow: hidden; }
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 16px;
+  padding: 11px 16px;
   background: none;
   border: none;
   cursor: pointer;

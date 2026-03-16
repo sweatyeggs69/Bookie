@@ -77,6 +77,9 @@
 
           <!-- Collapsible on mobile, always shown on desktop -->
           <div class="filter-controls" id="filterControls">
+            <select class="filter-select" id="tagSelect" style="display:none">
+              <option value="">All Tags</option>
+            </select>
             <select class="filter-select" id="formatSelect">
               <option value="">All Formats</option>
               <option value="epub">EPUB</option>
@@ -95,18 +98,13 @@
               <option value="series">Series</option>
               <option value="published_date">Release Date</option>
               <option value="date_added">Date Added</option>
-              <option value="rating">Rating</option>
               <option value="page_count">Page Count</option>
-              <option value="publisher">Publisher</option>
               <option value="file_size">File Size</option>
             </select>
             <button class="filter-select-btn order-toggle" id="orderToggle" title="Toggle sort order">↑ Asc</button>
             <button class="filter-select-btn" id="clearFiltersBtn" title="Clear all filters" style="display:none">✕ Clear</button>
           </div>
         </div>
-
-        <!-- Tag filter row -->
-        <div class="tag-filter-row" id="tagFilterRow"></div>
 
         <!-- Book grid / list -->
         <div class="content-area">
@@ -297,6 +295,17 @@
               <button class="btn btn-filled" id="saveOrganizationBtn">Save</button>
             </div>
 
+            <!-- Tags -->
+            <div class="card" style="margin-bottom:16px">
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Tags</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Tags with no books are removed automatically.</p>
+              <div id="tagManageList"></div>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <input class="field" id="newTagInput" type="text" placeholder="New tag name…" style="flex:1">
+                <button class="btn btn-tonal" id="addTagBtn">Add</button>
+              </div>
+            </div>
+
             <!-- Bulk Rename -->
             <div class="card">
               <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Bulk Rename &amp; Organize</h3>
@@ -485,7 +494,7 @@
       <span class="dialog-title">Replace Cover</span>
       <button class="icon-btn" id="closeCoverDialog"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
     </div>
-    <div class="dialog-body">
+    <div class="dialog-body" id="coverDropZone">
       <div style="margin-bottom:16px">
         <div style="font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Search Online</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -498,24 +507,21 @@
         <div id="coverSearchResults" class="cover-search-results"></div>
       </div>
       <hr class="divider">
-      <div style="font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Upload Image</div>
-      <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
-        <div class="drop-zone cover-drop-compact" id="coverDropZone" style="flex:1;min-width:140px;padding:16px 12px;text-align:center;cursor:pointer">
-          <svg viewBox="0 0 24 24" style="width:28px;height:28px;margin-bottom:4px"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-          <p style="font-size:13px;margin-bottom:0">Drop image or click</p>
-          <small>JPG, PNG</small>
-        </div>
-        <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;flex:2;min-width:160px">
-          <label style="font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px">Or paste URL</label>
-          <input class="field" id="coverUrl" type="url" placeholder="https://…">
-        </div>
+      <div class="form-field">
+        <label>Or paste URL</label>
+        <input class="field" id="coverUrl" type="url" placeholder="https://…">
       </div>
       <input type="file" id="coverInput" accept="image/*" style="display:none">
       <div id="coverPreviewArea" style="margin-top:8px;text-align:center"></div>
     </div>
     <div class="dialog-footer">
+      <button class="btn btn-outlined" id="coverUploadBtn">
+        <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+        Upload Image
+      </button>
+      <div style="flex:1"></div>
       <button class="btn btn-text" id="closeCoverDialogBtn">Cancel</button>
-      <button class="btn btn-filled" id="saveCoverBtn">Save Cover</button>
+      <button class="btn btn-filled" id="saveCoverBtn">Save</button>
     </div>
   </div>
 </div>
