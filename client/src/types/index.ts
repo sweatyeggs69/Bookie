@@ -124,3 +124,21 @@ export interface AuthStatus {
 // ─── Upload progress callback ─────────────────────────────────────────────────
 
 export type UploadProgressCallback = (percent: number) => void
+
+// ─── Email address ────────────────────────────────────────────────────────────
+
+export interface EmailAddress {
+  id: number
+  label: string
+  email: string
+  is_default: boolean
+}
+
+// ─── Library stats ────────────────────────────────────────────────────────────
+
+export interface Stats {
+  total_books: number
+  total_shelves: number
+  formats: Record<string, number>
+  total_size_bytes: number
+}

@@ -481,7 +481,7 @@ def create_app():
         data = request.get_json(force=True)
         fields = [
             "title", "author", "published_date", "page_count",
-            "series", "series_order",
+            "series", "series_order", "rating",
         ]
         for f in fields:
             if f in data:

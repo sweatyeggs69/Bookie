@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, Plus, Trash2, Loader2, AlertCircle, Key } from 'lucide-react'
+import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail } from 'lucide-react'
 import { useToast } from '../App'
 import * as api from '../api/client'
+import type { EmailAddress } from '../types'
 
 type Tab = 'general' | 'organization' | 'metadata' | 'account'
 
@@ -328,10 +329,41 @@ function MetadataTab() {
 
 function AccountTab() {
   const { addToast } = useToast()
+  const qc = useQueryClient()
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const [pwError, setPwError] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newEmailLabel, setNewEmailLabel] = useState('')
+
+  const { data: emailAddresses = [] } = useQuery<EmailAddress[]>({
+    queryKey: ['emailAddresses'],
+    queryFn: api.getEmailAddresses,
+  })
+
+  const addEmailMutation = useMutation({
+    mutationFn: () => api.addEmailAddress({ email: newEmail.trim(), label: newEmailLabel.trim() || undefined }),
+    onSuccess: () => {
+      setNewEmail('')
+      setNewEmailLabel('')
+      qc.invalidateQueries({ queryKey: ['emailAddresses'] })
+      addToast('success', 'Email address added')
+    },
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
+  const deleteEmailMutation = useMutation({
+    mutationFn: (id: number) => api.deleteEmailAddress(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['emailAddresses'] }),
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
+  const setDefaultEmailMutation = useMutation({
+    mutationFn: (id: number) => api.setDefaultEmailAddress(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['emailAddresses'] }),
+    onError: (e: Error) => addToast('error', e.message),
+  })
 
   const changeMutation = useMutation({
     mutationFn: () => api.changePassword(currentPw, newPw),
@@ -351,6 +383,69 @@ function AccountTab() {
 
   return (
     <div className="space-y-6">
+      {/* Email addresses */}
+      <section className="card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+          <Mail className="w-4 h-4 text-ink-muted" />
+          Send-to Email Addresses
+        </h2>
+        <p className="text-xs text-ink-muted">Add email addresses to send books to (e.g. your Kindle address).</p>
+
+        {emailAddresses.length > 0 && (
+          <div className="space-y-1">
+            {emailAddresses.map(addr => (
+              <div key={addr.id} className="flex items-center gap-2 px-3 py-2 bg-surface-raised rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-ink truncate">{addr.label || addr.email}</p>
+                  {addr.label && <p className="text-xs text-ink-muted truncate">{addr.email}</p>}
+                </div>
+                {addr.is_default && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-accent bg-accent-muted px-1.5 py-0.5 rounded">Default</span>
+                )}
+                {!addr.is_default && (
+                  <button
+                    onClick={() => setDefaultEmailMutation.mutate(addr.id)}
+                    className="text-xs text-ink-muted hover:text-ink transition-colors"
+                  >
+                    Set default
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteEmailMutation.mutate(addr.id)}
+                  className="text-ink-muted hover:text-danger transition-colors p-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <input
+            className="field flex-1"
+            placeholder="Label (e.g. Kindle)"
+            value={newEmailLabel}
+            onChange={e => setNewEmailLabel(e.target.value)}
+          />
+          <input
+            className="field flex-1"
+            type="email"
+            placeholder="email@example.com"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && newEmail.trim() && addEmailMutation.mutate()}
+          />
+          <button
+            className="btn-primary px-3"
+            onClick={() => addEmailMutation.mutate()}
+            disabled={!newEmail.trim() || addEmailMutation.isPending}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </section>
+
       <section className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
           <Key className="w-4 h-4 text-ink-muted" />

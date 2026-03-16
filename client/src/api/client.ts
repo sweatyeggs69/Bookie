@@ -8,6 +8,8 @@ import type {
   User,
   AuthStatus,
   UploadProgressCallback,
+  EmailAddress,
+  Stats,
 } from '../types'
 
 // ─── Base fetch wrapper ───────────────────────────────────────────────────────
@@ -264,6 +266,53 @@ export function adminDeleteTag(id: number): Promise<void> {
   return api<void>(`/api/tags/${id}`, { method: 'DELETE' })
 }
 
+// ─── Download ─────────────────────────────────────────────────────────────────
+
+export function getDownloadUrl(bookId: number): string {
+  return `/api/books/${bookId}/download`
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+export function getStats(): Promise<Stats> {
+  return api<Stats>('/api/stats')
+}
+
+// ─── Email addresses ──────────────────────────────────────────────────────────
+
+export function getEmailAddresses(): Promise<EmailAddress[]> {
+  return api<EmailAddress[]>('/api/email-addresses')
+}
+
+export function addEmailAddress(data: { email: string; label?: string; is_default?: boolean }): Promise<EmailAddress> {
+  return api<EmailAddress>('/api/email-addresses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateEmailAddress(id: number, data: Partial<Pick<EmailAddress, 'label' | 'email' | 'is_default'>>): Promise<EmailAddress> {
+  return api<EmailAddress>(`/api/email-addresses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteEmailAddress(id: number): Promise<void> {
+  return api<void>(`/api/email-addresses/${id}`, { method: 'DELETE' })
+}
+
+export function setDefaultEmailAddress(id: number): Promise<EmailAddress> {
+  return api<EmailAddress>(`/api/email-addresses/${id}/set-default`, { method: 'POST' })
+}
+
+export function sendBook(bookId: number, recipient?: string): Promise<{ success: boolean; message: string }> {
+  return api(`/api/books/${bookId}/send`, {
+    method: 'POST',
+    body: JSON.stringify(recipient ? { recipient } : {}),
+  })
+}
+
 // ─── Default export (namespace object) ───────────────────────────────────────
 
 export default {
@@ -302,4 +351,15 @@ export default {
   adminGetTags,
   adminCreateTag,
   adminDeleteTag,
+  // Stats
+  getStats,
+  // Download
+  getDownloadUrl,
+  // Email addresses
+  getEmailAddresses,
+  addEmailAddress,
+  updateEmailAddress,
+  deleteEmailAddress,
+  setDefaultEmailAddress,
+  sendBook,
 }
