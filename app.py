@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 from datetime import timedelta, date
 from pathlib import Path
 
+import crypto
+
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
 
@@ -1024,7 +1026,7 @@ def create_app():
         smtp_host = Settings.get("smtp_host")
         smtp_port = int(Settings.get("smtp_port") or 587)
         smtp_user = Settings.get("smtp_user")
-        smtp_password = Settings.get("smtp_password")
+        smtp_password = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
         use_tls = Settings.get("smtp_tls", "true").lower() == "true"
         sender_email = Settings.get("smtp_sender") or smtp_user
 
@@ -1087,6 +1089,8 @@ def create_app():
             # Skip masked placeholder writes
             if key in _MASKED_KEYS and val == _MASKED:
                 continue
+            if key in _MASKED_KEYS and val:
+                val = crypto.encrypt_value(str(val), DATA_DIR)
             Settings.set(key, str(val) if val is not None else None)
         return jsonify({"success": True})
 
@@ -1099,7 +1103,7 @@ def create_app():
         user = data.get("smtp_user") or Settings.get("smtp_user")
         pwd = data.get("smtp_password")
         if pwd == "••••••••":
-            pwd = Settings.get("smtp_password")
+            pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
         tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
         if not host or not user or not pwd:
             return jsonify({"error": "Incomplete SMTP settings"}), 400
@@ -1117,7 +1121,7 @@ def create_app():
         user = data.get("smtp_user") or Settings.get("smtp_user")
         pwd = data.get("smtp_password")
         if pwd == "••••••••":
-            pwd = Settings.get("smtp_password")
+            pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
         tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
         recipient = data.get("recipient", "").strip()
         sender = data.get("sender_email") or Settings.get("smtp_sender") or user
