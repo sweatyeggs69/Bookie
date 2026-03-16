@@ -138,10 +138,7 @@
               <option value="publisher">Publisher</option>
               <option value="file_size">File Size</option>
             </select>
-            <select class="filter-select" id="orderSelect">
-              <option value="asc">↑ Ascending</option>
-              <option value="desc">↓ Descending</option>
-            </select>
+            <button class="filter-select-btn order-toggle" id="orderToggle" title="Toggle sort order">↑ Asc</button>
           </div>
         </div>
 
@@ -236,7 +233,7 @@
               </div>
               <div class="form-row">
                 <div class="form-field"><label>Username / Email</label><input class="field" id="smtpUser" type="text" placeholder="you@gmail.com"></div>
-                <div class="form-field"><label>Password / App Password</label><input class="field" id="smtpPassword" type="password" placeholder="••••••••"></div>
+                <div class="form-field"><label>Password</label><input class="field" id="smtpPassword" type="password" placeholder="••••••••"></div>
               </div>
               <div class="form-row">
                 <div class="form-field"><label>Sender Email (optional)</label><input class="field" id="smtpSender" type="email" placeholder="Same as username"></div>
@@ -305,12 +302,12 @@
 
           <!-- File Organization Tab -->
           <div id="tabRename" class="tab-panel">
-            <!-- File Naming Scheme -->
+            <!-- File Naming + Folder Organisation (combined) -->
             <div class="card" style="margin-bottom:16px">
-              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">File Naming Scheme</h3>
-              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:20px">Choose how imported files are automatically renamed. Existing files are not affected.</p>
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">File Organization</h3>
+              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:20px">Control how imported files are renamed and arranged. Existing files are not affected until you use Bulk Rename.</p>
               <div class="form-field">
-                <label>Default Scheme</label>
+                <label>Naming Scheme</label>
                 <select class="field" id="renameScheme">
                   <option value="original">Keep original filename</option>
                   <option value="title">Title</option>
@@ -338,13 +335,6 @@
                   <code style="color:var(--md-sys-color-primary)">{original}</code>
                 </p>
               </div>
-              <button class="btn btn-filled" id="saveRenameBtn">Save</button>
-            </div>
-
-            <!-- Folder Organisation -->
-            <div class="card" style="margin-bottom:16px">
-              <h3 style="font-size:16px;font-weight:500;margin-bottom:4px">Folder Organisation</h3>
-              <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Control how your library files are arranged into subfolders.</p>
               <div class="form-field">
                 <label>Folder Structure</label>
                 <select class="field" id="folderOrganization">
@@ -353,7 +343,7 @@
                   <option value="by_author_series">By Author / Series</option>
                 </select>
               </div>
-              <button class="btn btn-filled" id="saveFolderBtn" style="margin-top:8px">Save</button>
+              <button class="btn btn-filled" id="saveOrganizationBtn">Save</button>
             </div>
 
             <!-- Bulk Rename -->
@@ -362,7 +352,7 @@
               <p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:16px">Rename and move all library files using the current naming scheme and folder structure. A preview is shown before any changes are made.</p>
               <div style="display:flex;gap:12px;flex-wrap:wrap">
                 <button class="btn btn-outlined" id="bulkRenamePreviewBtn">Preview Changes</button>
-                <button class="btn btn-tonal" id="bulkRenameApplyBtn" disabled>Apply to All Books</button>
+                <button class="btn btn-tonal" id="bulkRenameApplyBtn" disabled>Apply</button>
               </div>
               <div id="bulkRenameStatus" style="margin-top:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant)"></div>
               <div id="bulkRenamePreview" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
@@ -411,33 +401,29 @@
               <div class="form-field"><label>Confirm New Password</label><input class="field" id="confirmPwd" type="password"></div>
               <div id="pwdResult" style="font-size:14px;margin-top:4px;margin-bottom:8px"></div>
               <button class="btn btn-filled" id="changePwdBtn">Change Password</button>
-              <hr class="divider">
-              <button class="btn btn-outlined" id="logoutBtn" style="color:var(--md-sys-color-error);border-color:var(--md-sys-color-error)">Sign Out</button>
             </div>
           </div>
           <!-- Logs Tab -->
           <div id="tabLogs" class="tab-panel">
             <div class="card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                <h3 style="font-size:16px;font-weight:500">Application Logs</h3>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <select class="field" id="logLevelSelect" style="width:auto">
-                    <option value="DEBUG">DEBUG</option>
-                    <option value="INFO" selected>INFO</option>
-                    <option value="WARNING">WARNING</option>
-                    <option value="ERROR">ERROR</option>
-                  </select>
-                  <button class="btn btn-tonal" id="exportLogsBtn">
-                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    Export
-                  </button>
-                  <button class="btn btn-tonal" id="refreshLogsBtn">
-                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                    Refresh
-                  </button>
-                </div>
-              </div>
+              <h3 style="font-size:16px;font-weight:500;margin-bottom:16px">Application Logs</h3>
               <pre id="logContent" style="background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);padding:12px;border-radius:8px;font-size:12px;line-height:1.5;overflow-y:auto;max-height:400px;white-space:pre-wrap;word-break:break-all">Loading logs…</pre>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap">
+                <select class="filter-select" id="logLevelSelect" style="flex:1;min-width:100px">
+                  <option value="DEBUG">DEBUG</option>
+                  <option value="INFO" selected>INFO</option>
+                  <option value="WARNING">WARNING</option>
+                  <option value="ERROR">ERROR</option>
+                </select>
+                <button class="btn btn-tonal" id="refreshLogsBtn">
+                  <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                  Refresh
+                </button>
+                <button class="btn btn-tonal" id="exportLogsBtn">
+                  <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  Export
+                </button>
+              </div>
             </div>
           </div>
 
@@ -504,7 +490,7 @@
     </div>
     <div class="dialog-footer">
       <button class="btn btn-text" id="closeMetaDialogBtn">Cancel</button>
-      <button class="btn btn-filled" id="applyMetaBtn" disabled>Apply Selected</button>
+      <button class="btn btn-filled" id="applyMetaBtn" disabled>Apply</button>
     </div>
   </div>
 </div>
@@ -651,16 +637,18 @@
       <hr class="divider">
       <!-- Upload section -->
       <div style="font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Upload Image</div>
-      <div class="drop-zone" id="coverDropZone" style="padding:24px">
-        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-        <p>Drop cover image or click to select</p>
-        <small>JPG, PNG · Recommended 400×600px or larger</small>
+      <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
+        <div class="drop-zone cover-drop-compact" id="coverDropZone" style="flex:1;min-width:140px;padding:16px 12px;text-align:center;cursor:pointer">
+          <svg viewBox="0 0 24 24" style="width:28px;height:28px;margin-bottom:4px"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+          <p style="font-size:13px;margin-bottom:0">Drop image or click</p>
+          <small>JPG, PNG</small>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;flex:2;min-width:160px">
+          <label style="font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface-variant);text-transform:uppercase;letter-spacing:.5px">Or paste URL</label>
+          <input class="field" id="coverUrl" type="url" placeholder="https://…">
+        </div>
       </div>
       <input type="file" id="coverInput" accept="image/*" style="display:none">
-      <div class="form-field" style="margin-top:12px;margin-bottom:0">
-        <label>Or enter image URL</label>
-        <input class="field" id="coverUrl" type="url" placeholder="https://…">
-      </div>
       <div id="coverPreviewArea" style="margin-top:8px;text-align:center"></div>
     </div>
     <div class="dialog-footer">
@@ -699,7 +687,7 @@
   min-width:180px;
   box-shadow:0 4px 16px rgba(0,0,0,.5);
   z-index:150; overflow:hidden;">
-  <div style="padding:12px 16px 8px;font-size:12px;color:var(--md-sys-color-on-surface-variant)" id="userMenuLabel"></div>
+  <div style="padding:12px 16px 8px;font-size:14px;font-weight:500;color:var(--md-sys-color-on-surface)" id="userMenuLabel"></div>
   <hr style="border:none;border-top:1px solid var(--md-sys-color-outline-variant)">
   <button id="userMenuRefreshBtn" onclick="document.getElementById('refreshLibraryBtn').click();document.getElementById('userMenu').style.display='none'" class="user-menu-mobile-only" style="display:flex;align-items:center;gap:12px;padding:12px 16px;width:100%;background:none;border:none;cursor:pointer;font-size:14px;color:var(--md-sys-color-on-surface);font-family:inherit">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>

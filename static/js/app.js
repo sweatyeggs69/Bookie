@@ -378,7 +378,8 @@ async function openBook(id) {
 
   const shelfPills = (book.shelves || []).map(s => `<span class="shelf-pill">${esc(s)}</span>`).join('');
 
-  document.getElementById('bookDialogBody').innerHTML = `
+  const _dialogBodyEl = document.getElementById('bookDialogBody');
+  _dialogBodyEl.innerHTML = `
   <div style="display:flex;gap:20px;padding-bottom:20px;flex-wrap:wrap">
     <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex-shrink:0">
       ${cover}
@@ -418,6 +419,8 @@ async function openBook(id) {
     <button class="btn btn-filled" onclick="saveBook(${id})">Save</button>`;
 
   openDialog('bookDialog');
+  // Always scroll to top when opening a new book
+  document.getElementById('bookDialogBody').scrollTop = 0;
 }
 
 async function saveBook(id) {
@@ -1219,6 +1222,15 @@ async function saveFolder() {
   snack('Folder organisation saved!');
 }
 
+async function saveOrganization() {
+  await api('/api/settings', { method: 'PUT', body: JSON.stringify({
+    rename_scheme: v('renameScheme'),
+    rename_custom_template: v('renameCustomTemplate'),
+    folder_organization: v('folderOrganization'),
+  })});
+  snack('File organization settings saved!');
+}
+
 
 async function saveSources() {
   const rows = [...document.querySelectorAll('#sourceToggles .source-toggle-row')];
@@ -1412,6 +1424,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Hover to expand nav rail (without pinning)
+  navRail.addEventListener('mouseenter', () => {
+    if (!navRail.classList.contains('pinned')) {
+      navRail.classList.add('expanded');
+    }
+  });
+  navRail.addEventListener('mouseleave', () => {
+    if (!navRail.classList.contains('pinned')) {
+      navRail.classList.remove('expanded');
+    }
+  });
+
   // Grid size buttons (3 levels: Compact / Standard / Large)
   const GRID_SIZES = [130, 180, 240];
   const savedGridSize = parseInt(localStorage.getItem('gridMin') || '180', 10);
@@ -1502,7 +1526,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sort
   document.getElementById('sortSelect').addEventListener('change', e => { state.filters.sort = e.target.value; loadBooks(); });
-  document.getElementById('orderSelect').addEventListener('change', e => { state.filters.order = e.target.value; loadBooks(); });
+  // Order toggle (Asc/Desc)
+  const _orderToggle = document.getElementById('orderToggle');
+  if (_orderToggle) {
+    // Restore persisted order
+    if (state.filters.order === 'desc') { _orderToggle.textContent = '↓ Desc'; }
+    _orderToggle.addEventListener('click', () => {
+      state.filters.order = state.filters.order === 'asc' ? 'desc' : 'asc';
+      _orderToggle.textContent = state.filters.order === 'asc' ? '↑ Asc' : '↓ Desc';
+      loadBooks();
+    });
+  }
 
   // Dialog close buttons
   document.getElementById('closeBookDialog').addEventListener('click', () => closeDialog('bookDialog'));
@@ -1606,13 +1640,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sendTestEmailBtn')?.addEventListener('click', sendTestEmail);
   document.getElementById('saveMetaBtn')?.addEventListener('click', saveMeta);
   document.getElementById('saveSourcesBtn')?.addEventListener('click', saveSources);
-  document.getElementById('saveRenameBtn')?.addEventListener('click', saveRename);
-  document.getElementById('saveFolderBtn')?.addEventListener('click', saveFolder);
+  document.getElementById('saveOrganizationBtn')?.addEventListener('click', saveOrganization);
   document.getElementById('bulkRenamePreviewBtn')?.addEventListener('click', bulkRenamePreview);
   document.getElementById('bulkRenameApplyBtn')?.addEventListener('click', bulkRenameApply);
   document.getElementById('renameScheme')?.addEventListener('change', toggleCustomScheme);
   document.getElementById('changePwdBtn')?.addEventListener('click', changePassword);
-  document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
 
   // Settings tabs (sidebar buttons + mobile dropdown in sync) – uses module-level activateSettingsTab
   document.querySelectorAll('.tab').forEach(tab => {
@@ -1648,7 +1680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Set username in menu
   fetch('/api/auth/status').then(r => r.json()).then(d => {
-    if (d.username) document.getElementById('userMenuLabel').textContent = 'Signed in as ' + d.username;
+    if (d.username) document.getElementById('userMenuLabel').textContent = d.username;
   });
 
   // Apply saved color theme

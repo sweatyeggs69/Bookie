@@ -557,11 +557,12 @@ def create_app():
     @app.route("/api/rename/bulk", methods=["POST"])
     @login_required
     def bulk_rename():
-        """Rename all books using the current naming scheme. apply=true to commit."""
+        """Rename all books using the current naming scheme and folder structure. apply=true to commit."""
         data = request.get_json(force=True) or {}
         apply = data.get("apply", False)
         scheme = Settings.get("rename_scheme", "original")
         custom_tpl = Settings.get("rename_custom_template", "")
+        folder_mode = Settings.get("folder_organization", "flat")
         books = Book.query.all()
         results = []
         errors = []
@@ -574,21 +575,50 @@ def create_app():
                 "title": book.title, "author": book.author,
                 "published_date": book.published_date, "publisher": book.publisher,
                 "isbn": book.isbn, "isbn13": book.isbn13, "language": book.language,
+                "series": getattr(book, "series", None),
+                "series_index": getattr(book, "series_order", None),
             }
             template = renamer.get_scheme_template(scheme, custom_tpl)
-            new_name = renamer.apply_scheme(template, book.filename, meta)
-            if new_name == book.filename:
-                results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": False})
+            # Compute expected final name (after rename + folder)
+            new_filename = renamer.apply_scheme(template, Path(book.filename).name, meta)
+            if folder_mode != "flat" and book.author:
+                author_safe = renamer._safe(book.author)
+                series = getattr(book, "series", None)
+                if folder_mode == "by_author_series" and series:
+                    new_filename_with_folder = f"{author_safe}/{renamer._safe(series)}/{new_filename}"
+                else:
+                    new_filename_with_folder = f"{author_safe}/{new_filename}"
+            else:
+                new_filename_with_folder = new_filename
+            changed = new_filename_with_folder != book.filename
+            if not changed:
+                results.append({"id": book.id, "original": book.filename, "new": new_filename_with_folder, "changed": False})
                 continue
             if apply:
                 try:
-                    new_path, new_name = renamer.rename_book_file(src, BOOKS_DIR, scheme, meta, custom_tpl)
-                    book.filename = new_name
-                    results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": True})
+                    old_parent = src.parent
+                    current = src
+                    if scheme != "original":
+                        current, new_rel = renamer.rename_book_file(current, BOOKS_DIR, scheme, meta, custom_tpl)
+                        book.filename = new_rel
+                    if folder_mode != "flat":
+                        current, new_rel = renamer.organize_into_folders(
+                            current, BOOKS_DIR, book.author,
+                            getattr(book, "series", None), folder_mode
+                        )
+                        book.filename = new_rel
+                    # Clean up empty old directories
+                    try:
+                        for folder in [old_parent, old_parent.parent]:
+                            if folder != BOOKS_DIR and folder.exists() and not any(folder.iterdir()):
+                                folder.rmdir()
+                    except Exception:
+                        pass
+                    results.append({"id": book.id, "original": book.filename, "new": book.filename, "changed": True})
                 except Exception as e:
                     errors.append({"id": book.id, "original": book.filename, "error": str(e)})
             else:
-                results.append({"id": book.id, "original": book.filename, "new": new_name, "changed": True})
+                results.append({"id": book.id, "original": book.filename, "new": new_filename_with_folder, "changed": True})
         if apply:
             db.session.commit()
         return jsonify({"results": results, "errors": errors, "applied": apply})
@@ -1114,9 +1144,11 @@ def _rename_and_organize(book, file_path: Path):
         "title": book.title, "author": book.author,
         "published_date": book.published_date, "publisher": book.publisher,
         "isbn": book.isbn, "isbn13": book.isbn13, "language": book.language,
-        "series": book.series, "series_index": book.series_order,
+        "series": getattr(book, "series", None),
+        "series_index": getattr(book, "series_order", None),
     }
 
+    old_parent = file_path.parent
     current = file_path
     if scheme != "original":
         current, new_rel = renamer.rename_book_file(current, BOOKS_DIR, scheme, meta, custom_tpl)
@@ -1124,9 +1156,18 @@ def _rename_and_organize(book, file_path: Path):
 
     if folder_mode != "flat":
         current, new_rel = renamer.organize_into_folders(
-            current, BOOKS_DIR, book.author, book.series, folder_mode
+            current, BOOKS_DIR, book.author, getattr(book, "series", None), folder_mode
         )
         book.filename = new_rel
+
+    # Clean up empty old parent directories (but never BOOKS_DIR itself)
+    if current != file_path:
+        try:
+            for folder in [old_parent, old_parent.parent]:
+                if folder != BOOKS_DIR and folder.exists() and not any(folder.iterdir()):
+                    folder.rmdir()
+        except Exception:
+            pass
 
     from models import db as _db
     _db.session.commit()

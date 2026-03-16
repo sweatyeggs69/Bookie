@@ -809,16 +809,16 @@ select.filter-select {
 .stat-value { font-size: 32px; font-weight: 400; color: var(--md-sys-color-primary); }
 .stat-label { font-size: 12px; color: var(--md-sys-color-on-surface-variant); letter-spacing: .5px; text-transform: uppercase; }
 
-/* ── Dialogs / Modals ──────────────────────────────────── */
+/* ── Dialogs / Modals – bottom-anchored sheets ─────────── */
 .dialog-scrim {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.6);
   z-index: 200;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 24px;
+  padding: 0;
   backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
@@ -827,19 +827,19 @@ select.filter-select {
 .dialog-scrim.open { opacity: 1; pointer-events: all; }
 .dialog {
   background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0;
   width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
+  max-width: 600px;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform: scale(.95) translateY(8px);
+  transform: translateY(24px);
   transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
-  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  box-shadow: 0 -4px 32px rgba(0,0,0,.6);
 }
-.dialog-scrim.open .dialog { transform: scale(1) translateY(0); }
-.dialog-wide { max-width: 840px; }
+.dialog-scrim.open .dialog { transform: translateY(0); }
+.dialog-wide { max-width: 860px; }
 .dialog-header {
   display: flex;
   align-items: center;
@@ -1100,13 +1100,11 @@ textarea.field { resize: vertical; min-height: 80px; }
 .filter-controls {
   display: contents; /* renders children as direct flex items of .filter-bar */
 }
-/* Toggle button hidden on desktop */
-.filter-bar-toggle-btn { display: none; }
 
-/* ── Filter bar toggle button styles ──────────────────────── */
+/* ── Filter bar toggle button (shown only on mobile) ──────── */
 .filter-bar-toggle-row { display: none; } /* legacy, unused */
 .filter-bar-toggle-btn {
-  display: flex;
+  display: none; /* hidden by default; shown in ≤600px media query */
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
@@ -1115,10 +1113,28 @@ textarea.field { resize: vertical; min-height: 80px; }
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
 }
 .filter-bar-toggle-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* ── Order toggle button + filter-select styled buttons ───── */
+.filter-select-btn {
+  padding: 6px 14px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filter-select-btn:hover { background: var(--md-sys-color-surface-container-highest); }
 
 /* Mobile layout toggle (grid / list) shown in toggle row */
 .mobile-layout-toggle {
@@ -1286,24 +1302,22 @@ textarea.field { resize: vertical; min-height: 80px; }
   .nav-rail:not(.expanded) { width: 64px; }
   .book-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .filter-bar {
-    padding: 0 16px 12px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    padding: 8px 16px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
   }
-  .filter-bar::-webkit-scrollbar { display: none; }
   .filter-bar .filter-chip { flex-shrink: 0; }
   .filter-bar .filter-select { flex-shrink: 0; }
-  .filter-bar > div[style*="flex:1"] { display: none; } /* hide spacer on mobile */
+  .filter-bar > div[style*="flex:1"] { display: none; } /* hide spacer on tablet */
   .content-area { padding: 0 16px 16px; }
   .search-bar { max-width: none; flex: 1; }
   .settings-sidebar { display: none; }
   .settings-tab-select { display: block; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
-  /* Dialogs go full-screen on small tablets */
-  .dialog { max-width: calc(100vw - 32px); }
+  /* Dialogs: allow more width on tablet */
+  .dialog { max-width: min(600px, 100vw); }
   /* Snackbar clears bottom nav */
   .snackbar { bottom: calc(80px + env(safe-area-inset-bottom) + 12px); }
 }
@@ -1313,16 +1327,8 @@ textarea.field { resize: vertical; min-height: 80px; }
   .nav-rail { display: none !important; }
   .bottom-nav { display: flex; }
 
-  /* Full-screen dialogs on phone */
-  .dialog-scrim { align-items: flex-end; padding: 0; }
-  .dialog {
-    max-width: 100%;
-    width: 100%;
-    max-height: 92vh;
-    border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0;
-    transform: translateY(24px);
-  }
-  .dialog-scrim.open .dialog { transform: translateY(0); }
+  /* Dialogs already anchored at bottom globally; ensure full width */
+  .dialog { max-width: 100%; width: 100%; }
   .dialog-wide { max-width: 100%; }
 
   /* Top app bar: collapse search, hide buttons moved to account menu */
@@ -1332,8 +1338,9 @@ textarea.field { resize: vertical; min-height: 80px; }
   #refreshLibraryBtn, #uploadNavBtn { display: none; }
   .user-menu-mobile-only { display: flex !important; }
 
-  /* Book grid: exactly 2 columns on mobile */
-  .book-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+  /* Book grid: default 3 columns via --grid-min */
+  :root { --grid-min: 100px; }
+  .book-grid { gap: 8px; }
 
   /* Content spacing */
   .content-area { padding: 0 12px calc(80px + env(safe-area-inset-bottom) + 16px); }
@@ -1355,27 +1362,30 @@ textarea.field { resize: vertical; min-height: 80px; }
   .dialog-footer { flex-wrap: wrap; padding: 12px 16px; gap: 6px; overflow: visible; }
   .dialog-footer > [style*="flex:1"] { display: none; }
 
-  /* Filter bar on mobile: single row with count + view toggle + Filters button */
+  /* Filter bar on mobile: top row with count + view toggle + grid size + Filters toggle */
   .filter-bar {
     display: flex;
     flex-wrap: wrap;
     padding: 8px 12px 10px;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
   /* Show the Filters toggle button on mobile */
   .filter-bar-toggle-btn { display: flex; }
-  /* Hide size buttons on mobile (not useful on small screens) */
-  .grid-size-btns { display: none; }
+  /* Show grid size buttons on mobile (same as desktop) */
+  .grid-size-btns { display: flex; }
   /* Collapse the filter selects by default on mobile */
   .filter-controls {
     display: none;
     width: 100%;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
   }
   .filter-controls.open { display: flex; }
-  .filter-controls .filter-select { width: 100%; }
+  .filter-controls .filter-select { flex: 1; min-width: 120px; }
+  .filter-controls .filter-select-btn { flex-shrink: 0; }
 }
 
 /* ── Divider ───────────────────────────────────────────── */
@@ -1741,3 +1751,12 @@ body.modal-open { overflow: hidden; }
     width: 100%;
   }
 }
+
+/* ── Cover dialog compact drop zone ───────────────────── */
+.cover-drop-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.cover-drop-compact svg { display: block; fill: currentColor; }
