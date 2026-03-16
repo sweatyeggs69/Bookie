@@ -1109,9 +1109,9 @@ textarea.field { resize: vertical; min-height: 80px; }
 @media (max-width: 768px) {
   .book-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .filter-bar {
-    padding: 8px 16px;
+    padding: 8px 16px 4px;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
   }
   .filter-bar .filter-chip { flex-shrink: 0; }
@@ -1149,8 +1149,8 @@ textarea.field { resize: vertical; min-height: 80px; }
   .filter-bar {
     display: flex;
     flex-wrap: wrap;
-    padding: 8px 12px;
-    gap: 6px;
+    padding: 8px 12px 4px;
+    gap: 4px;
     align-items: center;
   }
   .filter-bar-toggle-btn { display: flex; }
