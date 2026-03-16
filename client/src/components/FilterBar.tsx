@@ -374,7 +374,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('filters')}
               className={[
-                'relative flex items-center justify-center w-8 h-8 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'filters'
                   ? 'border-accent text-accent bg-accent/10'
                   : hasActiveFilters
@@ -395,7 +395,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('views')}
               className={[
-                'flex items-center justify-center w-8 h-8 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'views'
                   ? 'border-accent text-accent bg-accent/10'
                   : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
