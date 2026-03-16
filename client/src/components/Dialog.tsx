@@ -60,7 +60,7 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
         ref={panelRef}
         className={[
           'relative z-10 flex flex-col bg-surface-card border border-line',
-          'w-full sm:rounded-xl rounded-t-2xl',
+          'w-full rounded-t-2xl sm:rounded-2xl',
           'max-h-[95dvh] sm:max-h-[88vh]',
           'dialog-panel',
           wide ? 'sm:max-w-3xl' : 'sm:max-w-xl',

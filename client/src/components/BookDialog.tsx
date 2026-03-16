@@ -111,6 +111,10 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
   const [seriesOrder, setSeriesOrder] = useState('')
   const [imgError, setImgError] = useState(false)
 
+  // Pending tag changes — only committed when Save is clicked
+  const [pendingTagsAdded, setPendingTagsAdded] = useState<string[]>([])
+  const [pendingTagsRemoved, setPendingTagsRemoved] = useState<string[]>([])
+
   // Pending cover — set from CoverDialog selection or metadata result
   // pendingCoverUrl: a remote URL to apply on save
   // pendingCoverFile: a local file to upload on save
@@ -129,7 +133,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
     return () => { if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current) }
   }, [])
 
-  // Populate form when book loads
+  // Populate form when book loads (or bookId changes)
   useEffect(() => {
     if (book) {
       setTitle(book.title ?? '')
@@ -138,8 +142,31 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
       setSeries(book.series ?? '')
       setSeriesOrder(book.series_order != null ? String(book.series_order) : '')
       setImgError(false)
+      setPendingTagsAdded([])
+      setPendingTagsRemoved([])
     }
   }, [book])
+
+  // Derived: tags shown in the UI — server state + pending local changes
+  const displayTags = book
+    ? [...book.tags.filter(t => !pendingTagsRemoved.includes(t)), ...pendingTagsAdded]
+    : []
+
+  function handleTagAdded(name: string) {
+    if (pendingTagsRemoved.includes(name)) {
+      setPendingTagsRemoved(prev => prev.filter(t => t !== name))
+    } else if (!displayTags.includes(name)) {
+      setPendingTagsAdded(prev => [...prev, name])
+    }
+  }
+
+  function handleTagRemoved(_tagId: number, name: string) {
+    if (pendingTagsAdded.includes(name)) {
+      setPendingTagsAdded(prev => prev.filter(t => t !== name))
+    } else {
+      setPendingTagsRemoved(prev => [...prev, name])
+    }
+  }
 
   function setPendingCover(cover: { url: string } | { file: File }) {
     // Clean up any previous object URL
@@ -183,10 +210,19 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
       } else if (pendingCoverUrl) {
         await api.setCoverFromUrl(bookId, pendingCoverUrl).catch(() => {})
       }
+      // Apply pending tag changes
+      for (const name of pendingTagsAdded) {
+        await api.addBookTag(bookId, name).catch(() => {})
+      }
+      for (const name of pendingTagsRemoved) {
+        const tagObj = allTags.find(t => t.name === name)
+        if (tagObj) await api.removeBookTag(bookId, tagObj.id).catch(() => {})
+      }
       return updated
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['book', bookId] })
+      qc.invalidateQueries({ queryKey: ['tags'] })
       qc.invalidateQueries({ queryKey: ['books'] })
       onClose()
     },
@@ -198,24 +234,6 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['books'] })
       onDelete()
-    },
-  })
-
-  const addTagMutation = useMutation({
-    mutationFn: (name: string) => api.addBookTag(bookId, name),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['book', bookId] })
-      qc.invalidateQueries({ queryKey: ['tags'] })
-      qc.invalidateQueries({ queryKey: ['books'] })
-    },
-  })
-
-  const removeTagMutation = useMutation({
-    mutationFn: (tagId: number) => api.removeBookTag(bookId, tagId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['book', bookId] })
-      qc.invalidateQueries({ queryKey: ['tags'] })
-      qc.invalidateQueries({ queryKey: ['books'] })
     },
   })
 
@@ -354,22 +372,19 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Tags</label>
                 <TagDropdown
-                  bookId={bookId} allTags={allTags} bookTags={book.tags}
-                  onTagAdded={name => addTagMutation.mutate(name)}
-                  onTagRemoved={tagId => removeTagMutation.mutate(tagId)}
+                  bookId={bookId} allTags={allTags} bookTags={displayTags}
+                  onTagAdded={handleTagAdded}
+                  onTagRemoved={handleTagRemoved}
                 />
-                {book.tags.length > 0 && (
+                {displayTags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {book.tags.map(tag => {
-                      const tagObj = allTags.find(t => t.name === tag)
-                      return (
-                        <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent-muted text-accent text-xs font-medium">
-                          {tag}
-                          <button type="button" onClick={() => tagObj && removeTagMutation.mutate(tagObj.id)}
-                            className="hover:text-white transition-colors" aria-label={`Remove tag ${tag}`}>×</button>
-                        </span>
-                      )
-                    })}
+                    {displayTags.map(tag => (
+                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent-muted text-accent text-xs font-medium">
+                        {tag}
+                        <button type="button" onClick={() => handleTagRemoved(-1, tag)}
+                          className="hover:text-white transition-colors" aria-label={`Remove tag ${tag}`}>×</button>
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
