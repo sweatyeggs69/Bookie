@@ -4,22 +4,35 @@ import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Downloa
 import { useToast } from '../contexts/toast'
 import * as api from '../api/client'
 import type { EmailAddress, Stats } from '../types'
-import { useStore } from '../store'
 
-type Tab = 'email' | 'library' | 'metadata' | 'logs' | 'account'
-const VALID_TABS: Tab[] = ['email', 'library', 'metadata', 'logs', 'account']
+type Tab = 'library' | 'metadata' | 'email' | 'account' | 'logs'
+const VALID_TABS: Tab[] = ['library', 'metadata', 'email', 'account', 'logs']
+const DEFAULT_TAB: Tab = 'library'
+
+function getHashTab(): Tab {
+  const hash = window.location.hash.replace('#', '') as Tab
+  return VALID_TABS.includes(hash) ? hash : DEFAULT_TAB
+}
 
 export default function SettingsPage() {
-  const { settingsTab, setSettingsTab } = useStore()
-  const tab = (VALID_TABS.includes(settingsTab as Tab) ? settingsTab : 'email') as Tab
-  const setTab = (t: Tab) => setSettingsTab(t)
+  const [tab, setTabState] = useState<Tab>(getHashTab)
+
+  useEffect(() => {
+    const onHashChange = () => setTabState(getHashTab())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const setTab = (t: Tab) => {
+    window.location.hash = t
+  }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'email',    label: 'Email / SMTP' },
     { id: 'library',  label: 'Library' },
     { id: 'metadata', label: 'Metadata' },
-    { id: 'logs',     label: 'Logs' },
+    { id: 'email',    label: 'Email / SMTP' },
     { id: 'account',  label: 'Account' },
+    { id: 'logs',     label: 'Logs' },
   ]
 
   return (
@@ -40,23 +53,23 @@ export default function SettingsPage() {
         {/* Desktop: pill row */}
         <div className="hidden sm:flex gap-1 bg-surface-raised p-1 rounded-xl overflow-x-auto">
           {tabs.map(t => (
-            <button
+            <a
               key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-1
+              href={`#${t.id}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-1 text-center
                 ${tab === t.id ? 'bg-surface-high text-ink' : 'text-ink-muted hover:text-ink'}`}
             >
               {t.label}
-            </button>
+            </a>
           ))}
         </div>
       </div>
 
-      {tab === 'email'    && <EmailTab />}
       {tab === 'library'  && <LibraryTab />}
       {tab === 'metadata' && <MetadataTab />}
-      {tab === 'logs'     && <LogsTab />}
+      {tab === 'email'    && <EmailTab />}
       {tab === 'account'  && <AccountTab />}
+      {tab === 'logs'     && <LogsTab />}
     </div>
   )
 }
