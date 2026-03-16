@@ -3,6 +3,7 @@ import smtplib
 import os
 import logging
 from email import encoders
+from email.utils import formataddr
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -37,7 +38,7 @@ def send_book(
     body = body or "Book attached. Sent via Bookie."
 
     msg = MIMEMultipart()
-    msg["From"] = sender
+    msg["From"] = formataddr(("Bookie", sender))
     msg["To"] = recipient
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
@@ -89,7 +90,7 @@ def send_test_email(
     """Send a test email to verify SMTP configuration."""
     sender = sender_email or smtp_user
     msg = MIMEMultipart()
-    msg["From"] = sender
+    msg["From"] = formataddr(("Bookie", sender))
     msg["To"] = recipient
     msg["Subject"] = "Bookie – SMTP Test Email"
     msg.attach(MIMEText("This is a test email sent from Bookie to verify your SMTP configuration.", "plain"))
