@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import {
   BookOpen,
   ChevronDown,
-  Key,
   Loader2,
   LogOut,
   RefreshCw,
@@ -12,7 +11,6 @@ import {
 } from 'lucide-react';
 import api from '../api/client';
 import { useStore } from '../store';
-import SearchBar from './SearchBar';
 import { useToast } from '../App';
 
 interface Props {
@@ -28,6 +26,7 @@ export default function TopBar({ onAuthChange }: Props) {
 
   async function handleScan() {
     if (scanning) return;
+    setUserMenuOpen(false);
     setScanning(true);
     try {
       const result = await api.scanLibrary();
@@ -51,7 +50,6 @@ export default function TopBar({ onAuthChange }: Props) {
     }
   }
 
-  // Close menu on outside click
   function handleMenuBlur(e: React.FocusEvent<HTMLDivElement>) {
     if (!menuRef.current?.contains(e.relatedTarget as Node)) {
       setUserMenuOpen(false);
@@ -60,36 +58,20 @@ export default function TopBar({ onAuthChange }: Props) {
 
   return (
     <header className="sticky top-0 z-40 h-14 bg-surface-card border-b border-line flex items-center gap-3 px-4">
-      {/* Brand */}
+      {/* Brand — always visible */}
       <button
         onClick={() => setView('library')}
         className="flex items-center gap-2 shrink-0 text-ink hover:text-accent transition-colors"
       >
         <BookOpen className="w-5 h-5 text-accent" />
-        <span className="font-semibold text-base tracking-tight hidden sm:block">Bookie</span>
+        <span className="font-semibold text-base tracking-tight">Bookie</span>
       </button>
 
-      {/* Search — grows to fill space */}
-      <div className="flex-1 flex justify-center px-2">
-        <SearchBar />
-      </div>
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* Scan */}
-        <button
-          onClick={handleScan}
-          disabled={scanning}
-          title="Refresh library"
-          className="w-9 h-9 flex items-center justify-center rounded text-ink-muted hover:text-ink hover:bg-surface-raised disabled:opacity-50 transition-colors"
-        >
-          {scanning ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-        </button>
-
         {/* Upload */}
         <button
           onClick={() => setView('upload')}
@@ -102,20 +84,6 @@ export default function TopBar({ onAuthChange }: Props) {
           ].join(' ')}
         >
           <Upload className="w-4 h-4" />
-        </button>
-
-        {/* Settings */}
-        <button
-          onClick={() => setView('settings')}
-          title="Settings"
-          className={[
-            'w-9 h-9 flex items-center justify-center rounded transition-colors',
-            view === 'settings'
-              ? 'text-accent bg-accent-muted'
-              : 'text-ink-muted hover:text-ink hover:bg-surface-raised',
-          ].join(' ')}
-        >
-          <Settings className="w-4 h-4" />
         </button>
 
         {/* User menu */}
@@ -135,21 +103,29 @@ export default function TopBar({ onAuthChange }: Props) {
           </button>
 
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
+            <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
               <div className="px-3 py-2 border-b border-line">
                 <p className="text-xs text-ink-muted">Signed in as</p>
                 <p className="text-sm font-medium text-ink truncate">{user?.username}</p>
               </div>
 
               <button
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  setView('settings');
-                }}
+                onClick={() => { setUserMenuOpen(false); setView('settings'); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors"
               >
-                <Key className="w-3.5 h-3.5 text-ink-muted" />
-                Change password
+                <Settings className="w-3.5 h-3.5 text-ink-muted" />
+                Settings
+              </button>
+
+              <button
+                onClick={handleScan}
+                disabled={scanning}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors disabled:opacity-50"
+              >
+                {scanning
+                  ? <Loader2 className="w-3.5 h-3.5 text-ink-muted animate-spin" />
+                  : <RefreshCw className="w-3.5 h-3.5 text-ink-muted" />}
+                Refresh library
               </button>
 
               <div className="border-t border-line mt-1 pt-1">

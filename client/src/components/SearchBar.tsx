@@ -8,7 +8,6 @@ export default function SearchBar() {
   const { filters, setFilters } = useStore()
 
   const [localQ, setLocalQ] = useState(filters.q)
-  const [mobileExpanded, setMobileExpanded] = useState(false)
   const [dropdownResults, setDropdownResults] = useState<Book[]>([])
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [dropdownLoading, setDropdownLoading] = useState(false)
@@ -37,13 +36,9 @@ export default function SearchBar() {
   function handleChange(value: string) {
     setLocalQ(value)
 
-    // 350ms debounce for main search filter
     if (mainDebounce.current) clearTimeout(mainDebounce.current)
-    mainDebounce.current = setTimeout(() => {
-      setFilters({ q: value })
-    }, 350)
+    mainDebounce.current = setTimeout(() => setFilters({ q: value }), 350)
 
-    // 200ms debounce for live dropdown (min 2 chars)
     if (dropdownDebounce.current) clearTimeout(dropdownDebounce.current)
     if (value.trim().length >= 2) {
       dropdownDebounce.current = setTimeout(async () => {
@@ -73,13 +68,8 @@ export default function SearchBar() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      setDropdownOpen(false)
-      setFilters({ q: localQ.trim() })
-    }
-    if (e.key === 'Escape') {
-      setDropdownOpen(false)
-    }
+    if (e.key === 'Enter') { setDropdownOpen(false); setFilters({ q: localQ.trim() }) }
+    if (e.key === 'Escape') setDropdownOpen(false)
   }
 
   function handleDropdownItemClick(book: Book) {
@@ -88,22 +78,9 @@ export default function SearchBar() {
     setFilters({ q: book.title ?? book.filename })
   }
 
-  function handleMobileToggle() {
-    if (!mobileExpanded) {
-      setMobileExpanded(true)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    } else {
-      setMobileExpanded(false)
-      setDropdownOpen(false)
-    }
-  }
-
-  const inputEl = (
+  return (
     <div ref={containerRef} className="relative w-full">
-      <Search
-        size={15}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none"
-      />
+      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
       <input
         ref={inputRef}
         type="search"
@@ -128,7 +105,6 @@ export default function SearchBar() {
         </button>
       )}
 
-      {/* Dropdown */}
       {dropdownOpen && dropdownResults.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border border-line bg-surface-raised shadow-xl shadow-black/40 overflow-hidden">
           {dropdownResults.map(book => (
@@ -140,22 +116,14 @@ export default function SearchBar() {
             >
               <div className="shrink-0 w-7 h-10 rounded overflow-hidden bg-surface-high border border-line flex items-center justify-center">
                 {book.cover_filename ? (
-                  <img
-                    src={`/api/books/${book.id}/cover`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    draggable={false}
-                  />
+                  <img src={`/api/books/${book.id}/cover`} alt="" className="w-full h-full object-cover" loading="lazy" draggable={false} />
                 ) : (
                   <BookOpen size={12} className="text-ink-faint" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-ink text-sm truncate">{book.title ?? book.filename}</p>
-                {book.author && (
-                  <p className="text-ink-muted text-xs truncate">{book.author}</p>
-                )}
+                {book.author && <p className="text-ink-muted text-xs truncate">{book.author}</p>}
               </div>
               {book.file_format && (
                 <span className="shrink-0 text-[10px] font-semibold uppercase text-ink-faint">
@@ -167,40 +135,5 @@ export default function SearchBar() {
         </div>
       )}
     </div>
-  )
-
-  return (
-    <>
-      {/* Desktop — always visible */}
-      <div className="hidden sm:flex flex-1 max-w-xl">
-        {inputEl}
-      </div>
-
-      {/* Mobile — icon or expanded input */}
-      <div className="flex sm:hidden items-center">
-        {mobileExpanded ? (
-          <div className="flex items-center gap-2 w-56">
-            {inputEl}
-            <button
-              type="button"
-              onClick={handleMobileToggle}
-              className="shrink-0 text-ink-muted hover:text-ink transition-colors"
-              aria-label="Close search"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleMobileToggle}
-            className="w-9 h-9 flex items-center justify-center rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
-            aria-label="Open search"
-          >
-            <Search size={18} />
-          </button>
-        )}
-      </div>
-    </>
   )
 }

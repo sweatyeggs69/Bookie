@@ -4,6 +4,7 @@ import { Grid2x2, List, SlidersHorizontal, ChevronDown, X } from 'lucide-react'
 import { useStore } from '../store'
 import * as api from '../api/client'
 import { Tag } from '../types'
+import SearchBar from './SearchBar'
 
 const FORMAT_OPTIONS = [
   { value: '', label: 'All Formats' },
@@ -131,6 +132,9 @@ export default function FilterBar() {
 
   return (
     <div className="sticky top-14 z-30 bg-surface border-b border-line px-4 py-2.5 flex flex-col gap-2">
+      {/* Search — always visible */}
+      <SearchBar />
+
       <div className="flex items-center justify-between gap-3">
         {/* Mobile toggle */}
         <button
