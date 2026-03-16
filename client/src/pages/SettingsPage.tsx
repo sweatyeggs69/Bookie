@@ -472,7 +472,7 @@ function MetadataTab() {
 
       <section className="card p-5 space-y-3">
         <h2 className="text-sm font-semibold text-ink">Source Priority</h2>
-        <p className="text-xs text-ink-muted">Drag to reorder. Sources are tried top-to-bottom.</p>
+        <p className="text-xs text-ink-muted">Sources are ordered by priority, top to bottom.</p>
         <div className="space-y-1">
           {priority.map((src, idx) => (
             <div
@@ -642,7 +642,6 @@ function AccountTab() {
       {/* Display Name */}
       <section className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink">Display Name</h2>
-        <p className="text-xs text-ink-muted">Shown in the top bar and user menu instead of your username.</p>
         <div className="flex gap-2">
           <input
             className="field flex-1"
@@ -666,9 +665,9 @@ function AccountTab() {
       <section className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
           <Mail className="w-4 h-4 text-ink-muted" />
-          Send-to Email Addresses
+          Send-to Email
         </h2>
-        <p className="text-xs text-ink-muted">Add email addresses to send books to (e.g. your Kindle address).</p>
+        <p className="text-xs text-ink-muted">Add email addresses to send books to.</p>
         {emailAddresses.length > 0 && (
           <div className="space-y-1">
             {emailAddresses.map(addr => (
@@ -694,14 +693,14 @@ function AccountTab() {
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             className="field flex-1"
-            placeholder="Label (e.g. Kindle)"
+            placeholder="Andy Dwyer's eReader"
             value={newEmailLabel}
             onChange={e => setNewEmailLabel(e.target.value)}
           />
           <input
             className="field flex-1"
             type="email"
-            placeholder="email@example.com"
+            placeholder="andy@mouseratband.com"
             value={newEmail}
             onChange={e => setNewEmail(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && newEmail.trim() && addEmailMutation.mutate()}
