@@ -195,9 +195,9 @@ function LibraryTab() {
 
   useEffect(() => {
     if (settings) {
-      setRenameScheme(String(settings.rename_scheme || 'original'))
+      setRenameScheme(String(settings.rename_scheme || 'title_author'))
       setCustomTemplate(String(settings.rename_custom_template || ''))
-      setFolderOrganization(String(settings.folder_organization || 'flat'))
+      setFolderOrganization(String(settings.folder_organization || 'by_author'))
     }
   }, [settings])
 
@@ -575,6 +575,19 @@ function AccountTab() {
   const [pwError, setPwError] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newEmailLabel, setNewEmailLabel] = useState('')
+  const [displayName, setDisplayName] = useState('')
+
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
+
+  useEffect(() => {
+    if (settings?.display_name) setDisplayName(String(settings.display_name))
+  }, [settings])
+
+  const saveDisplayNameMutation = useMutation({
+    mutationFn: () => api.saveSettings({ display_name: displayName.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Display name saved') },
+    onError: (e: Error) => addToast('error', e.message),
+  })
 
   const { data: emailAddresses = [] } = useQuery<EmailAddress[]>({
     queryKey: ['emailAddresses'],
@@ -613,6 +626,29 @@ function AccountTab() {
 
   return (
     <div className="space-y-6">
+      {/* Display Name */}
+      <section className="card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-ink">Display Name</h2>
+        <p className="text-xs text-ink-muted">Shown in the top bar and user menu instead of your username.</p>
+        <div className="flex gap-2">
+          <input
+            className="field flex-1"
+            placeholder="Enter display name…"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && saveDisplayNameMutation.mutate()}
+          />
+          <button
+            className="btn-primary shrink-0"
+            onClick={() => saveDisplayNameMutation.mutate()}
+            disabled={saveDisplayNameMutation.isPending}
+          >
+            {saveDisplayNameMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save
+          </button>
+        </div>
+      </section>
+
       {/* Send-to email addresses */}
       <section className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
@@ -641,11 +677,29 @@ function AccountTab() {
             ))}
           </div>
         )}
-        <div className="flex gap-2">
-          <input className="field flex-1" placeholder="Label (e.g. Kindle)" value={newEmailLabel} onChange={e => setNewEmailLabel(e.target.value)} />
-          <input className="field flex-1" type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && newEmail.trim() && addEmailMutation.mutate()} />
-          <button className="btn-primary px-3" onClick={() => addEmailMutation.mutate()} disabled={!newEmail.trim() || addEmailMutation.isPending}>
-            <Plus className="w-4 h-4" />
+        {/* Stacked form: label on top, email below, Add Email button */}
+        <div className="space-y-2">
+          <input
+            className="field w-full"
+            placeholder="Label (e.g. Kindle)"
+            value={newEmailLabel}
+            onChange={e => setNewEmailLabel(e.target.value)}
+          />
+          <input
+            className="field w-full"
+            type="email"
+            placeholder="email@example.com"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && newEmail.trim() && addEmailMutation.mutate()}
+          />
+          <button
+            className="btn-primary w-full"
+            onClick={() => addEmailMutation.mutate()}
+            disabled={!newEmail.trim() || addEmailMutation.isPending}
+          >
+            {addEmailMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Add Email
           </button>
         </div>
       </section>

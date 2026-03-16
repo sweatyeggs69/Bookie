@@ -13,6 +13,7 @@ import {
   Upload,
   User,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 import { useStore } from '../store';
 import { useToast } from '../App';
@@ -39,6 +40,8 @@ function applyTheme(mode: ThemeMode) {
 export default function TopBar({ onAuthChange }: Props) {
   const { user, view, setView } = useStore();
   const { addToast } = useToast();
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings, staleTime: 60_000 });
+  const displayName = (settings?.display_name as string | undefined) || user?.username;
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -139,7 +142,7 @@ export default function TopBar({ onAuthChange }: Props) {
             className="flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
           >
             <User className="w-4 h-4" />
-            <span className="hidden sm:block text-sm max-w-[120px] truncate">{user?.username}</span>
+            <span className="hidden sm:block text-sm max-w-[120px] truncate">{displayName}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
 
@@ -147,7 +150,10 @@ export default function TopBar({ onAuthChange }: Props) {
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
               <div className="px-3 py-2 border-b border-line">
                 <p className="text-xs text-ink-muted">Signed in as</p>
-                <p className="text-sm font-medium text-ink truncate">{user?.username}</p>
+                <p className="text-sm font-medium text-ink truncate">{displayName}</p>
+                {!!(settings?.display_name) && !!user?.username && String(settings.display_name) !== user.username && (
+                  <p className="text-xs text-ink-faint truncate">{user.username}</p>
+                )}
               </div>
 
               <button

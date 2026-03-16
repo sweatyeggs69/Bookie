@@ -63,30 +63,39 @@ export default function FilterBar() {
   const clearFilters = () => setFilters({ format: '', tag: '', series: '', sort: 'author', order: 'asc' })
   const toggleOrder = () => setFilters({ order: filters.order === 'asc' ? 'desc' : 'asc' })
 
+  // Wrapper for fixed-width selects
+  function Sel({ children, width = 'w-32' }: { children: React.ReactNode; width?: string }) {
+    return (
+      <div className={`relative shrink-0 ${width}`}>
+        {children}
+        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+      </div>
+    )
+  }
+
   const filterControls = (
     <div className="flex flex-wrap items-center gap-2">
       {/* Format */}
-      <div className="relative">
+      <Sel>
         <select
           value={filters.format}
           onChange={e => setFilters({ format: e.target.value })}
-          className={selectCls}
+          className={`${selectCls} w-full`}
           aria-label="Filter by format"
         >
           {FORMAT_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-      </div>
+      </Sel>
 
       {/* Tag — only shown when tags exist */}
       {tags.length > 0 && (
-        <div className="relative">
+        <Sel width="w-32">
           <select
             value={filters.tag}
             onChange={e => setFilters({ tag: e.target.value })}
-            className={selectCls}
+            className={`${selectCls} w-full`}
             aria-label="Filter by tag"
           >
             <option value="">All Tags</option>
@@ -94,17 +103,16 @@ export default function FilterBar() {
               <option key={t.id} value={t.name}>{t.name} ({t.book_count})</option>
             ))}
           </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-        </div>
+        </Sel>
       )}
 
       {/* Series — only shown when series exist */}
       {seriesList.length > 0 && (
-        <div className="relative">
+        <Sel width="w-36">
           <select
             value={filters.series}
             onChange={e => setFilters({ series: e.target.value })}
-            className={selectCls}
+            className={`${selectCls} w-full`}
             aria-label="Filter by series"
           >
             <option value="">All Series</option>
@@ -112,30 +120,28 @@ export default function FilterBar() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-        </div>
+        </Sel>
       )}
 
       {/* Sort */}
-      <div className="relative">
+      <Sel width="w-36">
         <select
           value={filters.sort}
           onChange={e => setFilters({ sort: e.target.value as typeof filters.sort })}
-          className={selectCls}
+          className={`${selectCls} w-full`}
           aria-label="Sort by"
         >
           {SORT_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-      </div>
+      </Sel>
 
       {/* Order toggle */}
       <button
         type="button"
         onClick={toggleOrder}
-        className="px-3 py-1.5 rounded border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="shrink-0 px-3 py-1.5 rounded border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={`Sort ${filters.order === 'asc' ? 'ascending' : 'descending'} — click to toggle`}
       >
         {filters.order === 'asc' ? '↑ Asc' : '↓ Desc'}
@@ -146,7 +152,7 @@ export default function FilterBar() {
         <button
           type="button"
           onClick={clearFilters}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Clear all filters"
         >
           <X size={13} />
@@ -200,14 +206,14 @@ export default function FilterBar() {
           )}
 
           {/* View mode toggle */}
-          <div className="flex items-center rounded border border-line overflow-hidden">
+          <div className="flex items-stretch rounded border border-line overflow-hidden">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
               aria-label="Grid view"
               aria-pressed={viewMode === 'grid'}
               className={[
-                'p-1.5 transition-colors focus-visible:outline-none',
+                'px-2.5 py-1.5 transition-colors focus-visible:outline-none',
                 viewMode === 'grid'
                   ? 'bg-surface-high text-ink'
                   : 'bg-surface-raised text-ink-muted hover:text-ink',
@@ -221,7 +227,7 @@ export default function FilterBar() {
               aria-label="List view"
               aria-pressed={viewMode === 'list'}
               className={[
-                'p-1.5 transition-colors border-l border-line focus-visible:outline-none',
+                'px-2.5 py-1.5 transition-colors border-l border-line focus-visible:outline-none',
                 viewMode === 'list'
                   ? 'bg-surface-high text-ink'
                   : 'bg-surface-raised text-ink-muted hover:text-ink',
