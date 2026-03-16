@@ -8,6 +8,7 @@ import type {
   User,
   AuthStatus,
   UploadProgressCallback,
+  Shelf,
   EmailAddress,
   Stats,
 } from '../types'
@@ -278,6 +279,45 @@ export function getStats(): Promise<Stats> {
   return api<Stats>('/api/stats')
 }
 
+// ─── Shelves ──────────────────────────────────────────────────────────────────
+
+export function getShelves(): Promise<Shelf[]> {
+  return api<Shelf[]>('/api/shelves')
+}
+
+export function createShelf(data: { name: string; description?: string; color?: string }): Promise<Shelf> {
+  return api<Shelf>('/api/shelves', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateShelf(id: number, data: Partial<Pick<Shelf, 'name' | 'description' | 'color'>>): Promise<Shelf> {
+  return api<Shelf>(`/api/shelves/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteShelf(id: number): Promise<void> {
+  return api<void>(`/api/shelves/${id}`, { method: 'DELETE' })
+}
+
+export function getShelfBooks(shelfId: number): Promise<Book[]> {
+  return api<Book[]>(`/api/shelves/${shelfId}/books`)
+}
+
+export function addBooksToShelf(shelfId: number, bookIds: number[]): Promise<{ added: number }> {
+  return api<{ added: number }>(`/api/shelves/${shelfId}/books`, {
+    method: 'POST',
+    body: JSON.stringify({ book_ids: bookIds }),
+  })
+}
+
+export function removeBookFromShelf(shelfId: number, bookId: number): Promise<void> {
+  return api<void>(`/api/shelves/${shelfId}/books/${bookId}`, { method: 'DELETE' })
+}
+
 // ─── Email addresses ──────────────────────────────────────────────────────────
 
 export function getEmailAddresses(): Promise<EmailAddress[]> {
@@ -355,6 +395,14 @@ export default {
   getStats,
   // Download
   getDownloadUrl,
+  // Shelves
+  getShelves,
+  createShelf,
+  updateShelf,
+  deleteShelf,
+  getShelfBooks,
+  addBooksToShelf,
+  removeBookFromShelf,
   // Email addresses
   getEmailAddresses,
   addEmailAddress,

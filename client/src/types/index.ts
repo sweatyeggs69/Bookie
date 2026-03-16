@@ -125,6 +125,19 @@ export interface AuthStatus {
 
 export type UploadProgressCallback = (percent: number) => void
 
+// ─── Shelf ───────────────────────────────────────────────────────────────────
+
+export interface Shelf {
+  id: number
+  name: string
+  description: string | null
+  color: string
+  icon: string
+  is_smart: boolean
+  book_count: number
+  date_created: string
+}
+
 // ─── Email address ────────────────────────────────────────────────────────────
 
 export interface EmailAddress {

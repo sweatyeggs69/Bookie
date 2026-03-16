@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronDown,
   Key,
+  Layers,
   Loader2,
   LogOut,
   RefreshCw,
@@ -88,6 +89,20 @@ export default function TopBar({ onAuthChange }: Props) {
           ) : (
             <RefreshCw className="w-4 h-4" />
           )}
+        </button>
+
+        {/* Shelves */}
+        <button
+          onClick={() => setView('shelves')}
+          title="Shelves"
+          className={[
+            'w-9 h-9 flex items-center justify-center rounded transition-colors',
+            view === 'shelves'
+              ? 'text-accent bg-accent-muted'
+              : 'text-ink-muted hover:text-ink hover:bg-surface-raised',
+          ].join(' ')}
+        >
+          <Layers className="w-4 h-4" />
         </button>
 
         {/* Upload */}

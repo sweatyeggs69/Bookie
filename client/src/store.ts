@@ -17,8 +17,8 @@ interface StoreState extends PersistedPrefs {
   setUser: (user: User | null) => void
 
   // Navigation
-  view: 'library' | 'upload' | 'settings'
-  setView: (view: 'library' | 'upload' | 'settings') => void
+  view: 'library' | 'upload' | 'settings' | 'shelves'
+  setView: (view: 'library' | 'upload' | 'settings' | 'shelves') => void
 
   // Filters (changing any filter resets to page 1)
   filters: Filters
