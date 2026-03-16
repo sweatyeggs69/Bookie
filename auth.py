@@ -71,8 +71,8 @@ def register_auth_routes(app, Settings):
         password = data.get("password") or ""
         if not username:
             return jsonify({"error": "Username is required"}), 400
-        if len(password) < 6:
-            return jsonify({"error": "Password must be at least 6 characters"}), 400
+        if len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters"}), 400
         set_password(username, password, Settings)
         session["authenticated"] = True
         session["username"] = username
@@ -125,6 +125,6 @@ def register_auth_routes(app, Settings):
         if not check_credentials(username, current, Settings):
             return jsonify({"error": "Current password incorrect"}), 403
         if len(new_pass) < 6:
-            return jsonify({"error": "Password must be at least 6 characters"}), 400
+            return jsonify({"error": "Password must be at least 8 characters"}), 400
         set_password(username, new_pass, Settings)
         return jsonify({"success": True})

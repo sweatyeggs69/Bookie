@@ -1404,12 +1404,17 @@ document.addEventListener('DOMContentLoaded', () => {
     openViewDropdown();
   });
 
-  // Search clear button
+  // Search (grid filter + live dropdown)
+  let searchTimeout, liveSearchTimeout;
+  const searchInput = document.getElementById('searchInput');
+
+  // Search clear button — must come after searchTimeout/liveSearchTimeout are declared
   const searchClearBtn = document.getElementById('searchClearBtn');
   searchClearBtn?.addEventListener('click', () => {
-    const searchInput = document.getElementById('searchInput');
     searchInput.value = '';
     searchClearBtn.style.display = 'none';
+    clearTimeout(searchTimeout);
+    clearTimeout(liveSearchTimeout);
     closeSearchDropdown();
     state.filters.q = '';
     state.page = 1;
@@ -1417,9 +1422,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.focus();
   });
 
-  // Search (grid filter + live dropdown)
-  let searchTimeout, liveSearchTimeout;
-  const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', e => {
     const q = e.target.value.trim();
     if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';

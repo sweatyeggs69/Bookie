@@ -136,6 +136,7 @@ from flask import (
     jsonify,
     request,
     send_file,
+    send_from_directory,
     render_template,
     redirect,
     session,
@@ -189,6 +190,8 @@ def create_app():
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or _get_or_create_secret_key()
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     db.init_app(app)
 
@@ -198,26 +201,49 @@ def create_app():
         db.create_all()
         _migrate_db(app)
 
+    # Security headers
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        return response
+
     # Register auth routes
     register_auth_routes(app, Settings)
 
     # -----------------------------------------------------------------------
-    # Frontend
+    # Frontend – serve React SPA (falls back to legacy templates if no build)
     # -----------------------------------------------------------------------
 
-    @app.route("/")
-    @login_required
-    def index():
-        return render_template("index.html", username=session.get("username", ""))
+    _REACT_DIST = Path(__file__).parent / "static" / "dist"
 
     @app.route("/sw.js")
     def service_worker():
         """Serve SW from root scope so it can control all pages."""
-        from flask import send_from_directory
         resp = send_from_directory("static", "sw.js")
         resp.headers["Service-Worker-Allowed"] = "/"
         resp.headers["Cache-Control"] = "no-cache"
         return resp
+
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def serve_frontend(path):
+        # Never intercept API routes
+        if path.startswith("api/") or path.startswith("static/"):
+            abort(404)
+        # Serve React build if available
+        if _REACT_DIST.exists():
+            target = _REACT_DIST / path
+            if path and target.exists() and target.is_file():
+                return send_from_directory(_REACT_DIST, path)
+            return send_from_directory(_REACT_DIST, "index.html")
+        # Legacy template fallback
+        if path in ("login", "setup"):
+            return render_template(f"{path}.html")
+        if not session.get("authenticated"):
+            return redirect("/login")
+        return render_template("index.html", username=session.get("username", ""))
 
     # -----------------------------------------------------------------------
     # Books – CRUD
@@ -844,12 +870,7 @@ def create_app():
     @login_required
     def remove_book_tag(book_id, tag_id):
         bt = BookTag.query.filter_by(book_id=book_id, tag_id=tag_id).first_or_404()
-        tag = bt.tag
         db.session.delete(bt)
-        db.session.flush()
-        # Auto-delete the tag if it has no remaining books
-        if not BookTag.query.filter_by(tag_id=tag.id).first():
-            db.session.delete(tag)
         db.session.commit()
         return jsonify({"success": True})
 

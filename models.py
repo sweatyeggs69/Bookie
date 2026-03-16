@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -13,7 +13,11 @@ class Tag(db.Model):
     book_tags = db.relationship("BookTag", back_populates="tag", cascade="all, delete-orphan")
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "book_count": len(self.book_tags)}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "book_count": db.session.query(BookTag).filter_by(tag_id=self.id).count(),
+        }
 
 
 class BookTag(db.Model):
@@ -26,15 +30,19 @@ class BookTag(db.Model):
     book = db.relationship("Book", back_populates="book_tags")
     tag = db.relationship("Tag", back_populates="book_tags")
 
-    __table_args__ = (db.UniqueConstraint("book_id", "tag_id"),)
+    __table_args__ = (
+        db.UniqueConstraint("book_id", "tag_id"),
+        db.Index("ix_book_tags_book_id", "book_id"),
+        db.Index("ix_book_tags_tag_id", "tag_id"),
+    )
 
 
 class Book(db.Model):
     __tablename__ = "books"
 
     id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(512), nullable=False)
-    file_format = db.Column(db.String(16))  # epub, pdf, mobi, etc.
+    filename = db.Column(db.String(512), nullable=False, unique=True)
+    file_format = db.Column(db.String(16))
     file_size = db.Column(db.Integer)
 
     # Metadata
@@ -47,7 +55,7 @@ class Book(db.Model):
     language = db.Column(db.String(16))
     description = db.Column(db.Text)
     page_count = db.Column(db.Integer)
-    categories = db.Column(db.String(512))  # kept in DB for backward compat
+    categories = db.Column(db.String(512))  # kept for backward compat
     rating = db.Column(db.Float)
     google_books_id = db.Column(db.String(64))
     goodreads_id = db.Column(db.String(64))
@@ -58,12 +66,23 @@ class Book(db.Model):
     cover_filename = db.Column(db.String(256))
 
     # Timestamps
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
-    date_modified = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    date_added = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    date_modified = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relations
     shelf_books = db.relationship("ShelfBook", back_populates="book", cascade="all, delete-orphan")
-    book_tags = db.relationship("BookTag", back_populates="book", cascade="all, delete-orphan")
+    book_tags = db.relationship("BookTag", back_populates="book", cascade="all, delete-orphan", lazy="joined")
+
+    __table_args__ = (
+        db.Index("ix_books_title", "title"),
+        db.Index("ix_books_author", "author"),
+        db.Index("ix_books_file_format", "file_format"),
+        db.Index("ix_books_date_added", "date_added"),
+    )
 
     def to_dict(self):
         return {
@@ -99,7 +118,7 @@ class Shelf(db.Model):
     description = db.Column(db.String(512))
     color = db.Column(db.String(16), default="#D0BCFF")
     icon = db.Column(db.String(64), default="shelf")
-    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+    date_created = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_smart = db.Column(db.Boolean, default=False)
     rules = db.Column(db.Text, default="[]")
     combination = db.Column(db.String(8), default="all")
@@ -127,7 +146,7 @@ class ShelfBook(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     shelf_id = db.Column(db.Integer, db.ForeignKey("shelves.id"), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False)
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+    date_added = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     shelf = db.relationship("Shelf", back_populates="shelf_books")
     book = db.relationship("Book", back_populates="shelf_books")
@@ -142,7 +161,7 @@ class EmailAddress(db.Model):
     label = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(256), nullable=False)
     is_default = db.Column(db.Boolean, default=False, nullable=False)
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+    date_added = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
