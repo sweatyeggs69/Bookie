@@ -13,7 +13,7 @@ class Tag(db.Model):
     book_tags = db.relationship("BookTag", back_populates="tag", cascade="all, delete-orphan")
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name}
+        return {"id": self.id, "name": self.name, "book_count": len(self.book_tags)}
 
 
 class BookTag(db.Model):

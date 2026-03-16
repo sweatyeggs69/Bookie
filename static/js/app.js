@@ -163,7 +163,7 @@ function navigate(view) {
   if (view === 'library') {
     state.page = 1;
     loadBooks();
-    loadTagFilterRow();
+    loadTagFilter();
   } else if (view === 'settings') {
     loadSettings();
     loadEmailAddresses();
@@ -189,6 +189,7 @@ function activateSettingsTab(target) {
   if (target === 'libstats') loadStats();
   if (target === 'logs') loadLogs();
   if (target === 'account') renderThemeSwatches();
+  if (target === 'rename') loadTagManagement();
 }
 
 function clearFilters() {
@@ -203,7 +204,7 @@ function clearFilters() {
   if (sortEl) sortEl.value = 'author';
   const orderBtn = document.getElementById('orderToggle');
   if (orderBtn) orderBtn.textContent = '↑ Asc';
-  loadTagFilterRow();
+  loadTagFilter();
   loadBooks();
   navigate('library');
 }
@@ -437,10 +438,11 @@ async function openBook(id) {
   });
 
   document.getElementById('bookDialogFooter').innerHTML = `
-    <button class="btn btn-text" style="color:var(--md-sys-color-error)" onclick="deleteBook(${id})">Delete</button>
-    <div style="flex:1"></div>
-    <button class="btn btn-outlined" onclick="openMetaSearch(${id})">Find Metadata</button>
-    <button class="btn btn-filled" onclick="saveBook(${id})">Save</button>`;
+    <button class="btn btn-text dialog-footer-delete" onclick="deleteBook(${id})">Delete</button>
+    <div class="dialog-footer-actions">
+      <button class="btn btn-outlined" onclick="openMetaSearch(${id})">Find Metadata</button>
+      <button class="btn btn-filled" onclick="saveBook(${id})">Save</button>
+    </div>`;
 
   openDialog('bookDialog');
   document.getElementById('bookDialogBody').scrollTop = 0;
@@ -561,20 +563,22 @@ async function selectMeta(i) {
 }
 
 // ── Tags ─────────────────────────────────────────────────
-async function loadTagFilterRow() {
-  const row = document.getElementById('tagFilterRow');
-  if (!row) return;
+async function loadTagFilter() {
+  const sel = document.getElementById('tagSelect');
+  if (!sel) return;
   const tags = await apiJSON('/api/tags');
-  if (!tags.length) { row.innerHTML = ''; return; }
-  row.innerHTML = tags.map(t => `
-    <button class="tag-filter-chip${state.activeTag === t.name ? ' active' : ''}"
-      onclick="setTagFilter('${esc(t.name)}')">${esc(t.name)}</button>`).join('');
+  sel.style.display = tags.length ? '' : 'none';
+  const prev = state.activeTag;
+  sel.innerHTML = '<option value="">All Tags</option>' +
+    tags.map(t => `<option value="${esc(t.name)}"${t.name === prev ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
+  if (prev && !tags.find(t => t.name === prev)) {
+    state.activeTag = null;
+  }
 }
 
 function setTagFilter(name) {
-  state.activeTag = state.activeTag === name ? null : name;
+  state.activeTag = name || null;
   state.page = 1;
-  loadTagFilterRow();
   loadBooks();
 }
 
@@ -583,38 +587,64 @@ async function addTagToBook(bookId, name) {
     method: 'POST', body: JSON.stringify({ name }),
   });
   if (!res.ok) return;
-  // Refresh tag chips in book dialog
   const book = await apiJSON(`/api/books/${bookId}`);
   state.selectedBook = book;
-  const chipsEl = document.getElementById('bookTagChips');
-  if (chipsEl) {
-    chipsEl.innerHTML = (book.tags || []).map(t =>
-      `<span class="tag-chip">${esc(t)}<button class="tag-chip-remove" onclick="removeTagByName(${bookId},'${esc(t)}')" title="Remove tag">×</button></span>`
-    ).join('');
-  }
-  loadTagFilterRow();
+  _refreshBookTagChips(bookId, book.tags || []);
+  loadTagFilter();
 }
 
 async function removeTagByName(bookId, name) {
-  const book = state.selectedBook;
-  if (!book) return;
-  // Find tag id from latest book data
-  const freshBook = await apiJSON(`/api/books/${bookId}`);
-  state.selectedBook = freshBook;
-  // Get all tags to find the id
   const tags = await apiJSON('/api/tags');
   const tag = tags.find(t => t.name === name);
   if (!tag) return;
   await api(`/api/books/${bookId}/tags/${tag.id}`, { method: 'DELETE' });
+  const updatedBook = await apiJSON(`/api/books/${bookId}`);
+  state.selectedBook = updatedBook;
+  _refreshBookTagChips(bookId, updatedBook.tags || []);
+  loadTagFilter();
+}
+
+function _refreshBookTagChips(bookId, tags) {
   const chipsEl = document.getElementById('bookTagChips');
-  if (chipsEl) {
-    const updatedBook = await apiJSON(`/api/books/${bookId}`);
-    state.selectedBook = updatedBook;
-    chipsEl.innerHTML = (updatedBook.tags || []).map(t =>
-      `<span class="tag-chip">${esc(t)}<button class="tag-chip-remove" onclick="removeTagByName(${bookId},'${esc(t)}')" title="Remove tag">×</button></span>`
-    ).join('');
+  if (!chipsEl) return;
+  chipsEl.innerHTML = tags.map(t =>
+    `<span class="tag-chip">${esc(t)}<button class="tag-chip-remove" onclick="removeTagByName(${bookId},'${esc(t)}')" title="Remove">×</button></span>`
+  ).join('');
+}
+
+// ── Tag management (settings) ─────────────────────────────
+async function loadTagManagement() {
+  const el = document.getElementById('tagManageList');
+  if (!el) return;
+  const tags = await apiJSON('/api/tags');
+  if (!tags.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);padding:8px 0">No tags yet.</p>';
+    return;
   }
-  loadTagFilterRow();
+  el.innerHTML = tags.map(t => `
+    <div class="tag-manage-row">
+      <span class="tag-manage-name">${esc(t.name)}</span>
+      <button class="icon-btn" style="color:var(--md-sys-color-error)" onclick="deleteTagAdmin(${t.id})" title="Delete tag">
+        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+async function deleteTagAdmin(tagId) {
+  await api(`/api/tags/${tagId}`, { method: 'DELETE' });
+  snack('Tag deleted');
+  loadTagManagement();
+  loadTagFilter();
+}
+
+async function addTagAdmin() {
+  const input = document.getElementById('newTagInput');
+  const name = input?.value.trim();
+  if (!name) return;
+  input.value = '';
+  await api('/api/tags', { method: 'POST', body: JSON.stringify({ name }) });
+  loadTagManagement();
+  loadTagFilter();
 }
 
 // ── Send ─────────────────────────────────────────────────
@@ -1417,6 +1447,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Tag filter dropdown
+  document.getElementById('tagSelect')?.addEventListener('change', e => {
+    setTagFilter(e.target.value);
+  });
+
   // Format filter dropdown
   document.getElementById('formatSelect')?.addEventListener('change', e => {
     state.filters.format = e.target.value;
@@ -1502,13 +1537,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addEmailBtn')?.addEventListener('click', openAddEmailAddr);
   document.getElementById('saveEmailAddrBtn').addEventListener('click', saveEmailAddr);
 
-  // Cover dialog
+  // Cover dialog — Upload Image button triggers file picker; dialog body is drop target
+  document.getElementById('coverUploadBtn')?.addEventListener('click', () => document.getElementById('coverInput').click());
   const coverDropZone = document.getElementById('coverDropZone');
-  coverDropZone.addEventListener('click', () => document.getElementById('coverInput').click());
-  coverDropZone.addEventListener('dragover', e => { e.preventDefault(); coverDropZone.classList.add('dragover'); });
-  coverDropZone.addEventListener('dragleave', () => coverDropZone.classList.remove('dragover'));
-  coverDropZone.addEventListener('drop', e => {
-    e.preventDefault(); coverDropZone.classList.remove('dragover');
+  coverDropZone?.addEventListener('dragover', e => { e.preventDefault(); coverDropZone.classList.add('cover-drag-over'); });
+  coverDropZone?.addEventListener('dragleave', () => coverDropZone.classList.remove('cover-drag-over'));
+  coverDropZone?.addEventListener('drop', e => {
+    e.preventDefault(); coverDropZone.classList.remove('cover-drag-over');
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) { state.coverFile = file; previewCoverFile(file); }
   });
@@ -1540,6 +1575,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saveMetaBtn')?.addEventListener('click', saveMeta);
   document.getElementById('saveSourcesBtn')?.addEventListener('click', saveSources);
   document.getElementById('saveOrganizationBtn')?.addEventListener('click', saveOrganization);
+  document.getElementById('addTagBtn')?.addEventListener('click', addTagAdmin);
+  document.getElementById('newTagInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') addTagAdmin(); });
   document.getElementById('bulkRenamePreviewBtn')?.addEventListener('click', bulkRenamePreview);
   document.getElementById('bulkRenameApplyBtn')?.addEventListener('click', bulkRenameApply);
   document.getElementById('renameScheme')?.addEventListener('change', toggleCustomScheme);

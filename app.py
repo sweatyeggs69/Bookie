@@ -276,6 +276,26 @@ def create_app():
                     db.case((Book.series_order.is_(None), 1), else_=0).asc(),
                     Book.series_order.asc(),
                 )
+        elif sort == "author":
+            # Author primary, then series name + order as secondary (nulls last), then title
+            if order == "desc":
+                query = query.order_by(
+                    Book.author.desc(),
+                    db.case((Book.series.is_(None), 1), else_=0).asc(),
+                    Book.series.asc(),
+                    db.case((Book.series_order.is_(None), 1), else_=0).asc(),
+                    Book.series_order.asc(),
+                    Book.title.desc(),
+                )
+            else:
+                query = query.order_by(
+                    Book.author.asc(),
+                    db.case((Book.series.is_(None), 1), else_=0).asc(),
+                    Book.series.asc(),
+                    db.case((Book.series_order.is_(None), 1), else_=0).asc(),
+                    Book.series_order.asc(),
+                    Book.title.asc(),
+                )
         else:
             col = getattr(Book, sort, None)
             if col is not None:
@@ -824,7 +844,12 @@ def create_app():
     @login_required
     def remove_book_tag(book_id, tag_id):
         bt = BookTag.query.filter_by(book_id=book_id, tag_id=tag_id).first_or_404()
+        tag = bt.tag
         db.session.delete(bt)
+        db.session.flush()
+        # Auto-delete the tag if it has no remaining books
+        if not BookTag.query.filter_by(tag_id=tag.id).first():
+            db.session.delete(tag)
         db.session.commit()
         return jsonify({"success": True})
 
