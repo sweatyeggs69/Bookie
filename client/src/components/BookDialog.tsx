@@ -7,7 +7,6 @@ import Dialog from './Dialog'
 import MetaDialog from './MetaDialog'
 import CoverDialog from './CoverDialog'
 import Spinner from './Spinner'
-import { useToast } from '../App'
 
 interface BookDialogProps {
   bookId: number
@@ -88,7 +87,6 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
 
 export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProps) {
   const qc = useQueryClient()
-  const { addToast } = useToast()
 
   const { data: book, isLoading, isError } = useQuery<Book>({
     queryKey: ['book', bookId],
@@ -192,7 +190,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
       qc.invalidateQueries({ queryKey: ['books'] })
       onClose()
     },
-    onError: (e: Error) => addToast('error', e.message),
+    onError: () => {},
   })
 
   const deleteMutation = useMutation({
