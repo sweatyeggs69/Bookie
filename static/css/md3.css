@@ -1109,7 +1109,7 @@ textarea.field { resize: vertical; min-height: 80px; }
 @media (max-width: 768px) {
   .book-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .filter-bar {
-    padding: 8px 16px 12px;
+    padding: 8px 16px;
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
