@@ -35,8 +35,7 @@ export default function LoginPage({ onSuccess }: Props) {
           <div className="w-14 h-14 rounded-2xl bg-accent/20 flex items-center justify-center mb-4">
             <BookOpen className="w-7 h-7 text-accent" />
           </div>
-          <h1 className="text-2xl font-semibold text-ink tracking-tight">Bookie</h1>
-          <p className="text-ink-muted text-sm mt-1">Sign in to your library</p>
+          <h1 className="text-2xl font-semibold text-ink tracking-tight">Bookie</h1>          
         </div>
 
         {/* Card */}
@@ -51,8 +50,6 @@ export default function LoginPage({ onSuccess }: Props) {
 
             {/* Username */}
             <div className="mb-4">
-              <label htmlFor="username" className="block text-sm font-medium text-ink mb-1.5">
-                Username
               </label>
               <input
                 id="username"
@@ -62,15 +59,13 @@ export default function LoginPage({ onSuccess }: Props) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
-                placeholder="Enter your username"
+                placeholder="Username"
                 disabled={loading}
               />
             </div>
 
             {/* Password */}
             <div className="mb-6">
-              <label htmlFor="password" className="block text-sm font-medium text-ink mb-1.5">
-                Password
               </label>
               <input
                 id="password"
@@ -79,7 +74,7 @@ export default function LoginPage({ onSuccess }: Props) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
-                placeholder="Enter your password"
+                placeholder="Password"
                 disabled={loading}
               />
             </div>
