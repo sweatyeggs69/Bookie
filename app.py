@@ -252,7 +252,13 @@ def create_app():
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    app.config["SESSION_COOKIE_SECURE"] = not app.debug
+    _secure_env = os.environ.get("SESSION_COOKIE_SECURE", "").lower()
+    if _secure_env in ("0", "false", "no"):
+        app.config["SESSION_COOKIE_SECURE"] = False
+    elif _secure_env in ("1", "true", "yes"):
+        app.config["SESSION_COOKIE_SECURE"] = True
+    else:
+        app.config["SESSION_COOKIE_SECURE"] = not app.debug
 
     db.init_app(app)
 
