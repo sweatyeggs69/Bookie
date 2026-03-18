@@ -136,7 +136,7 @@ export function getCoverUrl(bookId: number): string {
 
 // ─── Library scan ─────────────────────────────────────────────────────────────
 
-export function scanLibrary(): Promise<{ added: number; removed: number; updated: number }> {
+export function scanLibrary(): Promise<{ added: number; removed: number }> {
   return api('/api/books/scan', { method: 'POST' })
 }
 

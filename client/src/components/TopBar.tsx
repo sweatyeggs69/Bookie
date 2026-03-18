@@ -61,10 +61,10 @@ export default function TopBar({ onAuthChange }: Props) {
     setScanning(true);
     try {
       const result = await api.scanLibrary();
-      addToast(
-        'success',
-        `Library scanned — ${result.added} added, ${result.updated} updated, ${result.removed} removed.`
-      );
+      const parts: string[] = [];
+      if (result.added) parts.push(`${result.added} ${result.added === 1 ? 'book' : 'books'} added`);
+      if (result.removed) parts.push(`${result.removed} ${result.removed === 1 ? 'book' : 'books'} removed`);
+      addToast('success', parts.length ? parts.join(', ') + '.' : 'Library up to date!');
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Scan failed');
     } finally {
