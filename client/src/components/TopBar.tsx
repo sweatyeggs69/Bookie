@@ -94,14 +94,14 @@ export default function TopBar({ onAuthChange }: Props) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 h-16 bg-surface-card border-b border-line flex items-center gap-3 px-4">
+    <header className="sticky top-0 z-40 h-14 bg-surface-card border-b border-line flex items-center gap-3 px-4">
       {/* Brand — always visible */}
       <button
         onClick={() => setView('library')}
-        className="flex items-center gap-2.5 shrink-0 text-ink hover:text-accent transition-colors"
+        className="flex items-center gap-2 shrink-0 text-ink hover:text-accent transition-colors"
       >
-        <BookOpen className="w-6 h-6 text-accent" />
-        <span className="font-semibold text-xl tracking-tight">Bookie</span>
+        <BookOpen className="w-5 h-5 text-accent" />
+        <span className="font-semibold text-base tracking-tight">Bookie</span>
       </button>
 
       {/* Desktop search — center-aligned, max-width constrained */}
@@ -121,13 +121,13 @@ export default function TopBar({ onAuthChange }: Props) {
           onClick={() => setView('upload')}
           title="Upload books"
           className={[
-            'w-11 h-11 flex items-center justify-center rounded transition-colors',
+            'w-9 h-9 flex items-center justify-center rounded transition-colors',
             view === 'upload'
               ? 'text-accent bg-accent-muted'
               : 'text-ink-muted hover:text-ink hover:bg-surface-raised',
           ].join(' ')}
         >
-          <Upload className="w-5 h-5" />
+          <Upload className="w-4 h-4" />
         </button>
 
         {/* User menu */}
@@ -139,11 +139,11 @@ export default function TopBar({ onAuthChange }: Props) {
         >
           <button
             onClick={() => setUserMenuOpen((o) => !o)}
-            className="flex items-center gap-1.5 h-11 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
+            className="flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
           >
-            <User className="w-5 h-5" />
-            <span className="hidden sm:block text-base max-w-[120px] truncate">{displayName}</span>
-            <ChevronDown className="w-4 h-4" />
+            <User className="w-4 h-4" />
+            <span className="hidden sm:block text-sm max-w-[120px] truncate">{displayName}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
 
           {userMenuOpen && (

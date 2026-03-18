@@ -356,7 +356,7 @@ export default function FilterBar() {
 
   return (
     <div className={[
-      'sticky top-16 z-30 bg-surface border-b border-line px-4 py-2.5 flex flex-col gap-2',
+      'sticky top-14 z-30 bg-surface border-b border-line px-4 py-2.5 flex flex-col gap-2',
       'transition-transform duration-300 ease-in-out',
       barHidden ? '-translate-y-full lg:translate-y-0' : 'translate-y-0',
     ].join(' ')}>
