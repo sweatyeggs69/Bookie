@@ -23,6 +23,8 @@ Bookie is a stupidly simple eBook management, designed for those who only need t
 ## Metadata Basics
 Everything you need for eReader-relevant metadata
 
+<img width="820" height="597" alt="image" src="https://github.com/user-attachments/assets/f6cbe98d-319f-4b6e-92fb-785a3f90ccba" />
+
 ## Docker Compose
 
 ```yaml
