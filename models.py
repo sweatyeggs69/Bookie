@@ -59,7 +59,6 @@ class Book(db.Model):
     page_count = db.Column(db.Integer)
     categories = db.Column(db.String(512))  # kept for backward compat
     rating = db.Column(db.Float)
-    google_books_id = db.Column(db.String(64))
     goodreads_id = db.Column(db.String(64))
     series = db.Column(db.String(256))
     series_order = db.Column(db.Float)
@@ -102,7 +101,6 @@ class Book(db.Model):
             "language": self.language,
             "page_count": self.page_count,
             "rating": self.rating,
-            "google_books_id": self.google_books_id,
             "goodreads_id": self.goodreads_id,
             "cover_filename": self.cover_filename,
             "series": self.series,

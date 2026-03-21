@@ -20,7 +20,6 @@ export interface Book {
   rating: number | null
 
   // External IDs
-  google_books_id: string | null
   goodreads_id: string | null
 
   // Cover
@@ -111,7 +110,6 @@ export interface MetaResult {
   publisher: string | null
   description: string | null
   cover_url: string | null
-  google_books_id: string | null
   source: string
 }
 
