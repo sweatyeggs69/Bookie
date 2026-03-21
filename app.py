@@ -553,6 +553,8 @@ def create_app():
             if f not in data:
                 continue
             val = data[f]
+            if f == "published_date" and isinstance(val, str):
+                val = val[:4] or None
             # Guard float fields against NaN / Infinity which would corrupt sorting
             if f in ("series_order", "rating") and val is not None:
                 try:

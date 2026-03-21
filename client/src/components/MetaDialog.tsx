@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, AlertCircle, X, BookOpen } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import * as api from '../api/client'
@@ -21,6 +21,10 @@ export default function MetaDialog({ bookTitle, onClose, onApplied }: MetaDialog
     mutationFn: () => api.searchMeta(query.trim()),
     onSuccess: (data) => setResults(data),
   })
+
+  useEffect(() => {
+    if (query.trim()) searchMutation.mutate()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -116,7 +120,6 @@ export default function MetaDialog({ bookTitle, onClose, onApplied }: MetaDialog
                     {result.publisher && <span className="text-ink-faint text-xs truncate">{result.publisher}</span>}
                     {result.isbn13 && <span className="text-ink-faint text-xs font-mono">{result.isbn13}</span>}
                   </div>
-                  {result.description && <p className="text-ink-muted text-xs line-clamp-2 mt-0.5">{result.description}</p>}
                 </div>
               </button>
             ))}
@@ -167,9 +170,6 @@ export default function MetaDialog({ bookTitle, onClose, onApplied }: MetaDialog
                 {previewResult.publisher && <span>{previewResult.publisher}</span>}
                 {previewResult.isbn13 && <span className="font-mono">{previewResult.isbn13}</span>}
               </div>
-              {previewResult.description && (
-                <p className="text-ink-muted text-sm leading-relaxed mt-1">{previewResult.description}</p>
-              )}
             </div>
           </div>
         </div>

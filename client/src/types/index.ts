@@ -108,7 +108,6 @@ export interface MetaResult {
   isbn: string | null
   isbn13: string | null
   publisher: string | null
-  description: string | null
   cover_url: string | null
   source: string
 }

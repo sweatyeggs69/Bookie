@@ -57,7 +57,6 @@ def _parse_ol_doc(doc: dict) -> dict:
         "author": ", ".join(doc.get("author_name", [])),
         "publisher": ", ".join(doc.get("publisher", [])[:2]),
         "published_date": str(doc.get("first_publish_year", "")),
-        "description": None,
         "page_count": doc.get("number_of_pages_median"),
         "categories": ", ".join((doc.get("subject") or [])[:5]),
         "language": ", ".join(doc.get("language", [])),
@@ -91,7 +90,6 @@ def search_itunes(query: str, max_results: int = 10) -> list[dict]:
                 "author": item.get("artistName"),
                 "publisher": item.get("sellerName"),
                 "published_date": (item.get("releaseDate") or "")[:4],
-                "description": item.get("description"),
                 "page_count": None,
                 "categories": ", ".join(item.get("genres", [])),
                 "language": None,
@@ -161,7 +159,7 @@ def _parse_gr_row(row) -> dict | None:
             "title": title_el.text.strip() if title_el else None,
             "author": author_el.text.strip() if author_el else None,
             "cover_url": cover_url,
-            "publisher": None, "published_date": None, "description": None,
+            "publisher": None, "published_date": None,
             "page_count": None, "categories": None, "language": None,
             "isbn": None, "isbn13": None, "rating": None,
         }
@@ -178,8 +176,6 @@ def _parse_gr_book_page(html: str, book_id: str) -> dict:
 
     title = txt("h1[data-testid='bookTitle']") or txt("h1.Text__title1")
     author = txt("span.ContributorLink__name")
-    description_el = soup.select_one("div[data-testid='description'] span.Formatted")
-    description = description_el.get_text(strip=True) if description_el else None
     cover_el = soup.select_one("img.ResponsiveImage")
     cover_url = cover_el["src"] if cover_el and cover_el.get("src") else None
     rating_el = soup.select_one("div.RatingStatistics__rating")
@@ -206,7 +202,6 @@ def _parse_gr_book_page(html: str, book_id: str) -> dict:
         "author": author,
         "cover_url": cover_url,
         "publisher": None, "published_date": None,
-        "description": description,
         "page_count": page_count,
         "categories": categories,
         "language": None,
