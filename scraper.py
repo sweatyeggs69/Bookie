@@ -90,7 +90,7 @@ def search_itunes(query: str, max_results: int = 10) -> list[dict]:
                 "title": item.get("trackName"),
                 "author": item.get("artistName"),
                 "publisher": item.get("sellerName"),
-                "published_date": (item.get("releaseDate") or "")[:10],
+                "published_date": (item.get("releaseDate") or "")[:4],
                 "description": item.get("description"),
                 "page_count": None,
                 "categories": ", ".join(item.get("genres", [])),

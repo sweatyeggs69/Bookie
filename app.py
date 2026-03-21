@@ -89,7 +89,7 @@ def _extract_epub_metadata(path: Path) -> dict:
         author = authors[0] if authors else None
 
         date_raw = dc("date")
-        pub_date = date_raw[:10] if date_raw else None  # keep YYYY-MM-DD
+        pub_date = date_raw[:4] if date_raw else None
 
         return {
             "title": dc("title"),
@@ -121,7 +121,7 @@ def _extract_pdf_metadata(path: Path) -> dict:
             # D:YYYYMMDDHHmmSS format
             digits = re.sub(r"[^0-9]", "", raw_date[:10])
             if len(digits) >= 4:
-                pub_date = digits[:4] + ("-" + digits[4:6] if len(digits) >= 6 else "")
+                pub_date = digits[:4]
 
         return {
             "title": clean(info.get("/Title")),
@@ -1337,6 +1337,8 @@ def _apply_metadata(book: Book, meta: dict, replace_missing_only: bool = None):
     for src_key, model_key in field_map.items():
         val = meta.get(src_key)
         if val:
+            if src_key == "published_date":
+                val = str(val)[:4]  # store year only
             if replace_missing_only and getattr(book, model_key, None):
                 continue
             setattr(book, model_key, val)
