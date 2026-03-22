@@ -339,7 +339,10 @@ def create_app():
         tag = request.args.get("tag")
         if tag:
             query = query.join(BookTag, BookTag.book_id == Book.id).join(Tag, Tag.id == BookTag.tag_id).filter(Tag.name == tag)
+        _SORT_COLS = {"author", "title", "series", "published_date", "date_added", "file_size", "rating"}
         sort = request.args.get("sort", "author")
+        if sort not in _SORT_COLS:
+            sort = "author"
         order = request.args.get("order", "asc")
         if sort == "series":
             # Sort nulls last, then by series name, then by series order
@@ -390,8 +393,8 @@ def create_app():
             col = getattr(Book, sort, None)
             if col is not None:
                 query = query.order_by(col.desc() if order == "desc" else col.asc())
-        page = request.args.get("page", 1, type=int)
-        per_page = request.args.get("per_page", 40, type=int)
+        page = max(1, request.args.get("page", 1, type=int))
+        per_page = min(max(1, request.args.get("per_page", 40, type=int)), 200)
         paginated = query.paginate(page=page, per_page=per_page, error_out=False)
         return jsonify({
             "books": [b.to_dict() for b in paginated.items],
@@ -544,7 +547,7 @@ def create_app():
     @login_required
     def update_book(book_id):
         book = Book.query.get_or_404(book_id)
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True)
         fields = [
             "title", "author", "published_date", "page_count",
             "series", "series_order", "rating",
@@ -591,7 +594,7 @@ def create_app():
     @app.route("/api/books/bulk-delete", methods=["POST"])
     @login_required
     def bulk_delete_books():
-        ids = (request.get_json(force=True) or {}).get("ids", [])
+        ids = (request.get_json(silent=True) or {}).get("ids", [])
         deleted = 0
         for book_id in ids:
             book = Book.query.get(book_id)
@@ -611,7 +614,7 @@ def create_app():
     @app.route("/api/books/bulk-tag", methods=["POST"])
     @login_required
     def bulk_add_tag():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         ids = data.get("ids", [])
         tag_name = (data.get("tag") or "").strip()
         if not tag_name:
@@ -634,7 +637,9 @@ def create_app():
     @login_required
     def download_book(book_id):
         book = Book.query.get_or_404(book_id)
-        filepath = BOOKS_DIR / book.filename
+        filepath = (BOOKS_DIR / book.filename).resolve()
+        if not filepath.is_relative_to(BOOKS_DIR.resolve()):
+            abort(400)
         if not filepath.exists():
             abort(404)
         return send_file(str(filepath), as_attachment=True, download_name=Path(book.filename).name)
@@ -644,7 +649,7 @@ def create_app():
     def rename_book(book_id):
         """Rename a specific book's file using a given scheme or custom template."""
         book = Book.query.get_or_404(book_id)
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         scheme = data.get("scheme", "author_title")
         custom_tpl = data.get("custom_template", "")
         meta = {
@@ -668,7 +673,7 @@ def create_app():
     @login_required
     def rename_preview():
         """Preview how a naming scheme would rename a list of books."""
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         scheme = data.get("scheme", "author_title")
         custom_tpl = data.get("custom_template", "")
         book_ids = data.get("book_ids", [])
@@ -705,7 +710,7 @@ def create_app():
     @login_required
     def bulk_rename():
         """Rename all books using the current naming scheme and folder structure. apply=true to commit."""
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         apply = data.get("apply", False)
         scheme = Settings.get("rename_scheme", "original")
         custom_tpl = Settings.get("rename_custom_template", "")
@@ -773,7 +778,7 @@ def create_app():
     @login_required
     def fetch_metadata(book_id):
         book = Book.query.get_or_404(book_id)
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         source = data.get("source", "open_library")
         query = data.get("query") or book.isbn or book.isbn13 or book.title or ""
         apply_to_book = data.get("apply", False)
@@ -789,7 +794,7 @@ def create_app():
     @login_required
     def apply_metadata(book_id):
         book = Book.query.get_or_404(book_id)
-        meta = request.get_json(force=True) or {}
+        meta = request.get_json(silent=True) or {}
         # Explicit user selection always replaces all fields
         _apply_metadata(book, meta, replace_missing_only=False)
         # Re-apply rename/organize after metadata import
@@ -839,7 +844,7 @@ def create_app():
     @app.route("/api/metadata/sources", methods=["PUT"])
     @login_required
     def set_meta_sources():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         if "priority" in data:
             Settings.set("source_priority", ",".join(data["priority"]))
         if "disabled" in data:
@@ -866,7 +871,7 @@ def create_app():
         if "file" in request.files:
             data = request.files["file"].read()
         else:
-            body = request.get_json(force=True) or {}
+            body = request.get_json(silent=True) or {}
             url = body.get("url")
             if not url:
                 return jsonify({"error": "No file or URL provided"}), 400
@@ -943,7 +948,7 @@ def create_app():
     @app.route("/api/tags", methods=["POST"])
     @login_required
     def create_tag():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
         if not name:
             return jsonify({"error": "Name is required"}), 400
@@ -974,7 +979,7 @@ def create_app():
     @login_required
     def add_book_tag(book_id):
         Book.query.get_or_404(book_id)
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
         if not name:
             return jsonify({"error": "Tag name required"}), 400
@@ -1009,7 +1014,7 @@ def create_app():
     @app.route("/api/email-addresses", methods=["POST"])
     @login_required
     def create_email_address():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         email = (data.get("email") or "").strip().lower()
         label = (data.get("label") or "").strip()
         if not email:
@@ -1028,7 +1033,7 @@ def create_app():
     @login_required
     def update_email_address(addr_id):
         addr = EmailAddress.query.get_or_404(addr_id)
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         if "label" in data:
             addr.label = (data["label"] or "").strip() or addr.email
         if "email" in data:
@@ -1071,7 +1076,7 @@ def create_app():
     @login_required
     def send_book(book_id):
         book = Book.query.get_or_404(book_id)
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
 
         # Resolve recipient: explicit > EmailAddress table default > legacy Settings key
         recipient = data.get("recipient")
@@ -1140,7 +1145,7 @@ def create_app():
     @app.route("/api/settings", methods=["PUT"])
     @login_required
     def update_settings():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         for key in SETTINGS_KEYS:
             if key not in data:
                 continue
@@ -1156,7 +1161,7 @@ def create_app():
     @app.route("/api/settings/test-smtp", methods=["POST"])
     @login_required
     def test_smtp():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         host = data.get("smtp_host") or Settings.get("smtp_host")
         port = _safe_int(data.get("smtp_port") or Settings.get("smtp_port"), 587)
         user = data.get("smtp_user") or Settings.get("smtp_user")
@@ -1174,7 +1179,7 @@ def create_app():
     @app.route("/api/settings/test-smtp-send", methods=["POST"])
     @login_required
     def test_smtp_send():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         host = data.get("smtp_host") or Settings.get("smtp_host")
         port = _safe_int(data.get("smtp_port") or Settings.get("smtp_port"), 587)
         user = data.get("smtp_user") or Settings.get("smtp_user")

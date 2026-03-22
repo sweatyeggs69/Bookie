@@ -59,13 +59,15 @@ def register_auth_routes(app, Settings):
     def api_setup():
         if not is_first_run(Settings):
             return jsonify({"error": "Setup already complete"}), 403
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
         if not username:
             return jsonify({"error": "Username is required"}), 400
         if len(password) < 8:
             return jsonify({"error": "Password must be at least 8 characters"}), 400
+        if len(password) > 256:
+            return jsonify({"error": "Password must be 256 characters or fewer"}), 400
         set_password(username, password, Settings)
         session["authenticated"] = True
         session["username"] = username
@@ -76,7 +78,7 @@ def register_auth_routes(app, Settings):
     def api_login():
         if is_first_run(Settings):
             return jsonify({"error": "No account configured. Please complete setup."}), 403
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
         if check_credentials(username, password, Settings):
@@ -102,7 +104,7 @@ def register_auth_routes(app, Settings):
     @app.route("/api/auth/change-password", methods=["POST"])
     @login_required
     def api_change_password():
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         current = data.get("current_password", "")
         new_pass = data.get("new_password", "")
         username = session.get("username", "")
@@ -110,5 +112,7 @@ def register_auth_routes(app, Settings):
             return jsonify({"error": "Current password incorrect"}), 403
         if len(new_pass) < 8:
             return jsonify({"error": "Password must be at least 8 characters"}), 400
+        if len(new_pass) > 256:
+            return jsonify({"error": "Password must be 256 characters or fewer"}), 400
         set_password(username, new_pass, Settings)
         return jsonify({"success": True})

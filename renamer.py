@@ -1,7 +1,10 @@
 """File renaming on import with configurable naming schemes."""
+import logging
 import re
 import unicodedata
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ── Built-in naming scheme templates ─────────────────────────────────────────
 SCHEMES = {
@@ -145,7 +148,11 @@ def rename_book_file(
             counter += 1
 
     if src_path != new_path:
-        src_path.rename(new_path)
+        try:
+            src_path.rename(new_path)
+        except OSError as exc:
+            logger.warning("Failed to rename %s → %s: %s", src_path, new_path, exc)
+            return src_path, str(src_path.relative_to(books_dir))
 
     return new_path, str(new_path.relative_to(books_dir))
 
@@ -185,6 +192,10 @@ def organize_into_folders(
             counter += 1
 
     if src_path != target_path:
-        src_path.rename(target_path)
+        try:
+            src_path.rename(target_path)
+        except OSError as exc:
+            logger.warning("Failed to move %s → %s: %s", src_path, target_path, exc)
+            return src_path, str(src_path.relative_to(books_dir))
 
     return target_path, str(target_path.relative_to(books_dir))

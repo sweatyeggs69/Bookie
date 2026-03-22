@@ -1,13 +1,35 @@
 """Metadata scraping from Open Library, Apple Books, and GoodReads."""
+import ipaddress
 import re
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return False for non-HTTPS URLs or those resolving to private/loopback addresses."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            return False
+        host = parsed.hostname or ""
+        try:
+            addr = ipaddress.ip_address(host)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                return False
+        except ValueError:
+            # hostname — block obvious internal names
+            if host in ("localhost",) or host.endswith(".local") or host.endswith(".internal"):
+                return False
+        return True
+    except Exception:
+        return False
 
 HEADERS = {
     "User-Agent": (
@@ -279,6 +301,9 @@ _COVER_MAX_BYTES = 10 * 1024 * 1024  # 10 MB — guard against huge/malicious co
 
 def fetch_cover_image(url: str) -> bytes | None:
     """Download a cover image from a URL, refusing responses larger than 10 MB."""
+    if not _is_safe_url(url):
+        logger.warning("Blocked cover download from unsafe URL: %s", url)
+        return None
     try:
         r = requests.get(url, headers=HEADERS, timeout=15, stream=True)
         r.raise_for_status()
