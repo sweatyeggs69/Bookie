@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
 import * as api from '../api/client'
 import SendDialog from './SendDialog'
 import { useStore } from '../store'
+import { useToast } from '../contexts/toast'
 
 interface BookListItemProps {
   book: Book
@@ -41,10 +42,18 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
   const badge = book.file_format ? book.file_format.toUpperCase().replace('.', '') : null
   const isSelected = selectedBookIds.includes(book.id)
 
+  const { addToast } = useToast()
+
   const { data: emailAddresses = [] } = useQuery<EmailAddress[]>({
     queryKey: ['emailAddresses'],
     queryFn: () => api.getEmailAddresses(),
     staleTime: 5 * 60 * 1000,
+  })
+
+  const quickSendMutation = useMutation({
+    mutationFn: () => api.sendBook(book.id, emailAddresses[0]?.email),
+    onSuccess: () => addToast('success', 'Book sent!'),
+    onError: (e: Error) => addToast('error', e.message),
   })
 
   useEffect(() => {
@@ -185,10 +194,17 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
                   <Download size={14} className="text-ink-muted" /> Download
                 </a>
                 {emailAddresses.length > 0 && (
-                  <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
-                    <Send size={14} className="text-ink-muted" /> Send to…
-                  </button>
+                  <div className="flex items-stretch">
+                    <button type="button" onClick={() => { setMenuOpen(false); quickSendMutation.mutate() }}
+                      className="flex items-center gap-2 flex-[3] px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                      <Send size={14} className="text-ink-muted" /> Send
+                    </button>
+                    <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}
+                      className="flex items-center justify-center flex-1 px-2 py-2 text-ink-muted hover:text-ink hover:bg-surface-high transition-colors border-l border-line"
+                      aria-label="Choose recipient">
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
             )}
