@@ -353,8 +353,8 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                   <input type="text" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Unknown author" className="field" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Published Date</label>
-                  <input type="text" value={publishedDate} onChange={e => setPublishedDate(e.target.value)} placeholder="YYYY-MM-DD" className="field" />
+                  <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Published Year</label>
+                  <input type="text" value={publishedDate} onChange={e => setPublishedDate(e.target.value)} placeholder="YYYY" className="field" />
                 </div>
               </div>
 

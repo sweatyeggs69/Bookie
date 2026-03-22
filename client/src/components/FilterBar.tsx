@@ -23,7 +23,7 @@ const SORT_OPTIONS = [
   { value: 'author', label: 'Author' },
   { value: 'title', label: 'Title' },
   { value: 'series', label: 'Series' },
-  { value: 'published_date', label: 'Release Date' },
+  { value: 'published_date', label: 'Published Year' },
   { value: 'date_added', label: 'Date Added' },
   { value: 'file_size', label: 'File Size' },
 ]
