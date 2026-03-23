@@ -15,8 +15,10 @@ interface BookCardProps {
 export default function BookCard({ book, onClick }: BookCardProps) {
   const [imgError, setImgError] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuFlip, setMenuFlip] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
   const coverUrl = book.cover_filename && !imgError
@@ -128,7 +130,15 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           >
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); setMenuOpen(v => !v) }}
+              onClick={e => {
+                e.stopPropagation()
+                if (btnRef.current) {
+                  const rect = btnRef.current.getBoundingClientRect()
+                  setMenuFlip(rect.left > window.innerWidth / 2)
+                }
+                setMenuOpen(v => !v)
+              }}
+              ref={btnRef}
               className="w-7 h-7 flex items-center justify-center rounded bg-black/25 text-white hover:bg-black/45 transition-colors"
               aria-label="Book actions"
             >
@@ -138,7 +148,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden />
-                <div className="absolute left-0 top-full mt-0.5 w-36 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
+                <div className={`absolute top-full mt-0.5 w-36 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50 ${menuFlip ? 'right-0' : 'left-0'}`}>
                 <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                   <CheckSquare size={14} className="text-ink-muted" /> Select
