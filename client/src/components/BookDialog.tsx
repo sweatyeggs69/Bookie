@@ -218,7 +218,9 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
         const tagObj = allTags.find(t => t.name === name)
         if (tagObj) await api.removeBookTag(bookId, tagObj.id).catch(() => {})
       }
-      return updated
+      // Fetch the book once all writes are done so onSuccess has the final
+      // cover_filename and date_modified, not the pre-cover-upload snapshot.
+      return api.getBook(bookId)
     },
     onSuccess: (updated) => {
       // Immediately patch text metadata in every active books-list cache so the

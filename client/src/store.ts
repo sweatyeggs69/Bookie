@@ -8,6 +8,9 @@ interface PersistedPrefs {
   viewMode: 'grid' | 'list'
   gridSize: number
   perPage: number
+  page: number
+  filters: Filters
+  searchQuery: string
 }
 
 // ─── Full store shape ─────────────────────────────────────────────────────────
@@ -144,6 +147,9 @@ export const useStore = create<StoreState>()(
         viewMode: state.viewMode,
         gridSize: state.gridSize,
         perPage: state.perPage,
+        page: state.page,
+        filters: state.filters,
+        searchQuery: state.searchQuery,
       }),
     },
   ),
