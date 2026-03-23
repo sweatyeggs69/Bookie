@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal } from 'lucide-react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
@@ -12,12 +13,13 @@ interface BookCardProps {
   onClick: () => void
 }
 
+const MENU_WIDTH = 144 // w-36 = 9rem = 144px
+
 export default function BookCard({ book, onClick }: BookCardProps) {
   const [imgError, setImgError] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [menuFlip, setMenuFlip] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const [sendOpen, setSendOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
@@ -41,15 +43,6 @@ export default function BookCard({ book, onClick }: BookCardProps) {
     onError: (e: Error) => addToast('error', e.message),
   })
 
-  useEffect(() => {
-    if (!menuOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [menuOpen])
-
   const handleCardClick = (e?: React.MouseEvent) => {
     if (selectionMode) {
       if (e?.shiftKey && lastSelectedId !== null) {
@@ -66,6 +59,16 @@ export default function BookCard({ book, onClick }: BookCardProps) {
     } else {
       onClick()
     }
+  }
+
+  const openMenu = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      const left = Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8)
+      setMenuPos({ top: rect.bottom + 2, left })
+    }
+    setMenuOpen(v => !v)
   }
 
   const seriesBadge = book.series_order != null ? `#${book.series_order}` : null
@@ -121,58 +124,21 @@ export default function BookCard({ book, onClick }: BookCardProps) {
             </div>
           </div>
         ) : (
-          /* Three-dot menu — on card (overflow-visible), not inside cover */
+          /* Three-dot menu trigger */
           <div
-            ref={menuRef}
             className="absolute top-1 left-1 z-20"
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
           >
             <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation()
-                if (btnRef.current) {
-                  const rect = btnRef.current.getBoundingClientRect()
-                  setMenuFlip(rect.left > window.innerWidth / 2)
-                }
-                setMenuOpen(v => !v)
-              }}
               ref={btnRef}
+              type="button"
+              onClick={openMenu}
               className="w-7 h-7 flex items-center justify-center rounded bg-black/25 text-white hover:bg-black/45 transition-colors"
               aria-label="Book actions"
             >
               <MoreVertical size={13} />
             </button>
-
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden />
-                <div className={`absolute top-full mt-0.5 w-36 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50 ${menuFlip ? 'right-0' : 'left-0'}`}>
-                <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
-                  <CheckSquare size={14} className="text-ink-muted" /> Select
-                </button>
-                <a href={api.getDownloadUrl(book.id)} download onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
-                  <Download size={14} className="text-ink-muted" /> Download
-                </a>
-                {emailAddresses.length > 0 && (
-                  <div className="flex items-stretch">
-                    <button type="button" onClick={() => { setMenuOpen(false); quickSendMutation.mutate() }}
-                      className="flex items-center gap-2 flex-[3] px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
-                      <Send size={14} className="text-ink-muted" /> Send
-                    </button>
-                    <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}
-                      className="flex items-center justify-center flex-1 px-2 py-2 text-ink-muted hover:text-ink hover:bg-surface-high transition-colors border-l border-line"
-                      aria-label="Choose recipient">
-                      <MoreHorizontal size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              </>
-            )}
           </div>
         )}
 
@@ -193,6 +159,40 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           )}
         </div>
       </div>
+
+      {/* Menu rendered in a portal so it's always above every card regardless of stacking context */}
+      {menuOpen && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden />
+          <div
+            className="fixed z-50 w-36 bg-surface-raised border border-line rounded-lg shadow-xl py-1 book-menu-pop"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+              <CheckSquare size={14} className="text-ink-muted" /> Select
+            </button>
+            <a href={api.getDownloadUrl(book.id)} download onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+              <Download size={14} className="text-ink-muted" /> Download
+            </a>
+            {emailAddresses.length > 0 && (
+              <div className="flex items-stretch">
+                <button type="button" onClick={() => { setMenuOpen(false); quickSendMutation.mutate() }}
+                  className="flex items-center gap-2 flex-[3] px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                  <Send size={14} className="text-ink-muted" /> Send
+                </button>
+                <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}
+                  className="flex items-center justify-center flex-1 px-2 py-2 text-ink-muted hover:text-ink hover:bg-surface-high transition-colors border-l border-line"
+                  aria-label="Choose recipient">
+                  <MoreHorizontal size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
 
       {sendOpen && (
         <SendDialog bookId={book.id} bookTitle={book.title} emailAddresses={emailAddresses} onClose={() => setSendOpen(false)} />
