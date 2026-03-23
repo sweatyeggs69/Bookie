@@ -220,10 +220,19 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
       }
       return updated
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      // Immediately patch text metadata in every active books-list cache so the
+      // grid reflects changes as soon as the dialog closes, without waiting for
+      // the background refetch to complete.
+      qc.setQueriesData<{ books: Book[]; total: number; pages: number; page: number }>(
+        { queryKey: ['books'] },
+        old => old ? { ...old, books: old.books.map(b => b.id === bookId ? { ...b, ...updated } : b) } : old,
+      )
+      qc.setQueryData(['book', bookId], updated)
+      // Background refetch to pick up cover_filename / tag changes from the server
+      qc.invalidateQueries({ queryKey: ['books'] })
       qc.invalidateQueries({ queryKey: ['book', bookId] })
       qc.invalidateQueries({ queryKey: ['tags'] })
-      qc.invalidateQueries({ queryKey: ['books'] })
       onClose()
     },
     onError: () => {},
@@ -244,7 +253,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
 
   // Cover preview: pending takes priority, then stored cover
   const coverUrl = pendingCoverPreview
-    ?? (book?.cover_filename && !imgError ? `/api/books/${bookId}/cover` : null)
+    ?? (book?.cover_filename && !imgError ? `/api/books/${bookId}/cover?t=${book?.date_modified ?? ''}` : null)
 
   const isSaving = saveMutation.isPending
   const isDeleting = deleteMutation.isPending

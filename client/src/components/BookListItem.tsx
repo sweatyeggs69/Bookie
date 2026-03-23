@@ -36,7 +36,7 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
   const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
   const coverUrl = book.cover_filename && !imgError
-    ? `/api/books/${book.id}/cover`
+    ? `/api/books/${book.id}/cover?t=${book.date_modified ?? ''}`
     : null
 
   const badge = book.file_format ? book.file_format.toUpperCase().replace('.', '') : null

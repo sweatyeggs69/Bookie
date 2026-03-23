@@ -24,7 +24,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
   const { selectionMode, selectedBookIds, toggleBookSelection, selectRangeBooks, lastSelectedId, visibleBookIds, setSearchQuery, setSelectionMode } = useStore()
 
   const coverUrl = book.cover_filename && !imgError
-    ? `/api/books/${book.id}/cover`
+    ? `/api/books/${book.id}/cover?t=${book.date_modified ?? ''}`
     : null
 
   const isSelected = selectedBookIds.includes(book.id)
