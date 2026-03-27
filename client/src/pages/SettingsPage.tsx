@@ -418,7 +418,6 @@ function MetadataTab() {
   const [autoMetadata, setAutoMetadata] = useState(false)
   const [metaReplaceMissing, setMetaReplaceMissing] = useState(true)
   const [applyMetaCover, setApplyMetaCover] = useState(true)
-  const [epubNormalizeFonts, setEpubNormalizeFonts] = useState(false)
   const [priority, setPriority] = useState<string[]>([])
   const [disabled, setDisabled] = useState<Set<string>>(new Set())
   const dragSrc = useRef<number | null>(null)
@@ -428,7 +427,6 @@ function MetadataTab() {
       setAutoMetadata((settings.auto_metadata ?? 'false') === 'true')
       setMetaReplaceMissing((settings.meta_replace_missing ?? 'true') === 'true')
       setApplyMetaCover((settings.apply_meta_cover ?? 'true') !== 'false')
-      setEpubNormalizeFonts((settings.epub_normalize_fonts ?? 'false') === 'true')
     }
   }, [settings])
 
@@ -444,7 +442,7 @@ function MetadataTab() {
   }, [srcData])
 
   const saveSettingsMutation = useMutation({
-    mutationFn: () => api.saveSettings({ auto_metadata: autoMetadata ? 'true' : 'false', meta_replace_missing: metaReplaceMissing ? 'true' : 'false', apply_meta_cover: applyMetaCover ? 'true' : 'false', epub_normalize_fonts: epubNormalizeFonts ? 'true' : 'false' }),
+    mutationFn: () => api.saveSettings({ auto_metadata: autoMetadata ? 'true' : 'false', meta_replace_missing: metaReplaceMissing ? 'true' : 'false', apply_meta_cover: applyMetaCover ? 'true' : 'false' }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Saved') },
     onError: (e: Error) => addToast('error', e.message),
   })
@@ -484,13 +482,6 @@ function MetadataTab() {
           <div>
             <p className="text-sm text-ink">Apply cover image from metadata</p>
             <p className="text-xs text-ink-muted">When saving metadata, also update the book cover from the search result</p>
-          </div>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" checked={epubNormalizeFonts} onChange={e => setEpubNormalizeFonts(e.target.checked)} className="accent-accent w-4 h-4" />
-          <div>
-            <p className="text-sm text-ink">Normalize font sizes on EPUB import</p>
-            <p className="text-xs text-ink-muted">Strip embedded font-size overrides from EPUBs at import — preserves bold, italic, images, and all other formatting</p>
           </div>
         </label>
         <button className="btn-primary" onClick={() => saveSettingsMutation.mutate()} disabled={saveSettingsMutation.isPending}>

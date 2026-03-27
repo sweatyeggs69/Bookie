@@ -240,84 +240,6 @@ def _cleanup_empty_dirs(directory: Path) -> None:
         logger.debug("Could not remove empty directory %s: %s", directory, exc)
 
 
-def _clean_epub_font_sizes(epub_path: Path) -> None:
-    """Strip font-size from body-text elements in an EPUB's CSS and inline styles.
-
-    Targets only primary body text (p, div, span, li, td, blockquote, body).
-    Preserves font-size on headings (h1-h6), drop caps (:first-letter),
-    captions, and other decorative/structural elements, as well as all other
-    formatting (bold, italic, color, images, layout).
-    Modifies the file in-place; silently skips on any error.
-    """
-    # Selectors that carry intentional font sizing — skip these CSS rules entirely
-    _PRESERVE_SELECTOR_RE = re.compile(
-        r'\b(h[1-6]|:first-letter|:first-line|figcaption|caption|aside|header|footer|nav|sup|sub)\b',
-        re.IGNORECASE,
-    )
-    # CSS rule blocks: captures "selector { declarations }"
-    _CSS_RULE_RE = re.compile(r'([^{}@][^{}]*?)\{([^{}]*?)\}', re.DOTALL)
-    _FONT_SIZE_DECL_RE = re.compile(r'\bfont-size\s*:[^;}{]+;?', re.IGNORECASE)
-    # Tags whose inline font-size overrides we want to remove
-    _BODY_TEXT_TAGS_RE = re.compile(
-        r'^(p|div|span|li|dd|dt|td|th|blockquote|article|section|main|body)$',
-        re.IGNORECASE,
-    )
-    # Matches an opening tag + its style="..." attribute
-    _INLINE_STYLE_RE = re.compile(
-        r'(<(\w+)(\s[^>]*?)?\bstyle\s*=\s*)(["\'])([^"\']*?)\4',
-        re.IGNORECASE,
-    )
-
-    def _process_css(text: str) -> str:
-        def _replace_rule(m: re.Match) -> str:
-            selector, block = m.group(1), m.group(2)
-            if _PRESERVE_SELECTOR_RE.search(selector):
-                return m.group(0)
-            return selector + '{' + _FONT_SIZE_DECL_RE.sub('', block) + '}'
-        return _CSS_RULE_RE.sub(_replace_rule, text)
-
-    def _process_html(text: str) -> str:
-        def _replace_inline(m: re.Match) -> str:
-            prefix, tag, quote, style = m.group(1), m.group(2), m.group(4), m.group(5)
-            if not _BODY_TEXT_TAGS_RE.match(tag):
-                return m.group(0)
-            return prefix + quote + _FONT_SIZE_DECL_RE.sub('', style) + quote
-        return _INLINE_STYLE_RE.sub(_replace_inline, text)
-
-    try:
-        buf = io.BytesIO(epub_path.read_bytes())
-        with zipfile.ZipFile(buf, 'r') as zin:
-            names = zin.namelist()
-            entries: dict[str, bytes] = {}
-            changed = False
-            for name in names:
-                data = zin.read(name)
-                lower = name.lower()
-                if lower.endswith('.css'):
-                    cleaned = _process_css(data.decode('utf-8', errors='replace'))
-                    new_data = cleaned.encode('utf-8')
-                elif lower.endswith(('.html', '.xhtml', '.htm')):
-                    cleaned = _process_html(data.decode('utf-8', errors='replace'))
-                    new_data = cleaned.encode('utf-8')
-                else:
-                    new_data = data
-                entries[name] = new_data
-                if new_data != data:
-                    changed = True
-
-        if not changed:
-            return
-
-        out = io.BytesIO()
-        with zipfile.ZipFile(buf, 'r') as zin_orig:
-            with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
-                for name in names:
-                    orig_info = zin_orig.getinfo(name)
-                    zout.writestr(orig_info, entries[name])
-        epub_path.write_bytes(out.getvalue())
-    except Exception as exc:
-        logger.warning("epub font-size cleaning failed for %s: %s", epub_path, exc)
-
 
 def create_app():
     app = Flask(__name__)
@@ -584,10 +506,6 @@ def create_app():
             counter += 1
 
         file.save(str(dest))
-
-        if ext == "epub" and Settings.get("epub_normalize_fonts", "false") == "true":
-            _clean_epub_font_sizes(dest)
-
         size = dest.stat().st_size
 
         book = Book(
@@ -1207,7 +1125,6 @@ def create_app():
         "rename_scheme", "rename_custom_template",
         "display_name",
         "log_level",
-        "epub_normalize_fonts",
     ]
 
     _MASKED = "••••••••"
