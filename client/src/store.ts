@@ -16,7 +16,7 @@ interface PersistedPrefs {
 
 // ─── Full store shape ─────────────────────────────────────────────────────────
 
-interface StoreState extends PersistedPrefs {
+interface StoreState extends Omit<PersistedPrefs, 'view'> {
   // Auth
   user: User | null
   setUser: (user: User | null) => void
