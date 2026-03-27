@@ -11,6 +11,7 @@ interface PersistedPrefs {
   page: number
   filters: Filters
   searchQuery: string
+  view: 'library' | 'settings'
 }
 
 // ─── Full store shape ─────────────────────────────────────────────────────────
@@ -150,6 +151,7 @@ export const useStore = create<StoreState>()(
         page: state.page,
         filters: state.filters,
         searchQuery: state.searchQuery,
+        view: state.view === 'upload' ? 'library' : state.view,
       }),
     },
   ),
