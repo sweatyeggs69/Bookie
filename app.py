@@ -1207,6 +1207,7 @@ def create_app():
         "rename_scheme", "rename_custom_template",
         "display_name",
         "log_level",
+        "epub_normalize_fonts",
     ]
 
     _MASKED = "••••••••"

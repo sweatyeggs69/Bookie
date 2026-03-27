@@ -411,6 +411,7 @@ function LibraryTab() {
 
 function MetadataTab() {
   const { addToast } = useToast()
+  const qc = useQueryClient()
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
   const { data: srcData } = useQuery({ queryKey: ['metadataSources'], queryFn: api.getMetadataSources })
 
@@ -444,7 +445,7 @@ function MetadataTab() {
 
   const saveSettingsMutation = useMutation({
     mutationFn: () => api.saveSettings({ auto_metadata: autoMetadata ? 'true' : 'false', meta_replace_missing: metaReplaceMissing ? 'true' : 'false', apply_meta_cover: applyMetaCover ? 'true' : 'false', epub_normalize_fonts: epubNormalizeFonts ? 'true' : 'false' }),
-    onSuccess: () => addToast('success', 'Saved'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Saved') },
     onError: (e: Error) => addToast('error', e.message),
   })
 
