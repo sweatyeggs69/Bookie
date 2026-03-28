@@ -222,6 +222,12 @@ def _magic_ok(file_storage, ext: str) -> bool:
     return any(header.startswith(sig) for sig in sigs)
 
 
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+def _valid_email(value: str) -> bool:
+    return bool(_EMAIL_RE.match(value))
+
+
 def _safe_int(value, default: int) -> int:
     """Convert *value* to int, returning *default* on failure."""
     try:
@@ -318,7 +324,9 @@ def create_app():
         query = Book.query
         search = request.args.get("q", "").strip()
         if search:
-            like = f"%{search}%"
+            # Escape LIKE metacharacters so they're treated as literals
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            like = f"%{escaped}%"
             query = query.filter(
                 db.or_(
                     Book.title.ilike(like),
@@ -1020,6 +1028,8 @@ def create_app():
         label = (data.get("label") or "").strip()
         if not email:
             return jsonify({"error": "Email is required"}), 400
+        if not _valid_email(email):
+            return jsonify({"error": "Invalid email address"}), 400
         if not label:
             label = email
         make_default = data.get("is_default", False)
@@ -1039,6 +1049,8 @@ def create_app():
             addr.label = (data["label"] or "").strip() or addr.email
         if "email" in data:
             addr.email = (data["email"] or "").strip().lower()
+            if not _valid_email(addr.email):
+                return jsonify({"error": "Invalid email address"}), 400
         if data.get("is_default"):
             EmailAddress.query.filter(EmailAddress.id != addr_id).update({"is_default": False})
             addr.is_default = True
