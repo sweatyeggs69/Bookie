@@ -353,27 +353,27 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
 
             {/* Fields column */}
             <div className="flex-1 min-w-0 flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-5 gap-3">
+                <div className="col-span-3 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Title</label>
                   <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Unknown title" className="field" />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Author</label>
                   <input type="text" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Unknown author" className="field" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-3">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-10 gap-3">
+                <div className="col-span-3 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Year</label>
                   <input type="text" value={publishedDate} onChange={e => setPublishedDate(e.target.value)} placeholder="YYYY" className="field" />
                 </div>
-                <div className="col-span-3 flex flex-col gap-1">
+                <div className="col-span-5 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Series</label>
                   <input type="text" value={series} onChange={e => setSeries(e.target.value)} placeholder="Series name" className="field" />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Order</label>
                   <input type="number" value={seriesOrder} onChange={e => setSeriesOrder(e.target.value)} placeholder="—" min={0} step={0.1} className="field" />
                 </div>
