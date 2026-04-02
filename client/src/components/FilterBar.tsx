@@ -54,8 +54,7 @@ export default function FilterBar() {
   const [mobilePanel, setMobilePanel] = useState<'filters' | 'views' | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [tagging, setTagging] = useState(false)
-  const [clearingTags, setClearingTags] = useState(false)
-  const [selectionHasTaggedBooks, setSelectionHasTaggedBooks] = useState(false)
+  const [untagging, setUntagging] = useState(false)
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [fetchMetaProgress, setFetchMetaProgress] = useState<{ done: number; total: number } | null>(null)
   const qc = useQueryClient()
@@ -156,18 +155,15 @@ export default function FilterBar() {
     }
   }
 
-  const handleBulkClearTags = async () => {
-    if (selectedBookIds.length === 0) return
-    setClearingTags(true)
+  const handleBulkRemoveTag = async (tagName: string) => {
+    if (!tagName || selectedBookIds.length === 0) return
+    setUntagging(true)
     try {
-      await Promise.all(selectedBookIds.map(async (bookId) => {
-        const bookTags = await api.getBookTags(bookId)
-        await Promise.all(bookTags.map(tag => api.removeBookTag(bookId, tag.id)))
-      }))
+      await api.bulkRemoveTag(selectedBookIds, tagName)
       qc.invalidateQueries({ queryKey: ['books'] })
       qc.invalidateQueries({ queryKey: ['tags'] })
     } finally {
-      setClearingTags(false)
+      setUntagging(false)
     }
   }
 
@@ -257,15 +253,22 @@ export default function FilterBar() {
             </div>
           )}
 
-          {selectionHasTaggedBooks && (
-            <button
-              type="button"
-              onClick={handleBulkClearTags}
-              disabled={selectedBookIds.length === 0 || clearingTags}
-              className="px-3 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Clear Tags
-            </button>
+          {tags.length > 0 && (
+            <div className="relative w-28">
+              <select
+                defaultValue=""
+                onChange={e => { if (e.target.value) handleBulkRemoveTag(e.target.value); e.target.value = '' }}
+                disabled={selectedBookIds.length === 0 || untagging}
+                className={`${selectCls} w-full`}
+                aria-label="Remove tag from selected books"
+              >
+                <option value="">Clear Tag</option>
+                {tags.map(t => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            </div>
           )}
 
           <button

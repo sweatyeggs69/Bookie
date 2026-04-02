@@ -698,6 +698,25 @@ def create_app():
         db.session.commit()
         return jsonify({"added": added, "tag": tag.to_dict()})
 
+    @app.route("/api/books/bulk-untag", methods=["POST"])
+    @login_required
+    def bulk_remove_tag():
+        data = request.get_json(silent=True) or {}
+        ids = data.get("ids", [])
+        tag_name = (data.get("tag") or "").strip()
+        if not tag_name:
+            return jsonify({"error": "tag required"}), 400
+        tag = Tag.query.filter_by(name=tag_name).first()
+        if not tag:
+            return jsonify({"removed": 0})
+        removed = (
+            BookTag.query
+            .filter(BookTag.tag_id == tag.id, BookTag.book_id.in_(ids))
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+        return jsonify({"removed": removed})
+
     @app.route("/api/books/<int:book_id>/download", methods=["GET"])
     @login_required
     def download_book(book_id):
