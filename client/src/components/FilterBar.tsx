@@ -156,7 +156,10 @@ export default function FilterBar() {
     if (selectedBookIds.length === 0) return
     setClearingTags(true)
     try {
-      await api.bulkClearTags(selectedBookIds)
+      await Promise.all(selectedBookIds.map(async (bookId) => {
+        const bookTags = await api.getBookTags(bookId)
+        await Promise.all(bookTags.map(tag => api.removeBookTag(bookId, tag.id)))
+      }))
       qc.invalidateQueries({ queryKey: ['books'] })
       qc.invalidateQueries({ queryKey: ['tags'] })
     } finally {
