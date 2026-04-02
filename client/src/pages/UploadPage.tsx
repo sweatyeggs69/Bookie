@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Upload, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
+import { Upload, FolderOpen, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
 import * as api from '../api/client'
 import type { Tag } from '../types'
 import Dialog from '../components/Dialog'
@@ -24,11 +24,36 @@ function ext(name: string) {
   return name.split('.').pop()?.toLowerCase() ?? ''
 }
 
+async function collectFromEntry(entry: FileSystemEntry): Promise<File[]> {
+  if (entry.isFile) {
+    return new Promise(resolve => {
+      (entry as FileSystemFileEntry).file(f => resolve([f]), () => resolve([]))
+    })
+  }
+  if (entry.isDirectory) {
+    const reader = (entry as FileSystemDirectoryEntry).createReader()
+    const entries = await new Promise<FileSystemEntry[]>(resolve => {
+      const all: FileSystemEntry[] = []
+      function read() {
+        reader.readEntries(batch => {
+          if (batch.length === 0) resolve(all)
+          else { all.push(...batch); read() }
+        }, () => resolve(all))
+      }
+      read()
+    })
+    const nested = await Promise.all(entries.map(collectFromEntry))
+    return nested.flat()
+  }
+  return []
+}
+
 export default function UploadPage({ onClose }: Props) {
   const [items, setItems] = useState<FileItem[]>([])
   const [dragging, setDragging] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const folderRef = useRef<HTMLInputElement>(null)
 
   const { data: allTags = [] } = useQuery<Tag[]>({ queryKey: ['tags'], queryFn: api.getTags })
 
@@ -41,9 +66,16 @@ export default function UploadPage({ onClose }: Props) {
     ])
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault(); setDragging(false)
-    addFiles(Array.from(e.dataTransfer.files))
+    const itemList = Array.from(e.dataTransfer.items)
+    const entries = itemList.map(i => i.webkitGetAsEntry()).filter(Boolean) as FileSystemEntry[]
+    if (entries.length > 0) {
+      const files = (await Promise.all(entries.map(collectFromEntry))).flat()
+      addFiles(files)
+    } else {
+      addFiles(Array.from(e.dataTransfer.files))
+    }
   }, [])
 
   function toggleTag(name: string) {
@@ -96,18 +128,43 @@ export default function UploadPage({ onClose }: Props) {
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-12 cursor-pointer transition-colors select-none
+          className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-12 transition-colors select-none
             ${dragging ? 'border-accent bg-accent/5' : 'border-line hover:border-line-strong hover:bg-surface-raised'}`}
         >
           <Upload className={`w-8 h-8 ${dragging ? 'text-accent' : 'text-ink-muted'}`} />
           <div className="text-center">
-            <p className="text-sm font-medium text-ink">Drop files here or click to browse</p>
+            <p className="text-sm font-medium text-ink">Drop files or folders here</p>
             <p className="text-xs text-ink-muted mt-1">EPUB, PDF, MOBI, AZW3, FB2, DJVU, CBZ, CBR, TXT · max 35 MB</p>
+          </div>
+          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-line text-ink-muted hover:text-ink hover:border-line-strong transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Browse files
+            </button>
+            <button
+              type="button"
+              onClick={() => folderRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-line text-ink-muted hover:text-ink hover:border-line-strong transition-colors"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              Browse folder
+            </button>
           </div>
           <input
             ref={inputRef} type="file" multiple
             accept={[...ALLOWED].map(e => `.${e}`).join(',')}
+            className="hidden"
+            onChange={e => addFiles(Array.from(e.target.files ?? []))}
+            onClick={e => e.stopPropagation()}
+          />
+          <input
+            ref={folderRef} type="file" multiple
+            // @ts-ignore — webkitdirectory is non-standard but universally supported
+            webkitdirectory=""
             className="hidden"
             onChange={e => addFiles(Array.from(e.target.files ?? []))}
             onClick={e => e.stopPropagation()}
