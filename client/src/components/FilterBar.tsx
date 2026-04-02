@@ -222,72 +222,76 @@ export default function FilterBar() {
   const btnCls = "px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
 
   const selectionToolbar = (
-    <div className="flex items-center gap-1.5 flex-wrap w-full">
-      <button type="button" onClick={() => selectAllBooks(visibleBookIds)} className={btnCls}>Select Page</button>
-      <button type="button" onClick={handleSelectAllLibrary} className={btnCls}>Select All</button>
-      <button type="button" onClick={clearSelection} className={btnCls}>Clear</button>
+    <div className="flex items-center justify-between gap-2 w-full">
+      {/* Left: selection helpers */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button type="button" onClick={() => selectAllBooks(visibleBookIds)} className={btnCls}>Select Page</button>
+        <button type="button" onClick={handleSelectAllLibrary} className={btnCls}>Select All</button>
+        <button type="button" onClick={clearSelection} className={btnCls}>Clear</button>
+      </div>
 
-      <span className="w-px h-5 bg-line shrink-0 mx-0.5" />
-
-      <button
-        type="button"
-        onClick={handleBulkFetchMetadata}
-        disabled={selectedBookIds.length === 0 || fetchingMeta}
-        className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
-      >
-        {fetchingMeta && fetchMetaProgress
-          ? `${fetchMetaProgress.done}/${fetchMetaProgress.total}`
-          : 'Fetch Metadata'}
-      </button>
-
-      {tags.length > 0 && (
-        <div className="relative w-24">
-          <select
-            defaultValue=""
-            onChange={e => { if (e.target.value) handleBulkTag(e.target.value); e.target.value = '' }}
-            disabled={selectedBookIds.length === 0 || tagging}
-            className={`${selectCls} w-full`}
-            aria-label="Assign tag to selected books"
-          >
-            <option value="">Tags</option>
-            {tags.map(t => (
-              <option key={t.id} value={t.name}>{t.name}</option>
-            ))}
-          </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-        </div>
-      )}
-
-      {selectionHasTaggedBooks && (
+      {/* Right: actions */}
+      <div className="flex items-center gap-1.5 flex-wrap justify-end">
         <button
           type="button"
-          onClick={handleBulkClearTags}
-          disabled={selectedBookIds.length === 0 || clearingTags}
+          onClick={handleBulkFetchMetadata}
+          disabled={selectedBookIds.length === 0 || fetchingMeta}
           className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          Clear Tags
+          {fetchingMeta && fetchMetaProgress
+            ? `${fetchMetaProgress.done}/${fetchMetaProgress.total}`
+            : 'Fetch Metadata'}
         </button>
-      )}
 
-      <button
-        type="button"
-        onClick={handleBulkDelete}
-        disabled={selectedBookIds.length === 0 || deleting}
-        className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <Trash2 size={13} />
-        {selectedBookIds.length > 0 ? selectedBookIds.length : 'Delete'}
-      </button>
+        {tags.length > 0 && (
+          <div className="relative w-24">
+            <select
+              defaultValue=""
+              onChange={e => { if (e.target.value) handleBulkTag(e.target.value); e.target.value = '' }}
+              disabled={selectedBookIds.length === 0 || tagging}
+              className={`${selectCls} w-full`}
+              aria-label="Assign tag to selected books"
+            >
+              <option value="">Tags</option>
+              {tags.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+          </div>
+        )}
 
-      <button
-        type="button"
-        onClick={() => setSelectionMode(false)}
-        className={`flex items-center gap-1 ${btnCls}`}
-        aria-label="Exit selection mode"
-      >
-        <X size={13} />
-        Exit
-      </button>
+        {selectionHasTaggedBooks && (
+          <button
+            type="button"
+            onClick={handleBulkClearTags}
+            disabled={selectedBookIds.length === 0 || clearingTags}
+            className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            Clear Tags
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={handleBulkDelete}
+          disabled={selectedBookIds.length === 0 || deleting}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Trash2 size={13} />
+          Delete{selectedBookIds.length > 0 ? ` (${selectedBookIds.length})` : ''}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelectionMode(false)}
+          className={`flex items-center gap-1 ${btnCls}`}
+          aria-label="Exit selection mode"
+        >
+          <X size={13} />
+          Exit
+        </button>
+      </div>
     </div>
   )
 
