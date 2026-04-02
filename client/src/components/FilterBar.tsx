@@ -54,8 +54,7 @@ export default function FilterBar() {
   const [mobilePanel, setMobilePanel] = useState<'filters' | 'views' | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [tagging, setTagging] = useState(false)
-  const [clearingTags, setClearingTags] = useState(false)
-  const [selectionHasTaggedBooks, setSelectionHasTaggedBooks] = useState(false)
+  const [untagging, setUntagging] = useState(false)
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [fetchMetaProgress, setFetchMetaProgress] = useState<{ done: number; total: number } | null>(null)
   const qc = useQueryClient()
@@ -103,14 +102,8 @@ export default function FilterBar() {
       }
 
       try {
-        for (const bookId of selectedBookIds) {
-          const tagsForBook = await api.getBookTags(bookId)
-          if (tagsForBook.length > 0) {
-            if (!cancelled) setSelectionHasTaggedBooks(true)
-            return
-          }
-        }
-        if (!cancelled) setSelectionHasTaggedBooks(false)
+        const tagLists = await Promise.all(selectedBookIds.map(bookId => api.getBookTags(bookId)))
+        if (!cancelled) setSelectionHasTaggedBooks(tagLists.some(tagsForBook => tagsForBook.length > 0))
       } catch {
         if (!cancelled) setSelectionHasTaggedBooks(false)
       }
@@ -162,18 +155,15 @@ export default function FilterBar() {
     }
   }
 
-  const handleBulkClearTags = async () => {
-    if (selectedBookIds.length === 0) return
-    setClearingTags(true)
+  const handleBulkRemoveTag = async (tagName: string) => {
+    if (!tagName || selectedBookIds.length === 0) return
+    setUntagging(true)
     try {
-      await Promise.allSettled(selectedBookIds.map(async (bookId) => {
-        const bookTags = await api.getBookTags(bookId)
-        await Promise.allSettled(bookTags.map(tag => api.removeBookTag(bookId, tag.id)))
-      }))
+      await api.bulkRemoveTag(selectedBookIds, tagName)
       qc.invalidateQueries({ queryKey: ['books'] })
       qc.invalidateQueries({ queryKey: ['tags'] })
     } finally {
-      setClearingTags(false)
+      setUntagging(false)
     }
   }
 
@@ -263,15 +253,22 @@ export default function FilterBar() {
             </div>
           )}
 
-          {selectionHasTaggedBooks && (
-            <button
-              type="button"
-              onClick={handleBulkClearTags}
-              disabled={selectedBookIds.length === 0 || clearingTags}
-              className="px-3 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Clear Tags
-            </button>
+          {tags.length > 0 && (
+            <div className="relative w-28">
+              <select
+                defaultValue=""
+                onChange={e => { if (e.target.value) handleBulkRemoveTag(e.target.value); e.target.value = '' }}
+                disabled={selectedBookIds.length === 0 || untagging}
+                className={`${selectCls} w-full`}
+                aria-label="Remove tag from selected books"
+              >
+                <option value="">Clear Tag</option>
+                {tags.map(t => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            </div>
           )}
 
           <button
@@ -463,8 +460,9 @@ export default function FilterBar() {
       barHidden ? '-translate-y-full lg:translate-y-0' : 'translate-y-0',
     ].join(' ')}>
 
-      {/* Mobile: search bar row with Filters + Views triggers on the right */}
-      <div className={`lg:hidden flex items-center gap-2${selectionMode ? ' hidden' : ''}`}>
+      {/* Mobile/tablet: search + panel triggers (hidden in selection mode) */}
+      {!selectionMode && (
+        <div className="lg:hidden flex items-center gap-2">
           <div className="flex-1">
             <SearchBar />
           </div>
@@ -506,6 +504,7 @@ export default function FilterBar() {
             {viewMode === 'grid' ? <Grid2x2 size={14} /> : <List size={14} />}
           </button>
         </div>
+      )}
 
       {/* Desktop + mobile selection toolbar row */}
       <div className={`flex items-center justify-between gap-3${selectionMode ? '' : ' hidden lg:flex'}`}>
