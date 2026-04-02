@@ -463,9 +463,8 @@ export default function FilterBar() {
       barHidden ? '-translate-y-full lg:translate-y-0' : 'translate-y-0',
     ].join(' ')}>
 
-      {/* Mobile/tablet: search + panel triggers (hidden in selection mode) */}
-      {!selectionMode && (
-        <div className="lg:hidden flex items-center gap-2">
+      {/* Mobile: search bar row with Filters + Views triggers on the right */}
+      <div className={`lg:hidden flex items-center gap-2${selectionMode ? ' hidden' : ''}`}>
           <div className="flex-1">
             <SearchBar />
           </div>
@@ -507,7 +506,6 @@ export default function FilterBar() {
             {viewMode === 'grid' ? <Grid2x2 size={14} /> : <List size={14} />}
           </button>
         </div>
-      )}
 
       {/* Desktop + mobile selection toolbar row */}
       <div className={`flex items-center justify-between gap-3${selectionMode ? '' : ' hidden lg:flex'}`}>
