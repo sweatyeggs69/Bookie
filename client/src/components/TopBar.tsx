@@ -105,14 +105,14 @@ export default function TopBar({ onAuthChange }: Props) {
       </button>
 
       {/* Desktop search — center-aligned, max-width constrained */}
-      <div className="hidden xl:flex flex-1 justify-center px-4">
+      <div className="hidden lg:flex flex-1 justify-center px-4">
         <div className="w-full max-w-sm">
           <SearchBar />
         </div>
       </div>
 
-      {/* Spacer on mobile */}
-      <div className="flex-1 xl:hidden" />
+      {/* Spacer on mobile/tablet */}
+      <div className="flex-1 lg:hidden" />
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">

@@ -56,7 +56,6 @@ export default function FilterBar() {
   const [tagging, setTagging] = useState(false)
   const [clearingTags, setClearingTags] = useState(false)
   const [selectionHasTaggedBooks, setSelectionHasTaggedBooks] = useState(false)
-  const [untagging, setUntagging] = useState(false)
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [fetchMetaProgress, setFetchMetaProgress] = useState<{ done: number; total: number } | null>(null)
   const qc = useQueryClient()
@@ -122,26 +121,6 @@ export default function FilterBar() {
     run()
     return () => { cancelled = true }
   }, [refreshSelectionHasTaggedBooks])
-  useEffect(() => {
-    let cancelled = false
-
-    const checkSelectedTags = async () => {
-      if (!selectionMode || selectedBookIds.length === 0) {
-        setSelectionHasTaggedBooks(false)
-        return
-      }
-
-      try {
-        const tagLists = await Promise.all(selectedBookIds.map(bookId => api.getBookTags(bookId)))
-        if (!cancelled) setSelectionHasTaggedBooks(tagLists.some(tagsForBook => tagsForBook.length > 0))
-      } catch {
-        if (!cancelled) setSelectionHasTaggedBooks(false)
-      }
-    }
-
-    checkSelectedTags()
-    return () => { cancelled = true }
-  }, [selectionMode, selectedBookIds])
 
   const hasActiveFilters =
     filters.format !== '' || filters.tag !== '' || filters.series !== '' ||
@@ -209,15 +188,6 @@ export default function FilterBar() {
       }
     } finally {
       setClearingTags(false)
-  const handleBulkRemoveTag = async (tagName: string) => {
-    if (!tagName || selectedBookIds.length === 0) return
-    setUntagging(true)
-    try {
-      await api.bulkRemoveTag(selectedBookIds, tagName)
-      qc.invalidateQueries({ queryKey: ['books'] })
-      qc.invalidateQueries({ queryKey: ['tags'] })
-    } finally {
-      setUntagging(false)
     }
   }
 
@@ -249,117 +219,93 @@ export default function FilterBar() {
     } catch { /* ignore */ }
   }
 
+  const btnCls = "px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
+
   // ── Selection toolbar ──────────────────────────────────────────────────────
   const selectionToolbar = (
-    <div className="w-full space-y-2">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => selectAllBooks(visibleBookIds)}
-            className="px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
-          >
-            Select Page
-          </button>
-          <button
-            type="button"
-            onClick={handleSelectAllLibrary}
-            className="px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
-          >
-            Select All
-          </button>
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
-          >
-            Clear
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap md:justify-end">
-          <button
-            type="button"
-            onClick={handleBulkFetchMetadata}
-            disabled={selectedBookIds.length === 0 || fetchingMeta}
-            className="px-3 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {fetchingMeta && fetchMetaProgress
-              ? `Fetching ${fetchMetaProgress.done}/${fetchMetaProgress.total}…`
-              : 'Fetch Metadata'}
-          </button>
-
-          {tags.length > 0 && (
-            <div className="relative w-28">
-              <select
-                defaultValue=""
-                onChange={e => { if (e.target.value) handleBulkTag(e.target.value); e.target.value = '' }}
-                disabled={selectedBookIds.length === 0 || tagging}
-                className={`${selectCls} w-full`}
-                aria-label="Assign tag to selected books"
-              >
-                <option value="">Tags</option>
-                {tags.map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-            </div>
-          )}
-
-          {selectionHasTaggedBooks && (
-            <button
-              type="button"
-              onClick={handleBulkClearTags}
-              disabled={selectedBookIds.length === 0 || clearingTags}
-              className="px-3 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Clear Tags
-            </button>
-          {tags.length > 0 && (
-            <div className="relative w-28">
-              <select
-                defaultValue=""
-                onChange={e => { if (e.target.value) handleBulkRemoveTag(e.target.value); e.target.value = '' }}
-                disabled={selectedBookIds.length === 0 || untagging}
-                className={`${selectCls} w-full`}
-                aria-label="Remove tag from selected books"
-              >
-                <option value="">Clear Tag</option>
-                {tags.map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            disabled={selectedBookIds.length === 0 || deleting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Trash2 size={13} />
-            Delete{selectedBookIds.length > 0 ? ` (${selectedBookIds.length})` : ''}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectionMode(false)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
-            aria-label="Exit selection mode"
-          >
-            <X size={13} />
-            Exit
-          </button>
-        </div>
-      </div>
-
-      <div className="flex justify-end lg:justify-start">
-        <span className="text-sm font-medium text-ink">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+      {/* Left group: selection helpers */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Count: desktop only — on mobile/tablet it appears bottom-right */}
+        <span className="hidden lg:block text-sm font-medium text-ink shrink-0">
           {selectedBookIds.length} selected
         </span>
+        <button type="button" onClick={() => selectAllBooks(visibleBookIds)} className={btnCls}>Select Page</button>
+        <button type="button" onClick={handleSelectAllLibrary} className={btnCls}>Select All</button>
+        <button type="button" onClick={clearSelection} className={btnCls}>Clear</button>
+      </div>
+
+      {/* Right group: actions */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={handleBulkFetchMetadata}
+          disabled={selectedBookIds.length === 0 || fetchingMeta}
+          className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
+        >
+          {fetchingMeta && fetchMetaProgress
+            ? `Fetching ${fetchMetaProgress.done}/${fetchMetaProgress.total}…`
+            : 'Fetch Metadata'}
+        </button>
+
+        {tags.length > 0 && (
+          <div className="relative">
+            <select
+              defaultValue=""
+              onChange={e => { if (e.target.value) handleBulkTag(e.target.value); e.target.value = '' }}
+              disabled={selectedBookIds.length === 0 || tagging}
+              className={`${selectCls} w-full`}
+              aria-label="Assign tag to selected books"
+            >
+              <option value="">Tags</option>
+              {tags.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+          </div>
+        )}
+
+        {selectionHasTaggedBooks && (
+          <button
+            type="button"
+            onClick={handleBulkClearTags}
+            disabled={selectedBookIds.length === 0 || clearingTags}
+            className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            Clear Tags
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={handleBulkDelete}
+          disabled={selectedBookIds.length === 0 || deleting}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Trash2 size={13} />
+          Delete{selectedBookIds.length > 0 ? ` (${selectedBookIds.length})` : ''}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelectionMode(false)}
+          className={`flex items-center gap-1 ${btnCls}`}
+          aria-label="Exit selection mode"
+        >
+          <X size={13} />
+          Exit
+        </button>
+
+        {/* Count: tablet only — end of right group */}
+        <span className="hidden sm:block lg:hidden text-sm font-medium text-ink shrink-0">
+          {selectedBookIds.length} selected
+        </span>
+      </div>
+
+      {/* Count: mobile only — bottom right */}
+      <div className="flex justify-end sm:hidden">
+        <span className="text-sm font-medium text-ink">{selectedBookIds.length} selected</span>
       </div>
     </div>
   )
@@ -523,53 +469,53 @@ export default function FilterBar() {
       barHidden ? '-translate-y-full lg:translate-y-0' : 'translate-y-0',
     ].join(' ')}>
 
-      {/* Mobile: search bar row with Filters + Views triggers on the right */}
-      <div className={`lg:hidden flex items-center gap-2${selectionMode ? ' hidden' : ''}`}>
       {/* Mobile/tablet: search + panel triggers (hidden in selection mode) */}
-      {!selectionMode && (
-        <div className="lg:hidden flex items-center gap-2">
-          <div className="flex-1">
-            <SearchBar />
-          </div>
-
-          {/* Filters trigger */}
-          <button
-            type="button"
-            onClick={() => toggleMobilePanel('filters')}
-            className={[
-              'relative flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-              mobilePanel === 'filters'
-                ? 'border-accent text-accent bg-accent/10'
-                : hasActiveFilters
-                  ? 'border-accent text-accent'
-                  : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
-            ].join(' ')}
-            aria-expanded={mobilePanel === 'filters'}
-            aria-label="Filters"
-          >
-            <SlidersHorizontal size={14} />
-            {hasActiveFilters && mobilePanel !== 'filters' && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent border-2 border-surface" />
-            )}
-          </button>
-
-          {/* Views trigger */}
-          <button
-            type="button"
-            onClick={() => toggleMobilePanel('views')}
-            className={[
-              'flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-              mobilePanel === 'views'
-                ? 'border-accent text-accent bg-accent/10'
-                : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
-            ].join(' ')}
-            aria-expanded={mobilePanel === 'views'}
-            aria-label="View options"
-          >
-            {viewMode === 'grid' ? <Grid2x2 size={14} /> : <List size={14} />}
-          </button>
+      <div className="lg:hidden flex items-center gap-2">
+        <div className="flex-1">
+          <SearchBar />
         </div>
-      )}
+
+        {!selectionMode && (
+          <>
+            {/* Filters trigger */}
+            <button
+              type="button"
+              onClick={() => toggleMobilePanel('filters')}
+              className={[
+                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                mobilePanel === 'filters'
+                  ? 'border-accent text-accent bg-accent/10'
+                  : hasActiveFilters
+                    ? 'border-accent text-accent'
+                    : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
+              ].join(' ')}
+              aria-expanded={mobilePanel === 'filters'}
+              aria-label="Filters"
+            >
+              <SlidersHorizontal size={14} />
+              {hasActiveFilters && mobilePanel !== 'filters' && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent border-2 border-surface" />
+              )}
+            </button>
+
+            {/* Views trigger */}
+            <button
+              type="button"
+              onClick={() => toggleMobilePanel('views')}
+              className={[
+                'flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                mobilePanel === 'views'
+                  ? 'border-accent text-accent bg-accent/10'
+                  : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
+              ].join(' ')}
+              aria-expanded={mobilePanel === 'views'}
+              aria-label="View options"
+            >
+              {viewMode === 'grid' ? <Grid2x2 size={14} /> : <List size={14} />}
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Desktop + mobile selection toolbar row */}
       <div className={`flex items-center justify-between gap-3${selectionMode ? '' : ' hidden lg:flex'}`}>
