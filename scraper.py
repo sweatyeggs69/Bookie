@@ -1,4 +1,4 @@
-"""Metadata scraping from Open Library, Apple Books, and GoodReads."""
+"""Metadata scraping from Open Library, Apple Books, and Goodreads."""
 import ipaddress
 import re
 import time
@@ -127,11 +127,11 @@ def search_itunes(query: str, max_results: int = 10) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# GoodReads (scrape)
+# Goodreads (scrape)
 # ---------------------------------------------------------------------------
 
 def search_goodreads(query: str, max_results: int = 10) -> list[dict]:
-    """Search GoodReads (web scrape)."""
+    """Search Goodreads (web scrape)."""
     url = f"https://www.goodreads.com/search?q={requests.utils.quote(query)}&search_type=books"
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
@@ -144,7 +144,7 @@ def search_goodreads(query: str, max_results: int = 10) -> list[dict]:
                 results.append(item)
         return results
     except Exception as exc:
-        logger.warning("GoodReads search failed: %s", exc)
+        logger.warning("Goodreads search failed: %s", exc)
         return []
 
 
@@ -155,7 +155,7 @@ def fetch_goodreads_book(book_id: str) -> dict | None:
         r.raise_for_status()
         return _parse_gr_book_page(r.text, book_id)
     except Exception as exc:
-        logger.warning("GoodReads fetch failed: %s", exc)
+        logger.warning("Goodreads fetch failed: %s", exc)
         return None
 
 
@@ -261,7 +261,7 @@ DEFAULT_SOURCE_ORDER = ["open_library", "itunes", "goodreads"]
 SOURCE_LABELS = {
     "open_library":  "Open Library",
     "itunes":        "Apple Books",
-    "goodreads":     "GoodReads",
+    "goodreads":     "Goodreads",
 }
 
 

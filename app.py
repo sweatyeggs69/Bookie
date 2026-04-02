@@ -16,6 +16,8 @@ import crypto
 
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
+DEFAULT_DB_FILENAME = "bookie.db"
+LEGACY_DB_FILENAME = "booker.db"
 
 
 def _get_or_create_secret_key() -> str:
@@ -248,9 +250,17 @@ def _cleanup_empty_dirs(directory: Path) -> None:
 
 
 def create_app():
+    _db_env = os.environ.get("DATABASE_URL")
+    if not _db_env:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        _legacy_db = DATA_DIR / LEGACY_DB_FILENAME
+        _default_db = DATA_DIR / DEFAULT_DB_FILENAME
+        if _legacy_db.exists() and not _default_db.exists():
+            _legacy_db.replace(_default_db)
+
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{(DATA_DIR / 'booker.db').absolute()}"
+        "DATABASE_URL", f"sqlite:///{(DATA_DIR / DEFAULT_DB_FILENAME).absolute()}"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
