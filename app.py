@@ -698,6 +698,19 @@ def create_app():
         db.session.commit()
         return jsonify({"added": added, "tag": tag.to_dict()})
 
+    @app.route("/api/books/bulk-clear-tags", methods=["POST"])
+    @login_required
+    def bulk_clear_tags():
+        data = request.get_json(silent=True) or {}
+        ids = data.get("ids", [])
+        removed = (
+            BookTag.query
+            .filter(BookTag.book_id.in_(ids))
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+        return jsonify({"removed": removed})
+
     @app.route("/api/books/<int:book_id>/download", methods=["GET"])
     @login_required
     def download_book(book_id):

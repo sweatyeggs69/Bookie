@@ -117,6 +117,13 @@ export function bulkAddTag(ids: number[], tag: string): Promise<{ added: number 
   })
 }
 
+export function bulkClearTags(ids: number[]): Promise<{ removed: number }> {
+  return api<{ removed: number }>('/api/books/bulk-clear-tags', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  })
+}
+
 // ─── Series ───────────────────────────────────────────────────────────────────
 
 export function getSeries(): Promise<string[]> {
@@ -458,6 +465,7 @@ export default {
   deleteBook,
   bulkDeleteBooks,
   bulkAddTag,
+  bulkClearTags,
   // Tags
   getTags,
   getBookTags,
