@@ -72,10 +72,6 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
   }
 
   function handleUploadButtonClick() {
-    if (manualUrl.trim()) {
-      applyManualUrl()
-      return
-    }
     fileInputRef.current?.click()
   }
 
