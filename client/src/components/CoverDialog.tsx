@@ -155,7 +155,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
             <div className="flex h-full min-h-24 items-center justify-center"><Spinner size={24} /></div>
           )}
           {!searching && coverResults.length > 0 && (
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 overflow-y-auto pr-1 h-full min-h-0 sm:max-h-72 content-start">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] md:grid-cols-4 lg:grid-cols-5 gap-2 overflow-y-auto pr-1 h-full min-h-0 sm:max-h-72 content-start">
               {coverResults.map((r, i) => (
                 <button
                   key={i}
