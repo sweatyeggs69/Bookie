@@ -147,7 +147,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
           <div className="flex justify-center py-8"><Spinner size={24} /></div>
         )}
         {!searching && coverResults.length > 0 && (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 max-h-72 overflow-y-auto pr-1">
             {coverResults.map((r, i) => (
               <button
                 key={i}
@@ -196,7 +196,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
         )}
 
         {/* Bottom row: URL input + file upload */}
-        <div className="flex gap-2 py-3 border-t border-line">
+        <div className="flex gap-2 pt-3 border-t border-line">
           <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleFileSelect} />
           <div className="flex-1 min-w-0">
             <input
@@ -204,7 +204,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
               value={manualUrl}
               onChange={e => setManualUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && applyManualUrl()}
-              placeholder="Paste Image URL press Enter to apply..."
+              placeholder="Paste image URL and press Enter..."
               type="url"
             />
           </div>
