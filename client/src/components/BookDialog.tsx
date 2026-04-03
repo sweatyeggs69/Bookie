@@ -42,8 +42,6 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
-  const label = 'Add a Tag'
-
   const handleToggle = (tag: Tag) => {
     if (bookTags.includes(tag.name)) onTagRemoved(tag.id, tag.name)
     else onTagAdded(tag.name)
@@ -56,8 +54,10 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
         onClick={() => setOpen(v => !v)}
         className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded bg-surface-raised border border-line text-sm text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <span className="text-ink-muted">{label}</span>
-        <ChevronDown size={14} className={`text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className={`truncate ${bookTags.length > 0 ? 'text-ink' : 'text-ink-muted'}`}>
+          {bookTags.length > 0 ? bookTags.join(', ') : 'Add a Tag'}
+        </span>
+        <ChevronDown size={14} className={`text-ink-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -364,12 +364,12 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                 </div>
               </div>
 
-              <div className="grid grid-cols-10 gap-3">
-                <div className="col-span-3 flex flex-col gap-1">
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Year</label>
                   <input type="text" value={publishedDate} onChange={e => setPublishedDate(e.target.value)} placeholder="YYYY" className="field" />
                 </div>
-                <div className="col-span-5 flex flex-col gap-1">
+                <div className="col-span-4 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Series</label>
                   <input type="text" value={series} onChange={e => setSeries(e.target.value)} placeholder="Series name" className="field" />
                 </div>
@@ -377,26 +377,14 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Order</label>
                   <input type="number" value={seriesOrder} onChange={e => setSeriesOrder(e.target.value)} placeholder="—" min={0} step={0.1} className="field" />
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Tags</label>
-                <TagDropdown
-                  bookId={bookId} allTags={allTags} bookTags={displayTags}
-                  onTagAdded={handleTagAdded}
-                  onTagRemoved={handleTagRemoved}
-                />
-                {displayTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {displayTags.map(tag => (
-                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent-muted text-accent text-xs font-medium">
-                        {tag}
-                        <button type="button" onClick={() => handleTagRemoved(-1, tag)}
-                          className="hover:text-white transition-colors" aria-label={`Remove tag ${tag}`}>×</button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="col-span-4 flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Tags</label>
+                  <TagDropdown
+                    bookId={bookId} allTags={allTags} bookTags={displayTags}
+                    onTagAdded={handleTagAdded}
+                    onTagRemoved={handleTagRemoved}
+                  />
+                </div>
               </div>
 
               {saveMutation.isError && (
