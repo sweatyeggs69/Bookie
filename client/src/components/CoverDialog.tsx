@@ -195,21 +195,24 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
           </div>
         )}
 
-        {/* Bottom row: URL input + unified upload/apply button */}
-        <div className="flex gap-2 pt-3 mt-1 border-t border-line">
+        {/* Bottom row: URL input + file upload */}
+        <div className="flex gap-2 py-3 mt-1 border-t border-line">
           <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleFileSelect} />
-          <input
-            className="field flex-1 min-w-0"
-            value={manualUrl}
-            onChange={e => setManualUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && applyManualUrl()}
-            placeholder="Paste image URL…"
-            type="url"
-          />
+          <div className="flex-1 min-w-0">
+            <input
+              className="field w-full"
+              value={manualUrl}
+              onChange={e => setManualUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applyManualUrl()}
+              placeholder="Paste image URL…"
+              type="url"
+            />
+            <p className="mt-1 px-1 text-[11px] text-ink-muted">Press Enter/Go to apply pasted URL.</p>
+          </div>
           <button
             type="button"
             onClick={handleUploadButtonClick}
-            className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium text-ink border border-line hover:bg-surface-raised transition-colors shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium text-ink border border-line hover:bg-surface-raised transition-colors shrink-0 self-start"
           >
             <Upload size={14} />
             Upload
