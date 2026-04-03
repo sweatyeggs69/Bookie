@@ -296,88 +296,84 @@ export default function FilterBar() {
   )
 
   const filterControls = (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Sel>
-          <select
-            value={filters.format}
-            onChange={e => setFilters({ format: e.target.value })}
-            className={`${selectCls} w-full`}
-            aria-label="Filter by format"
-          >
-            {FORMAT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </Sel>
+    <div className="flex flex-wrap items-center gap-2">
+      <Sel>
+        <select
+          value={filters.format}
+          onChange={e => setFilters({ format: e.target.value })}
+          className={`${selectCls} w-full`}
+          aria-label="Filter by format"
+        >
+          {FORMAT_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Sel>
 
-        {seriesList.length > 0 && (
-          <Sel width="w-32">
-            <select
-              value={filters.series}
-              onChange={e => setFilters({ series: e.target.value })}
-              className={`${selectCls} w-full`}
-              aria-label="Filter by series"
-            >
-              <option value="">All Series</option>
-              {seriesList.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </Sel>
-        )}
-
+      {seriesList.length > 0 && (
         <Sel width="w-32">
           <select
-            value={filters.sort}
-            onChange={e => setFilters({ sort: e.target.value as typeof filters.sort })}
+            value={filters.series}
+            onChange={e => setFilters({ series: e.target.value })}
             className={`${selectCls} w-full`}
-            aria-label="Sort by"
+            aria-label="Filter by series"
           >
-            {SORT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            <option value="">All Series</option>
+            {seriesList.map(s => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         </Sel>
-
-        <button
-          type="button"
-          onClick={toggleOrder}
-          className="shrink-0 px-3 py-1.5 rounded border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          aria-label={`Sort ${filters.order === 'asc' ? 'ascending' : 'descending'} — click to toggle`}
-        >
-          {filters.order === 'asc' ? '↑ Asc' : '↓ Desc'}
-        </button>
-
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Clear all filters"
-          >
-            <X size={13} />
-            Clear
-          </button>
-        )}
-      </div>
+      )}
 
       {tags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Sel width="w-32">
-            <select
-              value={filters.tag}
-              onChange={e => setFilters({ tag: e.target.value })}
-              className={`${selectCls} w-full`}
-              aria-label="Filter by tag"
-            >
-              <option value="">All Tags</option>
-              {tags.map(t => (
-                <option key={t.id} value={t.name}>{t.name} ({t.book_count})</option>
-              ))}
-            </select>
-          </Sel>
-        </div>
+        <Sel width="w-32">
+          <select
+            value={filters.tag}
+            onChange={e => setFilters({ tag: e.target.value })}
+            className={`${selectCls} w-full`}
+            aria-label="Filter by tag"
+          >
+            <option value="">All Tags</option>
+            {tags.map(t => (
+              <option key={t.id} value={t.name}>{t.name} ({t.book_count})</option>
+            ))}
+          </select>
+        </Sel>
+      )}
+
+      <Sel width="w-32">
+        <select
+          value={filters.sort}
+          onChange={e => setFilters({ sort: e.target.value as typeof filters.sort })}
+          className={`${selectCls} w-full`}
+          aria-label="Sort by"
+        >
+          {SORT_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Sel>
+
+      <button
+        type="button"
+        onClick={toggleOrder}
+        className="shrink-0 px-3 py-1.5 rounded border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        aria-label={`Sort ${filters.order === 'asc' ? 'ascending' : 'descending'} — click to toggle`}
+      >
+        {filters.order === 'asc' ? '↑ Asc' : '↓ Desc'}
+      </button>
+
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label="Clear all filters"
+        >
+          <X size={13} />
+          Clear
+        </button>
       )}
     </div>
   )

@@ -364,12 +364,12 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                 </div>
               </div>
 
-              <div className="grid grid-cols-12 gap-3">
+              <div className="grid grid-cols-10 gap-3">
                 <div className="col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Year</label>
                   <input type="text" value={publishedDate} onChange={e => setPublishedDate(e.target.value)} placeholder="YYYY" className="field" />
                 </div>
-                <div className="col-span-4 flex flex-col gap-1">
+                <div className="col-span-6 flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Series</label>
                   <input type="text" value={series} onChange={e => setSeries(e.target.value)} placeholder="Series name" className="field" />
                 </div>
@@ -377,14 +377,15 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Order</label>
                   <input type="number" value={seriesOrder} onChange={e => setSeriesOrder(e.target.value)} placeholder="—" min={0} step={0.1} className="field" />
                 </div>
-                <div className="col-span-4 flex flex-col gap-1">
-                  <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Tags</label>
-                  <TagDropdown
-                    bookId={bookId} allTags={allTags} bookTags={displayTags}
-                    onTagAdded={handleTagAdded}
-                    onTagRemoved={handleTagRemoved}
-                  />
-                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Tags</label>
+                <TagDropdown
+                  bookId={bookId} allTags={allTags} bookTags={displayTags}
+                  onTagAdded={handleTagAdded}
+                  onTagRemoved={handleTagRemoved}
+                />
               </div>
 
               {saveMutation.isError && (
