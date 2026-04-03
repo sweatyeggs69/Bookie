@@ -196,7 +196,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
         )}
 
         {/* Bottom row: URL input + file upload */}
-        <div className="flex gap-2 py-3 mt-1 border-t border-line">
+        <div className="flex gap-2 py-3 border-t border-line">
           <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleFileSelect} />
           <div className="flex-1 min-w-0">
             <input
@@ -204,10 +204,9 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
               value={manualUrl}
               onChange={e => setManualUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && applyManualUrl()}
-              placeholder="Paste image URL…"
+              placeholder="Paste Image URL press Enter to apply..."
               type="url"
             />
-            <p className="mt-1 px-1 text-[11px] text-ink-muted">Press Enter/Go to apply pasted URL.</p>
           </div>
           <button
             type="button"
