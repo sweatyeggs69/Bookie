@@ -156,12 +156,22 @@ import covers as cover_mgr
 import mailer
 import renamer
 
-# Explicitly set root logger level — logging.basicConfig() is a no-op when
-# gunicorn or any imported library has already added handlers, so we set the
-# level directly to ensure INFO entries are always captured.
-logging.getLogger().setLevel(logging.INFO)
+# Set the root logger to INFO so that INFO+ records are captured from the start.
+# logging.basicConfig() is a no-op when any handler is already registered, so
+# we configure the root logger explicitly.
+_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
+_root_logger = logging.getLogger()
+_root_logger.setLevel(logging.INFO)
 
-# Silence chatty library loggers so DEBUG/INFO mode doesn't flood the buffer
+# Attach a StreamHandler so INFO+ records reach the terminal.  Only add one if
+# the root logger has no StreamHandler yet — gunicorn/uWSGI add their own
+# handler before importing the app, so we skip it to avoid duplicate output.
+if not any(isinstance(h, logging.StreamHandler) for h in _root_logger.handlers):
+    _console_handler = logging.StreamHandler()
+    _console_handler.setFormatter(logging.Formatter(_LOG_FORMAT))
+    _root_logger.addHandler(_console_handler)
+
+# Silence chatty library loggers so DEBUG/INFO mode doesn't flood the output
 # with irrelevant framework noise.
 for _noisy_logger in ("werkzeug", "sqlalchemy.engine", "sqlalchemy.pool",
                       "urllib3", "PIL", "asyncio"):
@@ -187,7 +197,7 @@ class _LogBuffer(logging.Handler):
         return list(self._buf)
 
 _log_buffer = _LogBuffer()
-_log_buffer.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s"))
+_log_buffer.setFormatter(logging.Formatter(_LOG_FORMAT))
 logging.getLogger().addHandler(_log_buffer)
 
 # ---------------------------------------------------------------------------
