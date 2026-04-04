@@ -88,7 +88,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           'cursor-pointer min-w-0',
           isSelected
             ? 'bg-accent/10 border-accent shadow-lg shadow-accent/20'
-            : 'bg-surface-card border-line [@media(hover:hover)]:hover:border-line-strong [@media(hover:hover)]:hover:shadow-md [@media(hover:hover)]:hover:shadow-black/20 [@media(hover:hover)]:hover:scale-[1.02] active:scale-[0.98]',
+            : 'bg-surface-card border-line [@media(hover:hover)]:hover:border-line-strong [@media(hover:hover)]:hover:scale-[1.02] active:scale-[0.98]',
         ].join(' ')}
         aria-label={`${selectionMode ? 'Select' : 'Open'} ${book.title ?? book.filename}`}
       >
