@@ -96,7 +96,7 @@ export default function TopBar({ onAuthChange }: Props) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 h-14 bg-surface-card border-b border-line flex items-center gap-3 px-4">
+    <header className="relative sticky top-0 z-40 h-14 bg-surface-card border-b border-line flex items-center gap-3 px-4">
       {/* Brand — always visible */}
       <button
         onClick={() => { setView('library'); setPage(1); history.replaceState(null, '', window.location.pathname + window.location.search) }}
@@ -106,9 +106,9 @@ export default function TopBar({ onAuthChange }: Props) {
         <span className="font-semibold text-base tracking-tight">Bookie</span>
       </button>
 
-      {/* Desktop search — center-aligned, max-width constrained */}
-      <div className="hidden lg:flex flex-1 justify-center px-4">
-        <div className="w-full max-w-sm">
+      {/* Desktop search — absolutely centered in header */}
+      <div className="hidden lg:flex absolute inset-x-0 justify-center pointer-events-none">
+        <div className="w-full max-w-sm px-4 pointer-events-auto">
           <SearchBar />
         </div>
       </div>
@@ -117,7 +117,7 @@ export default function TopBar({ onAuthChange }: Props) {
       <div className="flex-1 lg:hidden" />
 
       {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 ml-auto">
         {/* Upload */}
         <button
           onClick={() => setView('upload')}

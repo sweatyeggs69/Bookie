@@ -89,7 +89,7 @@ export default function SearchBar() {
         onKeyDown={handleKeyDown}
         onFocus={() => dropdownResults.length > 0 && setDropdownOpen(true)}
         placeholder="Search books, authors…"
-        className="w-full bg-surface-raised border border-line rounded pl-9 pr-9 py-2 text-base text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+        className="w-full bg-surface-raised border border-line rounded pl-9 pr-9 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
         autoComplete="off"
         spellCheck={false}
       />
