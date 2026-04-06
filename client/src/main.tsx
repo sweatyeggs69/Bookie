@@ -5,6 +5,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
 
+// ─── Service Worker registration & update check ───────────────────────────────
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(registration => {
+    // On every page load (including refresh) probe the server for a new SW version
+    registration.update();
+  });
+
+  // When a new SW takes control (after skipWaiting), reload once to apply fresh assets
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 // ─── React Query client ───────────────────────────────────────────────────────
 
 const queryClient = new QueryClient({
