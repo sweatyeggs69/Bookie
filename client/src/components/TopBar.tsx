@@ -202,7 +202,6 @@ export default function TopBar({ onAuthChange }: Props) {
                     <ArrowUpCircle className="w-3.5 h-3.5 shrink-0 text-accent" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-accent">Update available</p>
-                      <p className="text-xs text-ink-muted truncate">A newer Docker image is ready</p>
                     </div>
                   </div>
                 </div>
