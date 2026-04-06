@@ -116,7 +116,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
   )
 
   return (
-    <Dialog open onClose={onClose} title="Change Cover" footer={footer} wide noScrimBlur>
+    <Dialog open onClose={onClose} title="Change Cover" footer={footer} wide>
       <div className="p-4 space-y-3">
         {/* Search bar */}
         <div className="flex gap-2">

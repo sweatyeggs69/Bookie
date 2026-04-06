@@ -8,10 +8,9 @@ interface DialogProps {
   children: ReactNode
   footer?: ReactNode
   wide?: boolean
-  noScrimBlur?: boolean
 }
 
-export default function Dialog({ open, onClose, title, children, footer, wide = false, noScrimBlur = false }: DialogProps) {
+export default function Dialog({ open, onClose, title, children, footer, wide = false }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,7 +53,7 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
       aria-label={title}
     >
       {/* Scrim */}
-      <div className={`absolute inset-0 bg-black/60 dialog-scrim${noScrimBlur ? '' : ' backdrop-blur-sm'}`} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm dialog-scrim" />
 
       {/* Panel */}
       <div
