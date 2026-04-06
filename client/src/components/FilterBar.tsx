@@ -44,6 +44,15 @@ const selectCls = [
   'cursor-pointer',
 ].join(' ')
 
+function Sel({ children, width = 'w-32' }: { children: React.ReactNode; width?: string }) {
+  return (
+    <div className={`relative shrink-0 ${width}`}>
+      {children}
+      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+    </div>
+  )
+}
+
 export default function FilterBar() {
   const {
     filters, setFilters, viewMode, setViewMode, gridSize, setGridSize,
@@ -99,27 +108,15 @@ export default function FilterBar() {
       return
     }
     try {
-      for (const bookId of selectedBookIds) {
-        const tagsForBook = await api.getBookTags(bookId)
-        if (tagsForBook.length > 0) {
-          setSelectionHasTaggedBooks(true)
-          return
-        }
-      }
-      setSelectionHasTaggedBooks(false)
+      const allTags = await Promise.all(selectedBookIds.map(id => api.getBookTags(id)))
+      setSelectionHasTaggedBooks(allTags.some(tags => tags.length > 0))
     } catch {
       setSelectionHasTaggedBooks(false)
     }
   }, [selectionMode, selectedBookIds])
 
   useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      await refreshSelectionHasTaggedBooks()
-      if (cancelled) return
-    }
-    run()
-    return () => { cancelled = true }
+    refreshSelectionHasTaggedBooks()
   }, [refreshSelectionHasTaggedBooks])
 
   const hasActiveFilters =
@@ -128,16 +125,6 @@ export default function FilterBar() {
 
   const clearFilters = () => setFilters({ format: '', tag: '', series: '', sort: 'author', order: 'asc' })
   const toggleOrder = () => setFilters({ order: filters.order === 'asc' ? 'desc' : 'asc' })
-
-  // Wrapper for fixed-width selects
-  function Sel({ children, width = 'w-32' }: { children: React.ReactNode; width?: string }) {
-    return (
-      <div className={`relative shrink-0 ${width}`}>
-        {children}
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-      </div>
-    )
-  }
 
   const handleBulkDelete = async () => {
     if (selectedBookIds.length === 0) return
@@ -168,24 +155,13 @@ export default function FilterBar() {
   const handleBulkClearTags = async () => {
     if (selectedBookIds.length === 0) return
     setClearingTags(true)
-    let failedBooks = 0
     try {
-      for (const bookId of selectedBookIds) {
-        try {
-          const bookTags = await api.getBookTags(bookId)
-          for (const tag of bookTags) {
-            await api.removeBookTag(bookId, tag.id)
-          }
-        } catch {
-          failedBooks += 1
-        }
-      }
+      const allTags = await Promise.all(selectedBookIds.map(id => api.getBookTags(id).catch(() => [])))
+      const uniqueTagNames = [...new Set(allTags.flat().map(t => t.name))]
+      await Promise.all(uniqueTagNames.map(tag => api.bulkRemoveTag(selectedBookIds, tag)))
       qc.invalidateQueries({ queryKey: ['books'] })
       qc.invalidateQueries({ queryKey: ['tags'] })
       await refreshSelectionHasTaggedBooks()
-      if (failedBooks > 0) {
-        window.alert(`Cleared tags for most books, but ${failedBooks} book${failedBooks === 1 ? '' : 's'} failed. Please try again.`)
-      }
     } finally {
       setClearingTags(false)
     }
@@ -220,7 +196,6 @@ export default function FilterBar() {
   }
 
   const btnCls = "px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
-
   const selectionToolbar = (
     <div className="flex items-center justify-between gap-2 w-full">
       {/* Left: selection helpers */}
@@ -382,7 +357,7 @@ export default function FilterBar() {
   const viewControls = (
     <div className="flex flex-wrap items-center gap-2">
       {/* Per-page dropdown */}
-      <div className="relative w-32">
+      <Sel>
         <select
           value={perPage}
           onChange={e => setPerPage(Number(e.target.value))}
@@ -393,12 +368,11 @@ export default function FilterBar() {
             <option key={n} value={n}>{n} / page</option>
           ))}
         </select>
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-      </div>
+      </Sel>
 
       {/* Grid size — only in grid mode */}
       {viewMode === 'grid' && (
-        <div className="relative w-32">
+        <Sel>
           <select
             value={gridSize}
             onChange={e => setGridSize(Number(e.target.value))}
@@ -409,8 +383,7 @@ export default function FilterBar() {
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-        </div>
+        </Sel>
       )}
 
       {/* View mode toggle */}

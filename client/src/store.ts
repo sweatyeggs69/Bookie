@@ -10,7 +10,6 @@ interface PersistedPrefs {
   perPage: number
   page: number
   filters: Filters
-  searchQuery: string
   view: 'library' | 'settings'
 }
 
@@ -43,8 +42,7 @@ interface StoreState extends Omit<PersistedPrefs, 'view'> {
   selectedBookId: number | null
   setSelectedBookId: (id: number | null) => void
 
-  // Search query (convenience wrapper — also synced into filters.q)
-  searchQuery: string
+  // Search query (convenience wrapper — sets filters.q and resets page)
   setSearchQuery: (query: string) => void
 
   // Mass selection
@@ -112,11 +110,9 @@ export const useStore = create<StoreState>()(
       selectedBookId: null,
       setSelectedBookId: (selectedBookId) => set({ selectedBookId }),
 
-      // Search query — synced into filters.q and resets page
-      searchQuery: '',
+      // Search query — sets filters.q and resets page
       setSearchQuery: (query) =>
         set((state) => ({
-          searchQuery: query,
           filters: { ...state.filters, q: query },
           page: 1,
         })),
@@ -150,7 +146,6 @@ export const useStore = create<StoreState>()(
         perPage: state.perPage,
         page: state.page,
         filters: state.filters,
-        searchQuery: state.searchQuery,
         view: state.view === 'upload' ? 'library' : state.view,
       }),
     },

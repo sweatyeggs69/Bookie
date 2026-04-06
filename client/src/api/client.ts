@@ -58,18 +58,22 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function buildQueryString(params: Record<string, unknown>): string {
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') qs.set(key, String(value))
+  }
+  return qs.toString()
+}
+
 // ─── Books ────────────────────────────────────────────────────────────────────
 
 export type GetBooksParams = Partial<Filters> & { page?: number; per_page?: number }
 
 export function getBooks(params: GetBooksParams = {}): Promise<BooksResponse> {
-  const qs = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') {
-      qs.set(key, String(value))
-    }
-  }
-  const query = qs.toString()
+  const query = buildQueryString(params as Record<string, unknown>)
   return api<BooksResponse>(`/api/books${query ? `?${query}` : ''}`)
 }
 
@@ -89,11 +93,7 @@ export function deleteBook(id: number): Promise<void> {
 }
 
 export function getBookIds(params: Omit<GetBooksParams, 'page' | 'per_page'> = {}): Promise<{ ids: number[] }> {
-  const qs = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') qs.set(key, String(value))
-  }
-  const query = qs.toString()
+  const query = buildQueryString(params as Record<string, unknown>)
   return api<{ ids: number[] }>(`/api/books/ids${query ? `?${query}` : ''}`)
 }
 
@@ -297,12 +297,6 @@ export function changePassword(currentPassword: string, newPassword: string): Pr
   })
 }
 
-// ─── Tags admin (same as regular tags API) ────────────────────────────────────
-
-export function adminGetTags(): Promise<Tag[]> {
-  return getTags()
-}
-
 export function adminCreateTag(name: string): Promise<Tag> {
   return api<Tag>('/api/tags', {
     method: 'POST',
@@ -497,7 +491,6 @@ export default {
   // Series
   getSeries,
   // Tags admin
-  adminGetTags,
   adminCreateTag,
   adminDeleteTag,
   // Stats

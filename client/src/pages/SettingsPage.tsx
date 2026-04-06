@@ -203,7 +203,7 @@ function LibraryTab() {
   const { addToast } = useToast()
   const qc = useQueryClient()
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
-  const { data: tags = [], refetch: refetchTags } = useQuery({ queryKey: ['tags'], queryFn: api.adminGetTags })
+  const { data: tags = [], refetch: refetchTags } = useQuery({ queryKey: ['tags'], queryFn: api.getTags })
   const { data: stats } = useQuery<Stats>({ queryKey: ['stats'], queryFn: api.getStats })
 
   const [newTag, setNewTag] = useState('')

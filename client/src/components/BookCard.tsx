@@ -124,21 +124,15 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           </div>
         ) : (
           /* Three-dot menu trigger */
-          <div
-            className="absolute top-1 left-1 z-20"
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+          <button
+            ref={btnRef}
+            type="button"
+            onClick={openMenu}
+            className="absolute top-1 left-1 z-20 w-7 h-7 flex items-center justify-center rounded bg-black/25 text-white hover:bg-black/45 transition-colors"
+            aria-label="Book actions"
           >
-            <button
-              ref={btnRef}
-              type="button"
-              onClick={openMenu}
-              className="w-7 h-7 flex items-center justify-center rounded bg-black/25 text-white hover:bg-black/45 transition-colors"
-              aria-label="Book actions"
-            >
-              <MoreVertical size={13} />
-            </button>
-          </div>
+            <MoreVertical size={13} />
+          </button>
         )}
 
         {/* Text */}
