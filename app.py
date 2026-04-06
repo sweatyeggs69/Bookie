@@ -332,7 +332,10 @@ def _check_for_update() -> dict:
         with urllib.request.urlopen(blob_req, timeout=10) as resp:
             config = json.loads(resp.read())
 
-        latest_created = config.get("created", "")
+        # Prefer the OCI label (set at pipeline start, same moment as BUILD_DATE)
+        # over config["created"] which is set when Docker build finishes (always later).
+        labels = config.get("config", {}).get("Labels") or {}
+        latest_created = labels.get("org.opencontainers.image.created", "") or config.get("created", "")
         # ISO-8601 strings compare lexicographically
         update_available = bool(latest_created and latest_created > build_date)
         result = {

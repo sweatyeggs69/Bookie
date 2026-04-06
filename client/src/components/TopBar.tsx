@@ -141,14 +141,14 @@ export default function TopBar({ onAuthChange }: Props) {
         >
           <button
             onClick={() => setUserMenuOpen((o) => !o)}
-            className="relative flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
+            className={[
+              "relative flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors",
+              updateInfo?.update_available ? "update-glow" : "",
+            ].join(' ')}
           >
             <User className="w-4 h-4" />
             <span className="hidden sm:block text-sm max-w-[120px] truncate">{displayName}</span>
             <ChevronDown className="w-3.5 h-3.5" />
-            {updateInfo?.update_available && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
-            )}
           </button>
 
           {userMenuOpen && (
