@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, BookOpen, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 import { useStore } from '../store'
 import * as api from '../api/client'
 import FilterBar from '../components/FilterBar'
 import BookCard from '../components/BookCard'
 import BookListItem from '../components/BookListItem'
 import BookDialog from '../components/BookDialog'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
 function getPageNumbers(current: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -24,7 +25,7 @@ export default function LibraryPage() {
   const { filters, page, setPage, perPage, viewMode, gridSize, selectedBookId, setSelectedBookId, setVisibleBookIds } = useStore()
 
   const queryKey = ['books', filters, page, perPage]
-  const { data, isFetching, isError, error } = useQuery({
+  const { data, isFetching, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: () =>
       api.getBooks({
@@ -40,6 +41,9 @@ export default function LibraryPage() {
     placeholderData: prev => prev,
   })
 
+  const handleRefresh = useCallback(() => refetch(), [refetch])
+  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh({ onRefresh: handleRefresh })
+
   const books = data?.books ?? []
   const pages = data?.pages ?? 1
 
@@ -49,9 +53,33 @@ export default function LibraryPage() {
 
   const pageNumbers = getPageNumbers(page, pages)
 
+  const indicatorProgress = Math.min(pullDistance / 80, 1)
+  const showIndicator = pullDistance > 0 || isRefreshing
+
   return (
-    <div>
+    <div ref={containerRef}>
       <FilterBar />
+
+      {/* Pull-to-refresh indicator (mobile/tablet only) */}
+      {showIndicator && (
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all duration-150 lg:hidden"
+          style={{ height: isRefreshing ? '48px' : `${pullDistance}px` }}
+        >
+          <RefreshCw
+            className="text-accent"
+            style={{
+              width: '20px',
+              height: '20px',
+              opacity: isRefreshing ? 1 : indicatorProgress,
+              transform: isRefreshing
+                ? 'none'
+                : `rotate(${indicatorProgress * 180}deg)`,
+              animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
+            }}
+          />
+        </div>
+      )}
 
       <div className="px-4 py-4">
         {isFetching && books.length > 0 && (
