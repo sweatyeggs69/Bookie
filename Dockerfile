@@ -52,10 +52,15 @@ COPY --from=frontend-builder /app/static/dist ./static/dist
 
 RUN mkdir -p data/books data/covers
 
+ARG BUILD_DATE=""
+ARG GHCR_IMAGE="ghcr.io/sweatyeggs69/bookie"
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DATA_DIR=/app/data \
-    FLASK_APP=app.py
+    FLASK_APP=app.py \
+    BUILD_DATE=${BUILD_DATE} \
+    GHCR_IMAGE=${GHCR_IMAGE}
 
 EXPOSE 5000
 

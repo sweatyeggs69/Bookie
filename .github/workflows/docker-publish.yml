@@ -99,6 +99,10 @@ jobs:
             org.opencontainers.image.description=Self-hosted ebook manager
             org.opencontainers.image.vendor=${{ github.repository_owner }}
 
+      - name: Get build date
+        id: build_date
+        run: echo "ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Build and push
         id: build_step
         uses: docker/build-push-action@v6
@@ -109,6 +113,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push_image) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ steps.build_date.outputs.ts }}
+            GHCR_IMAGE=ghcr.io/${{ env.IMAGE_NAME }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false

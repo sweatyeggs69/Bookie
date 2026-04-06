@@ -140,3 +140,12 @@ export interface Stats {
   formats: Record<string, number>
   total_size_bytes: number
 }
+
+// ─── Update check ─────────────────────────────────────────────────────────────
+
+export interface UpdateInfo {
+  update_available: boolean
+  current_build?: string
+  latest_build?: string
+  reason?: string
+}

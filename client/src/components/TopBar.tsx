@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  ArrowUpCircle,
   BookOpen,
   Check,
   ChevronDown,
@@ -41,6 +42,7 @@ export default function TopBar({ onAuthChange }: Props) {
   const { user, view, setView, setPage } = useStore();
   const { addToast } = useToast();
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings, staleTime: 60_000 });
+  const { data: updateInfo } = useQuery({ queryKey: ['update-check'], queryFn: api.getUpdateInfo, staleTime: 3_600_000, retry: false });
   const displayName = (typeof settings?.display_name === 'string' && settings.display_name ? settings.display_name : null) || user?.username;
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -139,11 +141,14 @@ export default function TopBar({ onAuthChange }: Props) {
         >
           <button
             onClick={() => setUserMenuOpen((o) => !o)}
-            className="flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
+            className="relative flex items-center gap-1.5 h-9 pl-2 pr-1.5 rounded text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors"
           >
             <User className="w-4 h-4" />
             <span className="hidden sm:block text-sm max-w-[120px] truncate">{displayName}</span>
             <ChevronDown className="w-3.5 h-3.5" />
+            {updateInfo?.update_available && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+            )}
           </button>
 
           {userMenuOpen && (
@@ -190,6 +195,18 @@ export default function TopBar({ onAuthChange }: Props) {
                   </button>
                 ))}
               </div>
+
+              {updateInfo?.update_available && (
+                <div className="border-t border-line mt-1 pt-1">
+                  <div className="flex items-center gap-2.5 px-3 py-2">
+                    <ArrowUpCircle className="w-3.5 h-3.5 shrink-0 text-accent" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-accent">Update available</p>
+                      <p className="text-xs text-ink-muted truncate">A newer Docker image is ready</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-line mt-1 pt-1">
                 <button

@@ -7,6 +7,9 @@ import re
 import secrets
 import logging
 import stat
+import time
+import urllib.request
+import urllib.error
 import zipfile
 import xml.etree.ElementTree as ET
 from datetime import timedelta, date
@@ -257,6 +260,92 @@ def _cleanup_empty_dirs(directory: Path) -> None:
     except Exception as exc:
         logger.debug("Could not remove empty directory %s: %s", directory, exc)
 
+
+
+# ---------------------------------------------------------------------------
+# Update check
+# ---------------------------------------------------------------------------
+
+_UPDATE_CHECK_TTL = 3600  # seconds
+_update_check_cache: tuple[float, dict] | None = None
+
+
+def _check_for_update() -> dict:
+    """Query GHCR for the latest image creation date and compare to BUILD_DATE."""
+    global _update_check_cache
+
+    now = time.time()
+    if _update_check_cache and (now - _update_check_cache[0]) < _UPDATE_CHECK_TTL:
+        return _update_check_cache[1]
+
+    build_date = os.environ.get("BUILD_DATE", "").strip()
+    if not build_date:
+        result: dict = {"update_available": False, "reason": "no_build_date"}
+        _update_check_cache = (now, result)
+        return result
+
+    ghcr_image = os.environ.get("GHCR_IMAGE", "ghcr.io/sweatyeggs69/bookie").strip()
+    # Expect format: registry/owner/image  (e.g. ghcr.io/sweatyeggs69/bookie)
+    slash_idx = ghcr_image.find("/")
+    if slash_idx == -1:
+        result = {"update_available": False, "reason": "invalid_image"}
+        _update_check_cache = (now, result)
+        return result
+
+    registry = ghcr_image[:slash_idx]
+    image_path = ghcr_image[slash_idx + 1:]
+
+    try:
+        # 1. Obtain an anonymous pull token from the registry
+        token_url = f"https://{registry}/token?scope=repository:{image_path}:pull"
+        with urllib.request.urlopen(token_url, timeout=10) as resp:
+            token_data = json.loads(resp.read())
+        token = token_data.get("token") or token_data.get("access_token", "")
+
+        # 2. Fetch the manifest for the 'latest' tag
+        manifest_url = f"https://{registry}/v2/{image_path}/manifests/latest"
+        manifest_req = urllib.request.Request(
+            manifest_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": (
+                    "application/vnd.oci.image.manifest.v1+json,"
+                    "application/vnd.docker.distribution.manifest.v2+json"
+                ),
+            },
+        )
+        with urllib.request.urlopen(manifest_req, timeout=10) as resp:
+            manifest = json.loads(resp.read())
+
+        config_digest = manifest.get("config", {}).get("digest", "")
+        if not config_digest:
+            result = {"update_available": False, "reason": "no_config_digest"}
+            _update_check_cache = (now, result)
+            return result
+
+        # 3. Fetch the config blob to read the image creation timestamp
+        blob_url = f"https://{registry}/v2/{image_path}/blobs/{config_digest}"
+        blob_req = urllib.request.Request(
+            blob_url,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        with urllib.request.urlopen(blob_req, timeout=10) as resp:
+            config = json.loads(resp.read())
+
+        latest_created = config.get("created", "")
+        # ISO-8601 strings compare lexicographically
+        update_available = bool(latest_created and latest_created > build_date)
+        result = {
+            "update_available": update_available,
+            "current_build": build_date,
+            "latest_build": latest_created,
+        }
+    except Exception as exc:
+        logger.debug("Update check failed: %s", exc)
+        result = {"update_available": False, "reason": "check_failed"}
+
+    _update_check_cache = (now, result)
+    return result
 
 
 def create_app():
@@ -1368,6 +1457,11 @@ def create_app():
         logging.getLogger().setLevel(numeric)
         Settings.set("log_level", level)
         return jsonify({"level": level})
+
+    @app.route("/api/update-check", methods=["GET"])
+    @login_required
+    def update_check():
+        return jsonify(_check_for_update())
 
     return app
 

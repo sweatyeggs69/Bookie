@@ -10,6 +10,7 @@ import type {
   UploadProgressCallback,
   EmailAddress,
   Stats,
+  UpdateInfo,
 } from '../types'
 
 // ─── Base fetch wrapper ───────────────────────────────────────────────────────
@@ -325,6 +326,12 @@ export function getStats(): Promise<Stats> {
   return api<Stats>('/api/stats')
 }
 
+// ─── Update check ─────────────────────────────────────────────────────────────
+
+export function getUpdateInfo(): Promise<UpdateInfo> {
+  return api<UpdateInfo>('/api/update-check')
+}
+
 // ─── Metadata sources ─────────────────────────────────────────────────────────
 
 export interface MetadataSources {
@@ -495,6 +502,8 @@ export default {
   adminDeleteTag,
   // Stats
   getStats,
+  // Update check
+  getUpdateInfo,
   // Download
   getDownloadUrl,
   // Metadata sources
