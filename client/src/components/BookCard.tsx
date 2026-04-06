@@ -94,14 +94,12 @@ export default function BookCard({ book, onClick }: BookCardProps) {
       >
         {/* Cover */}
         <div className="relative w-full rounded-t-lg overflow-hidden" style={{ paddingBottom: '150%' }}>
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-surface-raised flex flex-col items-center justify-center">
             {coverUrl ? (
               <img src={coverUrl} alt={book.title ?? book.filename} onError={() => setImgError(true)}
                 className="w-full h-full object-cover" loading="lazy" draggable={false} />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-surface-raised gap-2">
-                <BookOpen size={32} className="text-ink-faint" />
-              </div>
+              <BookOpen size={32} className="text-ink-faint" />
             )}
           </div>
 
