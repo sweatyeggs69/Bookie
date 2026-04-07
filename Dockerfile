@@ -15,7 +15,10 @@ FROM python:3.12-slim AS py-builder
 WORKDIR /build
 
 RUN apt-get update \
- # Upgrade tar to fix CVE-2025-45582 (two-step symlink path traversal)
+ # Pull all available Debian security patches (picks up CVE-2026-5704 tar fix once backported)
+ && apt-get upgrade -y \
+ # Explicitly upgrade tar: CVE-2025-45582 (symlink path traversal),
+ # CVE-2026-5704 (hidden file injection via crafted archive)
  && apt-get install -y --no-install-recommends \
     tar \
     gcc \
@@ -27,9 +30,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-# Upgrade pip before installing deps to fix CVE-2025-8869 (pip sdist tar path traversal)
-# and CVE-2026-1703 (pip wheel extraction path traversal via os.path.commonprefix bypass)
-RUN pip install --upgrade "pip>=25.3"
+# Upgrade pip to fix CVE-2026-1703 (wheel extraction path traversal via
+# os.path.commonprefix bypass — requires pip >= 26.0).
+# Note: CVE-2025-8869 (sdist tar symlink traversal) is not applicable on
+# Python 3.12 which fully implements PEP 706 and never reaches that code path.
+RUN pip install --upgrade "pip>=26.0"
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ── Stage 3: Runtime ───────────────────────────────────────
@@ -40,7 +45,10 @@ LABEL org.opencontainers.image.description="Self-hosted ebook manager"
 LABEL org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update \
- # Upgrade tar to fix CVE-2025-45582 (two-step symlink path traversal)
+ # Pull all available Debian security patches (picks up CVE-2026-5704 tar fix once backported)
+ && apt-get upgrade -y \
+ # Explicitly upgrade tar: CVE-2025-45582 (symlink path traversal),
+ # CVE-2026-5704 (hidden file injection via crafted archive)
  && apt-get install -y --no-install-recommends \
     tar \
     libmagic1 \

@@ -1,0 +1,68 @@
+# .trivyignore — accepted/not-applicable CVEs for Bookie
+#
+# Each entry below has been triaged and is either:
+#   (a) disputed / upstream won't-fix,
+#   (b) Debian marked no-dsa (no security advisory issued),
+#   (c) not applicable in a containerised, non-interactive web-server context, or
+#   (d) no upstream fix available yet.
+#
+# Review this file when rebuilding against a new base image or Debian release.
+
+# ── glibc ──────────────────────────────────────────────────────────────────────
+# All disputed or Debian won't-fix; none exploitable from a web request.
+CVE-2010-4756   # glob(3) resource exhaustion — Debian won't-fix
+CVE-2018-20796  # regex ReDoS — disputed by glibc upstream
+CVE-2019-9192   # regex ReDoS — disputed by glibc upstream
+CVE-2019-1010022 # ASLR/stack-guard bypass — Debian won't-fix
+CVE-2019-1010023 # ASLR/stack-guard bypass — Debian won't-fix
+CVE-2019-1010024 # ASLR/stack-guard bypass — Debian won't-fix
+CVE-2019-1010025 # ASLR/stack-guard bypass — Debian won't-fix
+
+# ── tar ────────────────────────────────────────────────────────────────────────
+CVE-2005-2541   # absolute-path extraction — intended/documented behaviour, won't-fix
+
+# ── SQLite ─────────────────────────────────────────────────────────────────────
+CVE-2021-45346  # memory leak via corrupted DB — disputed by SQLite devs; Debian no-dsa
+                # (app only opens its own DB, never loads untrusted .db files)
+CVE-2025-70873  # zipfile extension heap disclosure — Debian not affected
+                # (zipfile extension is not compiled into Debian sqlite3 packages)
+
+# ── libgcrypt ──────────────────────────────────────────────────────────────────
+CVE-2018-6829   # CBC padding oracle — disputed; Debian won't-fix
+CVE-2024-2236   # RSA timing side-channel — Debian no-dsa; app uses OpenSSL (cryptography
+                # library), not libgcrypt directly
+
+# ── libxslt ────────────────────────────────────────────────────────────────────
+CVE-2015-9019   # xsl:number inadequate PRNG — disputed; Debian won't-fix
+
+# ── openssl / libssl ───────────────────────────────────────────────────────────
+CVE-2010-0928   # weak RSA key with specific seed — disputed; Debian won't-fix
+
+# ── systemd (not running in container) ────────────────────────────────────────
+CVE-2013-4392   # temp-file race in systemd — no systemd in container
+CVE-2023-31437  # journald sealed-log tampering — no systemd/journald in container
+CVE-2023-31438  # journald log truncation — no systemd/journald in container
+CVE-2023-31439  # journald log manipulation — no systemd/journald in container
+
+# ── shadow / login utilities (no interactive logins in container) ──────────────
+CVE-2007-5686   # /etc/login.defs creation — no interactive logins in container
+CVE-2017-18018  # chown race condition in shadow — no interactive logins in container
+
+# ── util-linux (SUID login utilities not used in container) ───────────────────
+CVE-2022-0563   # chfn/chsh info disclosure — SUID login utils not invoked in container
+CVE-2025-14104  # setpwnam() heap overread in login-utils — no fix in Debian stable yet;
+                # SUID login utilities not invoked by this workload
+
+# ── perl ───────────────────────────────────────────────────────────────────────
+CVE-2011-4116   # File::Temp race condition — disputed; Debian won't-fix
+
+# ── apt ────────────────────────────────────────────────────────────────────────
+CVE-2011-3374   # apt SHA-1 repository signature — disputed; Debian won't-fix
+
+# ── coreutils ──────────────────────────────────────────────────────────────────
+CVE-2025-5278   # sort heap under-read via crafted -k flag — upstream patch only,
+                # no Debian release yet; not reachable via web request in this app
+
+# ── libxml2 ────────────────────────────────────────────────────────────────────
+CVE-2025-12863  # use-after-free in xmlSetTreeDoc() — upstream rejected Debian patch;
+                # no fix available; monitor https://gitlab.gnome.org/GNOME/libxml2
