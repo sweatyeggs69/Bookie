@@ -30,9 +30,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-# Upgrade pip before installing deps to fix CVE-2025-8869 (pip sdist tar path traversal)
-# and CVE-2026-1703 (pip wheel extraction path traversal via os.path.commonprefix bypass)
-RUN pip install --upgrade "pip>=25.3"
+# Upgrade pip to fix CVE-2026-1703 (wheel extraction path traversal via
+# os.path.commonprefix bypass — requires pip >= 26.0).
+# Note: CVE-2025-8869 (sdist tar symlink traversal) is not applicable on
+# Python 3.12 which fully implements PEP 706 and never reaches that code path.
+RUN pip install --upgrade "pip>=26.0"
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ── Stage 3: Runtime ───────────────────────────────────────
