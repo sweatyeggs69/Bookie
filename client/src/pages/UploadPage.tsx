@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Upload, FolderOpen, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
 import * as api from '../api/client'
 import type { Tag } from '../types'
 import Dialog from '../components/Dialog'
@@ -125,10 +125,20 @@ export default function UploadPage({ onClose }: Props) {
       <div className="p-4 space-y-4">
         {/* Drop zone */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Browse files or drop here"
+          onClick={() => inputRef.current?.click()}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              inputRef.current?.click()
+            }
+          }}
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-12 transition-colors select-none
+          className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-12 transition-colors select-none cursor-pointer
             ${dragging ? 'border-accent bg-accent/5' : 'border-line hover:border-line-strong hover:bg-surface-raised'}`}
         >
           <Upload className={`w-8 h-8 ${dragging ? 'text-accent' : 'text-ink-muted'}`} />
@@ -136,24 +146,13 @@ export default function UploadPage({ onClose }: Props) {
             <p className="text-sm font-medium text-ink">Drop files or folders here</p>
             <p className="text-xs text-ink-muted mt-1">EPUB, PDF, MOBI, AZW3, FB2, DJVU, CBZ, CBR, TXT · max 128 MB</p>
           </div>
-          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-line text-ink-muted hover:text-ink hover:border-line-strong transition-colors"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Browse files
-            </button>
-            <button
-              type="button"
-              onClick={() => folderRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-line text-ink-muted hover:text-ink hover:border-line-strong transition-colors"
-            >
-              <FolderOpen className="w-3.5 h-3.5" />
-              Browse folder
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); folderRef.current?.click() }}
+            className="text-xs text-ink-muted hover:text-ink underline underline-offset-2 transition-colors"
+          >
+            or select a folder
+          </button>
           <input
             ref={inputRef} type="file" multiple
             accept={[...ALLOWED].map(e => `.${e}`).join(',')}
