@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <rect width="32" height="32" rx="5" fill="#044f5b"/>
   <g transform="translate(4,4)" stroke="#cddde0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Back bookmark (upper-right) -->
-    <path d="M9 2h9a2 2 0 0 1 2 2v16"/>
+    <!-- Back bookmark (upper-right, further offset) -->
+    <path d="M11 1h9a2 2 0 0 1 2 2v17"/>
     <!-- Front bookmark (center-left) -->
-    <path d="M5 4h9a2 2 0 0 1 2 2v16l-6.5-3.5L3 22V6a2 2 0 0 1 2-2z"/>
+    <path d="M3 5h9a2 2 0 0 1 2 2v16l-6.5-3.5L1 23V7a2 2 0 0 1 2-2z"/>
   </g>
 </svg>
