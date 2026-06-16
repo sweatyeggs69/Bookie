@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="5" fill="#044f5b"/>
-  <g stroke="#cddde0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Back bookmark: top + right edge, rounded top-right corner -->
-    <path d="M13 5 H22.5 a2 2 0 0 1 2 2 V25"/>
-    <!-- Front bookmark: full shape with V-notch, rounded top corners -->
-    <path d="M7.5 9 a2 2 0 0 1 2-2 H19.5 a2 2 0 0 1 2 2 V26 L14 28 L7.5 26 Z"/>
-  </g>
-</svg>
