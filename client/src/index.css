@@ -5,26 +5,26 @@
 
 /* ─── Color tokens — dark (default) ─────────────────────────────────────── */
 :root {
-  --surface:      #16161e;
-  --surface-card: #1f1f2d;
-  --surface-raised:#272738;
-  --surface-high: #303048;
-  --ink:          #eeeef8;
-  --ink-muted:    #aaaacb;
-  --ink-faint:    #72728e;
-  --line:         rgba(255,255,255,0.11);
-  --line-strong:  rgba(255,255,255,0.20);
+  --surface:      #0e1a1c;
+  --surface-card: #142022;
+  --surface-raised:#1b2c2f;
+  --surface-high: #223739;
+  --ink:          #e4f0f1;
+  --ink-muted:    #7cb5ba;
+  --ink-faint:    #4e8289;
+  --line:         rgba(255,255,255,0.09);
+  --line-strong:  rgba(255,255,255,0.17);
 }
 
 /* ─── Color tokens — light ───────────────────────────────────────────────── */
 [data-theme="light"] {
-  --surface:      #f0f0f7;
+  --surface:      #eef5f5;
   --surface-card: #ffffff;
-  --surface-raised:#e8e8f2;
-  --surface-high: #ddddf0;
-  --ink:          #1a1a2e;
-  --ink-muted:    #5a5a7a;
-  --ink-faint:    #9898b8;
+  --surface-raised:#ddeaeb;
+  --surface-high: #cadddf;
+  --ink:          #0d2224;
+  --ink-muted:    #2e6b73;
+  --ink-faint:    #5a9da5;
   --line:         rgba(0,0,0,0.08);
   --line-strong:  rgba(0,0,0,0.14);
 }
@@ -137,7 +137,7 @@
 /* ─── Text selection ──────────────────────────────────────────────────────── */
 ::selection {
   background-color: rgba(4, 79, 91, 0.35);
-  color: #e2e2ee;
+  color: #e4f0f1;
 }
 
 /* ─── Focus visible ring (keyboard nav only) ─────────────────────────────── */
@@ -276,7 +276,7 @@
 
   /* Glass effect surface */
   .glass {
-    background-color: rgba(22, 22, 29, 0.85);
+    background-color: rgba(14, 26, 28, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
