@@ -11,9 +11,9 @@ export default {
           high: 'var(--surface-high)',
         },
         accent: {
-          DEFAULT: '#7c6af8',
-          hover: '#9180fa',
-          muted: 'rgba(124,106,248,0.15)',
+          DEFAULT: '#044f5b',
+          hover: '#066070',
+          muted: 'rgba(4,79,91,0.15)',
         },
         ink: {
           DEFAULT: 'var(--ink)',
