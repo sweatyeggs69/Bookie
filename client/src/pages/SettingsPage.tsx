@@ -457,7 +457,7 @@ function MetadataTab() {
     setDisabled(prev => { const n = new Set(prev); n.has(source) ? n.delete(source) : n.add(source); return n })
   }
 
-  const sourceLabels = srcData?.labels ?? { open_library: 'Open Library', itunes: 'Apple Books', goodreads: 'Goodreads' }
+  const sourceLabels = srcData?.labels ?? { itunes: 'Apple Books', open_library: 'Open Library', goodreads: 'Goodreads' }
 
   return (
     <div className="space-y-4">
@@ -492,7 +492,7 @@ function MetadataTab() {
 
       <section className="card p-5 space-y-3">
         <h2 className="text-sm font-semibold text-ink">Source Priority</h2>
-        <p className="text-xs text-ink-muted">Sources are ordered by priority, top to bottom.</p>
+        <p className="text-xs text-ink-muted">Drag sources to set metadata and cover search priority, top to bottom. Disabled sources are skipped for both searches.</p>
         <div className="space-y-1">
           {priority.map((src, idx) => (
             <div

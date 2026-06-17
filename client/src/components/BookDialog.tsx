@@ -260,6 +260,17 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
   const isSaving = saveMutation.isPending
   const isDeleting = deleteMutation.isPending
 
+  if (showCoverDialog && book) {
+    return (
+      <CoverDialog
+        bookTitle={book.title ?? undefined}
+        bookAuthor={book.author ?? undefined}
+        onClose={() => setShowCoverDialog(false)}
+        onSelected={cover => { setPendingCover(cover); setShowCoverDialog(false) }}
+      />
+    )
+  }
+
   const footer = (
     <div className="flex items-center justify-between gap-3">
       <button
@@ -407,14 +418,6 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
         )}
       </Dialog>
 
-      {showCoverDialog && book && (
-        <CoverDialog
-          bookTitle={book.title ?? undefined}
-          bookAuthor={book.author ?? undefined}
-          onClose={() => setShowCoverDialog(false)}
-          onSelected={cover => { setPendingCover(cover); setShowCoverDialog(false) }}
-        />
-      )}
 
       {showMetaDialog && book && (
         <MetaDialog

@@ -251,16 +251,19 @@ def fetch_cover_urls_for_isbn(isbn: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 SOURCE_FNS = {
-    "open_library":  search_open_library,
     "itunes":        search_itunes,
+    "open_library":  search_open_library,
     "goodreads":     search_goodreads,
 }
 
-DEFAULT_SOURCE_ORDER = ["open_library", "itunes", "goodreads"]
+# Apple Books is first by default because it is the most reliable source for
+# cover artwork, but keep the full configurable source list so users can retain
+# drag-and-drop metadata priority control in Settings.
+DEFAULT_SOURCE_ORDER = ["itunes", "open_library", "goodreads"]
 
 SOURCE_LABELS = {
-    "open_library":  "Open Library",
     "itunes":        "Apple Books",
+    "open_library":  "Open Library",
     "goodreads":     "Goodreads",
 }
 

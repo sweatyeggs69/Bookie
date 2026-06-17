@@ -17,9 +17,9 @@ interface CoverResult {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  open_library: 'OpenLib',
-  goodreads: 'Goodreads',
   itunes: 'Apple Books',
+  open_library: 'Open Library',
+  goodreads: 'Goodreads',
 }
 
 export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected }: Props) {
