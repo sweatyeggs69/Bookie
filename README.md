@@ -1,4 +1,4 @@
-<img width="98" alt="bookie-icon" src="https://github.com/user-attachments/assets/46af76cc-8014-45b0-a664-97f09afd224a" />
+<img width="98" lt="icon" src="https://github.com/user-attachments/assets/1c637116-36c9-4f0a-bc05-759c28a56e28" />
 
 # Bookie
 
@@ -8,7 +8,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 
 > This project is built with Claude.
 
-<img width="100%" alt="Bookie UI" src="https://github.com/user-attachments/assets/e0755ecb-c6f7-4ed3-b57e-337dd64876e7" />
+<img width="100%" alt="Screenshot 2026-06-16 at 20-37-23 Bookie" src="https://github.com/user-attachments/assets/8ed10198-aa45-45a2-992e-39553d482aff" />
 
 ---
 
@@ -23,7 +23,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 **Organization**
 - Configurable file rename schemes and folder structures
 
-<img width="807" height="555" alt="image" src="https://github.com/user-attachments/assets/0cfdb669-6d8e-405f-8bb6-4edea042438e" />
+<img width="862" height="606" alt="Screenshot 2026-06-16 at 8 38 37 PM" src="https://github.com/user-attachments/assets/7fb1a81f-0af5-4d79-ba37-f9853dd37ed8" />
 
 >[!NOTE]
 >When migrating from a different solution, it is recommended you import your books into Bookie to ensure proper metadata management.
