@@ -100,10 +100,10 @@ export default function TopBar({ onAuthChange }: Props) {
       {/* Brand — always visible */}
       <button
         onClick={() => { setView('library'); setPage(1); history.replaceState(null, '', window.location.pathname + window.location.search) }}
-        className="flex items-center gap-2 shrink-0 text-ink hover:text-accent transition-colors"
+        className="flex items-center gap-2 shrink-0"
       >
-        <BookOpen className="w-5 h-5 text-accent" />
-        <span className="font-semibold text-base tracking-tight">Bookie</span>
+        <BookOpen className="w-5 h-5 text-ink" />
+        <span className="font-semibold text-base tracking-tight text-ink">Bookie</span>
       </button>
 
       {/* Desktop search — absolutely centered in header */}
