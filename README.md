@@ -16,7 +16,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 
 **Library Management**
 - Multi-format support: EPUB, PDF, MOBI, AZW, AZW3, FB2, DJVU, CBZ, CBR, and TXT
-- Automatic metadata fetching from Open Library, Apple Books, and Goodreads
+- Automatic metadata fetching from Apple Books, Open Library, and Goodreads
 - Cover extraction, search, and direct embedding into EPUB files
 - Series tracking and tagging (think shelves, minus the complexity)
 
