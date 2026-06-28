@@ -5,26 +5,26 @@
 
 /* ─── Color tokens — dark (default) ─────────────────────────────────────── */
 :root {
-  --surface:      #0e1a1c;
-  --surface-card: #142022;
-  --surface-raised:#1b2c2f;
-  --surface-high: #223739;
-  --ink:          #e4f0f1;
-  --ink-muted:    #7cb5ba;
-  --ink-faint:    #4e8289;
-  --line:         rgba(255,255,255,0.09);
-  --line-strong:  rgba(255,255,255,0.17);
+  --surface:      #16161e;
+  --surface-card: #1f1f2d;
+  --surface-raised:#272738;
+  --surface-high: #303048;
+  --ink:          #eeeef8;
+  --ink-muted:    #aaaacb;
+  --ink-faint:    #72728e;
+  --line:         rgba(255,255,255,0.11);
+  --line-strong:  rgba(255,255,255,0.20);
 }
 
 /* ─── Color tokens — light ───────────────────────────────────────────────── */
 [data-theme="light"] {
-  --surface:      #eef5f5;
+  --surface:      #f0f0f7;
   --surface-card: #ffffff;
-  --surface-raised:#ddeaeb;
-  --surface-high: #cadddf;
-  --ink:          #0d2224;
-  --ink-muted:    #2e6b73;
-  --ink-faint:    #5a9da5;
+  --surface-raised:#e8e8f2;
+  --surface-high: #ddddf0;
+  --ink:          #1a1a2e;
+  --ink-muted:    #5a5a7a;
+  --ink-faint:    #9898b8;
   --line:         rgba(0,0,0,0.08);
   --line-strong:  rgba(0,0,0,0.14);
 }
@@ -46,8 +46,8 @@
 
 /* ─── Update available glow animation ────────────────────────────────────── */
 @keyframes update-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(4, 79, 91, 0); outline-color: transparent; }
-  50%       { box-shadow: 0 0 6px 2px rgba(4, 79, 91, 0.55); outline-color: rgba(4, 79, 91, 0.55); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 106, 248, 0); outline-color: transparent; }
+  50%       { box-shadow: 0 0 6px 2px rgba(124, 106, 248, 0.55); outline-color: rgba(124, 106, 248, 0.55); }
 }
 
 .update-glow {
@@ -136,8 +136,8 @@
 
 /* ─── Text selection ──────────────────────────────────────────────────────── */
 ::selection {
-  background-color: rgba(4, 79, 91, 0.35);
-  color: #e4f0f1;
+  background-color: rgba(124, 106, 248, 0.35);
+  color: #e2e2ee;
 }
 
 /* ─── Focus visible ring (keyboard nav only) ─────────────────────────────── */
@@ -146,7 +146,7 @@
 }
 
 :focus-visible {
-  outline: 2px solid #044f5b;
+  outline: 2px solid #7c6af8;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -276,7 +276,7 @@
 
   /* Glass effect surface */
   .glass {
-    background-color: rgba(14, 26, 28, 0.85);
+    background-color: rgba(22, 22, 29, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -287,6 +287,6 @@
   }
 
   .ring-inset-accent {
-    box-shadow: inset 0 0 0 1px #044f5b;
+    box-shadow: inset 0 0 0 1px #7c6af8;
   }
 }

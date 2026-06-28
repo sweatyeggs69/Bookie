@@ -6,16 +6,6 @@ import { MetaResult } from '../types'
 import Dialog from './Dialog'
 import Spinner from './Spinner'
 
-const SOURCE_LABELS: Record<string, string> = {
-  itunes: 'Apple Books',
-  open_library: 'Open Library',
-  goodreads: 'Goodreads',
-}
-
-function sourceLabel(source: string): string {
-  return SOURCE_LABELS[source] ?? source
-}
-
 interface MetaDialogProps {
   bookTitle: string
   bookAuthor?: string
@@ -126,9 +116,6 @@ export default function MetaDialog({ bookTitle, bookAuthor, onClose, onApplied }
                   </p>
                   {result.author && <p className="text-ink-muted text-xs truncate">{result.author}</p>}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                      {sourceLabel(result.source)}
-                    </span>
                     {result.published_date && <span className="text-ink-faint text-xs">{result.published_date.slice(0, 4)}</span>}
                     {result.publisher && <span className="text-ink-faint text-xs truncate">{result.publisher}</span>}
                     {result.isbn13 && <span className="text-ink-faint text-xs font-mono">{result.isbn13}</span>}
@@ -178,9 +165,6 @@ export default function MetaDialog({ bookTitle, bookAuthor, onClose, onApplied }
               <p className="text-ink font-semibold text-sm leading-snug">{previewResult.title ?? 'Unknown Title'}</p>
               {previewResult.author && <p className="text-ink-muted text-xs">{previewResult.author}</p>}
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-faint mt-1">
-                <span className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                  {sourceLabel(previewResult.source)}
-                </span>
                 {previewResult.published_date && <span>{previewResult.published_date.slice(0, 4)}</span>}
                 {previewResult.publisher && <span>{previewResult.publisher}</span>}
                 {previewResult.isbn13 && <span className="font-mono">{previewResult.isbn13}</span>}

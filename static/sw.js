@@ -15,7 +15,8 @@ const STATIC_ASSETS = [
   '/static/css/md3.css',
   '/static/js/app.js',
   '/static/manifest.json',
-  '/static/icon.png',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png',
   'https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap',
 ];
 
