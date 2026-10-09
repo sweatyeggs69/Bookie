@@ -55,7 +55,34 @@ def _safe(text: str, max_len: int = 80) -> str:
     # Remove characters not safe for filenames
     text = re.sub(r'[\\/:*?"<>|]', "", text)
     text = re.sub(r"\s+", " ", text).strip()
-    return text[:max_len] if len(text) > max_len else text
+    text = text[:max_len] if len(text) > max_len else text
+    # Leading dots would create hidden files, and "." / ".." would escape the
+    # target directory when used as a folder name.
+    text = text.lstrip(". ").rstrip()
+    return text or "Unknown"
+
+
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+
+
+def _render(template: str, ctx: dict) -> str | None:
+    """Substitute {name} placeholders. Returns None if the template uses an
+    unknown placeholder or stray braces. Deliberately avoids str.format, which
+    allows attribute access and arbitrary format specs."""
+    unknown = False
+
+    def sub(m):
+        nonlocal unknown
+        key = m.group(1)
+        if key not in ctx:
+            unknown = True
+            return ""
+        return ctx[key]
+
+    name = _PLACEHOLDER_RE.sub(sub, template)
+    if unknown or "{" in name or "}" in name:
+        return None
+    return name
 
 
 def apply_scheme(
@@ -93,10 +120,13 @@ def apply_scheme(
         "ext":          ext.lstrip("."),
     }
 
-    try:
-        name = template.format_map(ctx)
-    except (KeyError, ValueError):
+    name = _render(template, ctx)
+    if name is None:
         name = original_stem  # fallback to original on bad template
+
+    # A filename must never contain a path separator, even if the template does
+    name = re.sub(r"[\\/]", "", name)
+    name = name.lstrip(".")
 
     # Remove trailing spaces/dots/dashes
     name = name.strip(" .-")
@@ -142,7 +172,7 @@ def rename_book_file(
         stem = Path(new_name).stem
         ext = Path(new_name).suffix
         counter = 1
-        while new_path.exists():
+        while new_path.exists() and new_path != src_path:
             new_name = f"{stem} ({counter}){ext}"
             new_path = books_dir / new_name
             counter += 1
@@ -187,7 +217,7 @@ def organize_into_folders(
         stem = src_path.stem
         ext = src_path.suffix
         counter = 1
-        while target_path.exists():
+        while target_path.exists() and target_path != src_path:
             target_path = target_dir / f"{stem} ({counter}){ext}"
             counter += 1
 

@@ -1,4 +1,3 @@
-import time
 from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 
@@ -137,18 +136,13 @@ class Settings(db.Model):
     key = db.Column(db.String(128), nullable=False, unique=True)
     value = db.Column(db.Text)
 
-    _cache: dict = {}
-    _cache_ttl: float = 30.0  # seconds
-
+    # No in-process cache: gunicorn runs several workers, and a per-worker cache
+    # meant a change saved in one worker (a new password, finished setup, a new
+    # rename scheme) was invisible to the others for up to 30 seconds.
     @classmethod
     def get(cls, key, default=None):
-        entry = cls._cache.get(key)
-        if entry is not None and time.monotonic() - entry[1] < cls._cache_ttl:
-            return entry[0]
         row = cls.query.filter_by(key=key).first()
-        val = row.value if row else default
-        cls._cache[key] = (val, time.monotonic())
-        return val
+        return row.value if row else default
 
     @classmethod
     def set(cls, key, value):
@@ -159,4 +153,3 @@ class Settings(db.Model):
             row = cls(key=key, value=value)
             db.session.add(row)
         db.session.commit()
-        cls._cache[key] = (value, time.monotonic())

@@ -1,10 +1,11 @@
 """Metadata scraping from Open Library, Apple Books, and Goodreads."""
 import ipaddress
 import re
+import socket
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,24 +13,34 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
+def _is_public_ip(addr: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    return ip.is_global and not ip.is_multicast
+
+
 def _is_safe_url(url: str) -> bool:
-    """Return False for non-HTTPS URLs or those resolving to private/loopback addresses."""
+    """Return False for non-HTTPS URLs or hosts that resolve to non-public addresses.
+
+    Every address the hostname resolves to is checked, so a DNS name pointing at
+    a LAN or loopback address is rejected just like a literal IP.
+    """
     try:
         parsed = urlparse(url)
         if parsed.scheme != "https":
             return False
         host = parsed.hostname or ""
-        try:
-            addr = ipaddress.ip_address(host)
-            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-                return False
-        except ValueError:
-            # hostname — block obvious internal names
-            if host in ("localhost",) or host.endswith(".local") or host.endswith(".internal"):
-                return False
-        return True
+        if not host:
+            return False
+        infos = socket.getaddrinfo(host, parsed.port or 443, proto=socket.IPPROTO_TCP)
+        return bool(infos) and all(_is_public_ip(info[4][0]) for info in infos)
     except Exception:
         return False
+
 
 HEADERS = {
     "User-Agent": (
@@ -299,23 +310,39 @@ def search_all_sources(
 _COVER_MAX_BYTES = 10 * 1024 * 1024  # 10 MB — guard against huge/malicious cover URLs
 
 
+_COVER_MAX_REDIRECTS = 5
+
+
 def fetch_cover_image(url: str) -> bytes | None:
-    """Download a cover image from a URL, refusing responses larger than 10 MB."""
-    if not _is_safe_url(url):
-        logger.warning("Blocked cover download from unsafe URL: %s", url)
-        return None
+    """Download a cover image from a URL, refusing responses larger than 10 MB.
+
+    Redirects are followed manually so every hop is checked by _is_safe_url.
+    """
     try:
-        r = requests.get(url, headers=HEADERS, timeout=15, stream=True)
-        r.raise_for_status()
-        chunks: list[bytes] = []
-        total = 0
-        for chunk in r.iter_content(chunk_size=65536):
-            total += len(chunk)
-            if total > _COVER_MAX_BYTES:
-                logger.warning("Cover download from %s aborted: response exceeded %d bytes", url, _COVER_MAX_BYTES)
+        for _ in range(_COVER_MAX_REDIRECTS + 1):
+            if not _is_safe_url(url):
+                logger.warning("Blocked cover download from unsafe URL: %s", url)
                 return None
-            chunks.append(chunk)
-        return b"".join(chunks)
+            r = requests.get(url, headers=HEADERS, timeout=15, stream=True, allow_redirects=False)
+            if r.is_redirect:
+                url = urljoin(url, r.headers.get("Location", ""))
+                r.close()
+                continue
+            break
+        else:
+            logger.warning("Cover download aborted: too many redirects")
+            return None
+        with r:
+            r.raise_for_status()
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in r.iter_content(chunk_size=65536):
+                total += len(chunk)
+                if total > _COVER_MAX_BYTES:
+                    logger.warning("Cover download from %s aborted: response exceeded %d bytes", url, _COVER_MAX_BYTES)
+                    return None
+                chunks.append(chunk)
+            return b"".join(chunks)
     except Exception as exc:
         logger.warning("Cover download failed from %s: %s", url, exc)
         return None

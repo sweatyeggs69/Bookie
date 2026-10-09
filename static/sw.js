@@ -1,23 +1,22 @@
 /* =========================================================
    Bookie Service Worker
    - Cache-first for static assets (CSS, JS, fonts, icons)
-   - Network-first for API calls and HTML pages
+   - Network-first for HTML pages; API calls are not intercepted
    ========================================================= */
 
 /* eslint-disable no-restricted-globals */
-const CACHE_VERSION = 'bookie-v1';
+const CACHE_VERSION = 'bookie-v2';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
 
+// Only files that actually exist: cache.addAll() rejects if any request
+// fails, which previously made every install of this worker fail.
 const STATIC_ASSETS = [
   '/',
-  '/login',
-  '/static/css/md3.css',
-  '/static/js/app.js',
-  '/static/manifest.json',
-  '/static/icons/icon-192.png',
-  '/static/icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap',
+  '/static/site.webmanifest',
+  '/static/favicon.png',
+  '/static/icon-192.png',
+  '/static/icon-512.png',
 ];
 
 // ── Install: pre-cache static shell ──────────────────────
@@ -51,11 +50,10 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   if (url.origin !== location.origin && !url.hostname.includes('fonts.g')) return;
 
-  // API requests → network-first, no offline cache for writes
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE, 5000));
-    return;
-  }
+  // API requests go straight to the network. Routing them through
+  // networkFirst() aborted slow calls (metadata search, update check) after a
+  // few seconds and answered with the cached HTML shell instead of JSON.
+  if (url.pathname.startsWith('/api/')) return;
 
   // Static assets → cache-first
   if (

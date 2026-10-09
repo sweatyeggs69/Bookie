@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 COVERS_DIR = Path(os.environ.get("DATA_DIR", "data")) / "covers"
 THUMB_SIZE = (300, 450)
 COVER_SIZE = (667, 1000)
+# Refuse to decompress oversized archive members (guards against zip bombs)
+MAX_COVER_ENTRY_BYTES = 20 * 1024 * 1024
+MAX_EPUB_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
+
+
+def _read_entry(zf: zipfile.ZipFile, name: str) -> bytes | None:
+    if zf.getinfo(name).file_size > MAX_COVER_ENTRY_BYTES:
+        logger.warning("Skipping oversized cover entry %s", name)
+        return None
+    return zf.read(name)
 
 
 def ensure_dirs():
@@ -28,7 +38,7 @@ def extract_cover_from_epub(filepath: str) -> bytes | None:
             if opf_path:
                 cover_item = _find_cover_in_opf(zf, opf_path)
                 if cover_item:
-                    return zf.read(cover_item)
+                    return _read_entry(zf, cover_item)
 
             # Fallback: look for common cover filenames
             for name in zf.namelist():
@@ -36,7 +46,7 @@ def extract_cover_from_epub(filepath: str) -> bytes | None:
                 if any(kw in lower for kw in ("cover", "front")) and lower.endswith(
                     (".jpg", ".jpeg", ".png", ".gif", ".webp")
                 ):
-                    return zf.read(name)
+                    return _read_entry(zf, name)
     except Exception as exc:
         logger.warning("EPUB cover extraction failed for %s: %s", filepath, exc)
     return None
@@ -161,11 +171,10 @@ def embed_cover_in_epub(epub_path: str, cover_data: bytes) -> bool:
         img.save(buf, "JPEG", quality=90)
         cover_jpeg = buf.getvalue()
 
-        tmp_fd, tmp = tempfile.mkstemp(suffix=".epub")
-        os.close(tmp_fd)
-        shutil.copy2(epub_path, tmp)
-
-        with zipfile.ZipFile(tmp, "r") as zin:
+        with zipfile.ZipFile(epub_path, "r") as zin:
+            if sum(i.file_size for i in zin.infolist()) > MAX_EPUB_UNCOMPRESSED_BYTES:
+                logger.warning("EPUB too large to rewrite: %s", epub_path)
+                return False
             names = zin.namelist()
             infos = {n: zin.getinfo(n) for n in names}
             contents = {n: zin.read(n) for n in names}
@@ -253,16 +262,24 @@ def embed_cover_in_epub(epub_path: str, cover_data: bytes) -> bool:
             # Last resort: just add cover.jpg at root
             contents["cover.jpg"] = cover_jpeg
 
-        # Write updated zip
-        with zipfile.ZipFile(epub_path, "w", zipfile.ZIP_DEFLATED) as zout:
-            for name in names:
-                zout.writestr(infos[name], contents[name])
-            # Write any new files added (not in original names)
-            for name, data in contents.items():
-                if name not in names:
-                    zout.writestr(name, data)
-
-        os.unlink(tmp)
+        # Write the updated zip to a temp file next to the original, then swap it
+        # in atomically so a failure part-way through never corrupts the book.
+        tmp_fd, tmp = tempfile.mkstemp(suffix=".epub", dir=str(Path(epub_path).parent))
+        os.close(tmp_fd)
+        try:
+            with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+                for name in names:
+                    zout.writestr(infos[name], contents[name])
+                # Write any new files added (not in original names)
+                for name, data in contents.items():
+                    if name not in names:
+                        zout.writestr(name, data)
+            shutil.copymode(epub_path, tmp)
+            os.replace(tmp, epub_path)
+        except Exception:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
         return True
     except Exception as exc:
         logger.warning("EPUB cover embed failed: %s", exc)

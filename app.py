@@ -251,6 +251,25 @@ def _safe_int(value, default: int) -> int:
         return default
 
 
+def _book_path(book) -> Path:
+    """Return the absolute path of *book*'s file, refusing anything outside BOOKS_DIR."""
+    path = (BOOKS_DIR / book.filename).resolve()
+    if not path.is_relative_to(BOOKS_DIR.resolve()):
+        abort(400)
+    return path
+
+
+def _id_list(data: dict, key: str = "ids") -> list[int]:
+    """Return the integer IDs in data[key], ignoring anything that isn't one."""
+    raw = data.get(key) if isinstance(data, dict) else None
+    if not isinstance(raw, list):
+        return []
+    return [i for i in raw if isinstance(i, int) and not isinstance(i, bool)]
+
+
+_VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR"}
+
+
 def _cleanup_empty_dirs(directory: Path) -> None:
     """Remove *directory* and its parent if both are empty and not BOOKS_DIR."""
     try:
@@ -387,8 +406,22 @@ def create_app():
         _migrate_db(app)
         # Restore persisted log level (defaults to INFO on first run)
         _saved_level = (Settings.get("log_level") or "INFO").upper()
-        _saved_numeric = getattr(logging, _saved_level, logging.INFO)
-        logging.getLogger().setLevel(_saved_numeric)
+        if _saved_level not in _VALID_LOG_LEVELS:
+            _saved_level = "INFO"
+        logging.getLogger().setLevel(getattr(logging, _saved_level))
+
+    # Cross-site request guard. Browsers label every request with
+    # Sec-Fetch-Site; refusing state-changing API calls that come from another
+    # site (including sibling subdomains, which SameSite=Lax cookies don't
+    # stop) blocks CSRF without breaking non-browser clients, which don't
+    # send the header.
+    @app.before_request
+    def reject_cross_site_writes():
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return None
+        if request.headers.get("Sec-Fetch-Site", "") in ("cross-site", "same-site"):
+            return jsonify({"error": "Cross-site request refused"}), 403
+        return None
 
     # Security headers
     @app.after_request
@@ -437,9 +470,8 @@ def create_app():
     # Books – CRUD
     # -----------------------------------------------------------------------
 
-    @app.route("/api/books", methods=["GET"])
-    @login_required
-    def list_books():
+    def _filtered_books_query():
+        """Book query with the library filters from the request's query string."""
         query = Book.query
         search = request.args.get("q", "").strip()
         if search:
@@ -448,11 +480,11 @@ def create_app():
             like = f"%{escaped}%"
             query = query.filter(
                 db.or_(
-                    Book.title.ilike(like),
-                    Book.author.ilike(like),
-                    Book.series.ilike(like),
-                    Book.isbn.ilike(like),
-                    Book.isbn13.ilike(like),
+                    Book.title.ilike(like, escape="\\"),
+                    Book.author.ilike(like, escape="\\"),
+                    Book.series.ilike(like, escape="\\"),
+                    Book.isbn.ilike(like, escape="\\"),
+                    Book.isbn13.ilike(like, escape="\\"),
                 )
             )
         fmt = request.args.get("format")
@@ -467,6 +499,12 @@ def create_app():
         tag = request.args.get("tag")
         if tag:
             query = query.join(BookTag, BookTag.book_id == Book.id).join(Tag, Tag.id == BookTag.tag_id).filter(Tag.name == tag)
+        return query
+
+    @app.route("/api/books", methods=["GET"])
+    @login_required
+    def list_books():
+        query = _filtered_books_query()
         _SORT_COLS = {"author", "title", "series", "published_date", "date_added", "file_size", "rating"}
         sort = request.args.get("sort", "author")
         if sort not in _SORT_COLS:
@@ -623,10 +661,12 @@ def create_app():
         if not _magic_ok(file, ext):
             return jsonify({"error": f"File content does not match declared format (.{ext})"}), 400
 
-        filename = secure_filename(file.filename)
+        # secure_filename drops non-ASCII characters, so a name like "书.epub"
+        # would otherwise come back as just "epub" with no extension.
+        stem = secure_filename(file.filename.rsplit(".", 1)[0]) or "book"
+        filename = f"{stem}.{ext}"
         dest = BOOKS_DIR / filename
         counter = 1
-        stem = Path(filename).stem
         while dest.exists():
             filename = f"{stem}_{counter}.{ext}"
             dest = BOOKS_DIR / filename
@@ -661,13 +701,20 @@ def create_app():
         if any(embedded.values()):
             _apply_metadata(book, embedded, replace_missing_only=False)
 
-        # Auto-fetch from online sources to fill remaining gaps
+        # Auto-fetch from online sources to fill remaining gaps. The book is
+        # already saved, so a failure here must not turn the upload into an error.
         auto_meta = Settings.get("auto_metadata", "false")
         if auto_meta == "true":
-            _auto_fetch_metadata(book)
+            try:
+                _auto_fetch_metadata(book)
+            except Exception as exc:
+                logger.warning("Auto-fetch failed for uploaded book %s: %s", filename, exc)
 
         # Apply renaming scheme + folder organization
-        _rename_and_organize(book, dest)
+        try:
+            _rename_and_organize(book, dest)
+        except Exception as exc:
+            logger.warning("Rename failed for uploaded book %s: %s", filename, exc)
 
         return jsonify(book.to_dict()), 201
 
@@ -690,6 +737,17 @@ def create_app():
             val = data[f]
             if f == "published_date" and isinstance(val, str):
                 val = val[:4] or None
+            if f in ("title", "author", "series") and val is not None:
+                if not isinstance(val, str):
+                    return jsonify({"error": f"Invalid value for {f}"}), 400
+                val = val.strip() or None
+            if f == "page_count" and val not in (None, ""):
+                try:
+                    val = int(val)
+                except (TypeError, ValueError):
+                    return jsonify({"error": "Invalid value for page_count"}), 400
+            elif f == "page_count":
+                val = None
             # Guard float fields against NaN / Infinity which would corrupt sorting
             if f in ("series_order", "rating") and val is not None:
                 try:
@@ -713,7 +771,7 @@ def create_app():
     @login_required
     def delete_book(book_id):
         book = Book.query.get_or_404(book_id)
-        filepath = BOOKS_DIR / book.filename
+        filepath = _book_path(book)
         parent = filepath.parent
         if filepath.exists():
             filepath.unlink()
@@ -727,36 +785,27 @@ def create_app():
     @login_required
     def get_book_ids():
         """Return all book IDs matching the current filters (no pagination)."""
-        query = Book.query
-        search = request.args.get("q", "").strip()
-        if search:
-            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            like = f"%{escaped}%"
-            query = query.filter(db.or_(
-                Book.title.ilike(like), Book.author.ilike(like),
-                Book.series.ilike(like), Book.isbn.ilike(like), Book.isbn13.ilike(like),
-            ))
-        fmt = request.args.get("format")
-        if fmt:
-            query = query.filter(Book.file_format == fmt.lower())
-        if series := request.args.get("series"):
-            query = query.filter(Book.series == series)
-        if tag := request.args.get("tag"):
-            query = query.join(BookTag, BookTag.book_id == Book.id).join(Tag, Tag.id == BookTag.tag_id).filter(Tag.name == tag)
+        query = _filtered_books_query()
         return jsonify({"ids": [b.id for b in query.with_entities(Book.id).all()]})
 
     @app.route("/api/books/bulk-fetch-metadata", methods=["POST"])
     @login_required
     def bulk_fetch_metadata():
         """Fetch metadata for a list of book IDs, one at a time."""
-        import time
-        ids = (request.get_json(silent=True) or {}).get("ids", [])
+        ids = _id_list(request.get_json(silent=True) or {})
         updated = 0
         for book_id in ids:
-            book = Book.query.get(book_id)
+            book = db.session.get(Book, book_id)
             if not book:
                 continue
             _auto_fetch_metadata(book)
+            # Keep file names in line with the new metadata, as a single fetch does
+            file_path = BOOKS_DIR / book.filename
+            if file_path.exists():
+                try:
+                    _rename_and_organize(book, file_path)
+                except Exception as exc:
+                    logger.warning("Rename after bulk fetch failed for book %s: %s", book_id, exc)
             updated += 1
             if updated < len(ids):
                 time.sleep(1)  # be polite to metadata sources
@@ -765,13 +814,13 @@ def create_app():
     @app.route("/api/books/bulk-delete", methods=["POST"])
     @login_required
     def bulk_delete_books():
-        ids = (request.get_json(silent=True) or {}).get("ids", [])
+        ids = _id_list(request.get_json(silent=True) or {})
         deleted = 0
         for book_id in ids:
-            book = Book.query.get(book_id)
+            book = db.session.get(Book, book_id)
             if not book:
                 continue
-            filepath = BOOKS_DIR / book.filename
+            filepath = _book_path(book)
             parent = filepath.parent
             if filepath.exists():
                 filepath.unlink()
@@ -786,8 +835,9 @@ def create_app():
     @login_required
     def bulk_add_tag():
         data = request.get_json(silent=True) or {}
-        ids = data.get("ids", [])
-        tag_name = (data.get("tag") or "").strip()
+        # Only tag books that exist, so no orphan rows inflate tag counts
+        ids = [r[0] for r in Book.query.with_entities(Book.id).filter(Book.id.in_(_id_list(data))).all()]
+        tag_name = str(data.get("tag") or "").strip()
         if not tag_name:
             return jsonify({"error": "tag required"}), 400
         tag = Tag.query.filter_by(name=tag_name).first()
@@ -808,8 +858,8 @@ def create_app():
     @login_required
     def bulk_remove_tag():
         data = request.get_json(silent=True) or {}
-        ids = data.get("ids", [])
-        tag_name = (data.get("tag") or "").strip()
+        ids = _id_list(data)
+        tag_name = str(data.get("tag") or "").strip()
         if not tag_name:
             return jsonify({"error": "tag required"}), 400
         tag = Tag.query.filter_by(name=tag_name).first()
@@ -827,9 +877,7 @@ def create_app():
     @login_required
     def download_book(book_id):
         book = Book.query.get_or_404(book_id)
-        filepath = (BOOKS_DIR / book.filename).resolve()
-        if not filepath.is_relative_to(BOOKS_DIR.resolve()):
-            abort(400)
+        filepath = _book_path(book)
         if not filepath.exists():
             abort(404)
         return send_file(str(filepath), as_attachment=True, download_name=Path(book.filename).name)
@@ -851,10 +899,12 @@ def create_app():
             "isbn13": book.isbn13,
             "language": book.language,
         }
-        src = BOOKS_DIR / book.filename
+        src = _book_path(book)
         if not src.exists():
             return jsonify({"error": "File not found on disk"}), 404
         new_path, new_name = renamer.rename_book_file(src, BOOKS_DIR, scheme, meta, custom_tpl)
+        if new_path != src:
+            _cleanup_empty_dirs(src.parent)
         book.filename = new_name
         db.session.commit()
         return jsonify({"success": True, "new_filename": new_name})
@@ -866,11 +916,11 @@ def create_app():
         data = request.get_json(silent=True) or {}
         scheme = data.get("scheme", "author_title")
         custom_tpl = data.get("custom_template", "")
-        book_ids = data.get("book_ids", [])
+        book_ids = _id_list(data, "book_ids")
         template = renamer.get_scheme_template(scheme, custom_tpl)
         previews = []
         for bid in book_ids:
-            book = Book.query.get(bid)
+            book = db.session.get(Book, bid)
             if not book:
                 continue
             meta = {
@@ -1035,10 +1085,13 @@ def create_app():
     @login_required
     def set_meta_sources():
         data = request.get_json(silent=True) or {}
-        if "priority" in data:
-            Settings.set("source_priority", ",".join(data["priority"]))
-        if "disabled" in data:
-            Settings.set("sources_disabled", ",".join(data["disabled"]))
+        for field, key in (("priority", "source_priority"), ("disabled", "sources_disabled")):
+            if field not in data:
+                continue
+            value = data[field]
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                return jsonify({"error": f"{field} must be a list of source names"}), 400
+            Settings.set(key, ",".join(v for v in value if v in scraper.SOURCE_FNS))
         return jsonify({"ok": True})
 
     # -----------------------------------------------------------------------
@@ -1077,13 +1130,15 @@ def create_app():
         db.session.commit()
 
         # Auto-embed cover in EPUB
-        if book.file_format == "epub":
-            epub_path = str(BOOKS_DIR / book.filename)
+        epub_path = _book_path(book)
+        if book.file_format == "epub" and epub_path.exists():
             cover_path = cover_mgr.get_cover_path(book_id)
             if cover_path:
                 with open(str(cover_path), "rb") as fh:
                     cover_bytes = fh.read()
-                cover_mgr.embed_cover_in_epub(epub_path, cover_bytes)
+                if cover_mgr.embed_cover_in_epub(str(epub_path), cover_bytes):
+                    book.file_size = epub_path.stat().st_size
+                    db.session.commit()
 
         return jsonify({"success": True, "cover_filename": cf})
 
@@ -1096,10 +1151,15 @@ def create_app():
         path = cover_mgr.get_cover_path(book_id)
         if not path:
             return jsonify({"error": "No cover image found"}), 404
+        epub_path = _book_path(book)
+        if not epub_path.exists():
+            return jsonify({"error": "File not found on disk"}), 404
         with open(str(path), "rb") as f:
             data = f.read()
-        success = cover_mgr.embed_cover_in_epub(str(BOOKS_DIR / book.filename), data)
+        success = cover_mgr.embed_cover_in_epub(str(epub_path), data)
         if success:
+            book.file_size = epub_path.stat().st_size
+            db.session.commit()
             return jsonify({"success": True})
         return jsonify({"error": "Failed to embed cover"}), 500
 
@@ -1274,12 +1334,14 @@ def create_app():
         data = request.get_json(silent=True) or {}
 
         # Resolve recipient: explicit > EmailAddress table default > legacy Settings key
-        recipient = data.get("recipient")
+        recipient = str(data.get("recipient") or "").strip()
         if not recipient:
             default_addr = EmailAddress.query.filter_by(is_default=True).first()
             recipient = default_addr.email if default_addr else Settings.get("kindle_email")
         if not recipient:
             return jsonify({"error": "No recipient email set. Add one in Settings → Account."}), 400
+        if not _valid_email(recipient):
+            return jsonify({"error": "Invalid recipient email address"}), 400
 
         smtp_host = Settings.get("smtp_host")
         smtp_port = _safe_int(Settings.get("smtp_port"), 587)
@@ -1291,7 +1353,7 @@ def create_app():
         if not smtp_host or not smtp_user or not smtp_password:
             return jsonify({"error": "SMTP settings incomplete. Configure in Settings first."}), 400
 
-        filepath = str(BOOKS_DIR / book.filename)
+        filepath = str(_book_path(book))
         ok, msg = mailer.send_book(
             filepath=filepath,
             recipient=recipient,
@@ -1348,22 +1410,41 @@ def create_app():
             # Skip masked placeholder writes
             if key in _MASKED_KEYS and val == _MASKED:
                 continue
+            if key == "log_level":
+                val = str(val or "INFO").upper()
+                if val not in _VALID_LOG_LEVELS:
+                    return jsonify({"error": "Invalid log level"}), 400
+                logging.getLogger().setLevel(getattr(logging, val))
             if key in _MASKED_KEYS and val:
                 val = crypto.encrypt_value(str(val), DATA_DIR)
             Settings.set(key, str(val) if val is not None else None)
         return jsonify({"success": True})
 
+    def _smtp_test_params(data: dict):
+        """Resolve SMTP test settings from the request, falling back to saved values.
+
+        The saved password is only reused when the host and user match the saved
+        ones, so it can't be sent to a different server just by changing the host.
+        """
+        saved_host = Settings.get("smtp_host")
+        saved_user = Settings.get("smtp_user")
+        host = data.get("smtp_host") or saved_host
+        port = _safe_int(data.get("smtp_port") or Settings.get("smtp_port"), 587)
+        user = data.get("smtp_user") or saved_user
+        pwd = data.get("smtp_password")
+        if not pwd or pwd == _MASKED:
+            if host == saved_host and user == saved_user:
+                pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
+            else:
+                pwd = ""
+        tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
+        return host, port, user, pwd, tls
+
     @app.route("/api/settings/test-smtp", methods=["POST"])
     @login_required
     def test_smtp():
         data = request.get_json(silent=True) or {}
-        host = data.get("smtp_host") or Settings.get("smtp_host")
-        port = _safe_int(data.get("smtp_port") or Settings.get("smtp_port"), 587)
-        user = data.get("smtp_user") or Settings.get("smtp_user")
-        pwd = data.get("smtp_password")
-        if not pwd or pwd == "••••••••":
-            pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
-        tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
+        host, port, user, pwd, tls = _smtp_test_params(data)
         if not host or not user or not pwd:
             return jsonify({"error": "Incomplete SMTP settings"}), 400
         ok, msg = mailer.test_smtp_connection(host, port, user, pwd, tls)
@@ -1375,19 +1456,15 @@ def create_app():
     @login_required
     def test_smtp_send():
         data = request.get_json(silent=True) or {}
-        host = data.get("smtp_host") or Settings.get("smtp_host")
-        port = _safe_int(data.get("smtp_port") or Settings.get("smtp_port"), 587)
-        user = data.get("smtp_user") or Settings.get("smtp_user")
-        pwd = data.get("smtp_password")
-        if not pwd or pwd == "••••••••":
-            pwd = crypto.decrypt_value(Settings.get("smtp_password") or "", DATA_DIR)
-        tls = str(data.get("use_tls", Settings.get("smtp_tls", "true"))).lower() == "true"
-        recipient = data.get("recipient", "").strip()
+        host, port, user, pwd, tls = _smtp_test_params(data)
+        recipient = str(data.get("recipient") or "").strip()
         sender = data.get("sender_email") or Settings.get("smtp_sender") or user
         if not host or not user or not pwd:
             return jsonify({"error": "Incomplete SMTP settings"}), 400
         if not recipient:
             return jsonify({"error": "Recipient email is required"}), 400
+        if not _valid_email(recipient):
+            return jsonify({"error": "Invalid recipient email address"}), 400
         ok, msg = mailer.send_test_email(host, port, user, pwd, tls, recipient, sender)
         if ok:
             return jsonify({"success": True, "message": msg})
@@ -1451,11 +1528,10 @@ def create_app():
     @app.route("/api/logs/level", methods=["PUT"])
     @login_required
     def set_log_level():
-        data = request.get_json() or {}
-        level = data.get("level", "INFO").upper()
-        _valid = {"DEBUG", "INFO", "WARNING", "ERROR"}
-        if level not in _valid:
-            return jsonify({"error": f"Invalid level; must be one of {sorted(_valid)}"}), 400
+        data = request.get_json(silent=True) or {}
+        level = str(data.get("level") or "INFO").upper()
+        if level not in _VALID_LOG_LEVELS:
+            return jsonify({"error": f"Invalid level; must be one of {sorted(_VALID_LOG_LEVELS)}"}), 400
         numeric = getattr(logging, level, logging.INFO)
         logging.getLogger().setLevel(numeric)
         Settings.set("log_level", level)
@@ -1536,21 +1612,33 @@ def _migrate_db(app):
 def _apply_metadata(book: Book, meta: dict, replace_missing_only: bool = None):
     if replace_missing_only is None:
         replace_missing_only = Settings.get("meta_replace_missing", "true") == "true"
+    if not isinstance(meta, dict):
+        return
     field_map = {
         "title": "title", "author": "author",
         "published_date": "published_date",
         "page_count": "page_count",
+        # Stored so later lookups can search by ISBN and the language filter works
+        "isbn": "isbn", "isbn13": "isbn13",
+        "language": "language",
     }
     for src_key, model_key in field_map.items():
         val = meta.get(src_key)
+        if src_key == "page_count" and not isinstance(val, int):
+            val = None
+        elif val is not None and src_key != "page_count":
+            val = str(val).strip()
         if val:
             if src_key == "published_date":
-                val = str(val)[:4]  # store year only
+                val = val[:4]  # store year only
+            if src_key == "language":
+                # Sources may return several languages ("eng, fre"); keep the first
+                val = val.split(",")[0].strip()[:16]
             if replace_missing_only and getattr(book, model_key, None):
                 continue
             setattr(book, model_key, val)
     cover_url = meta.get("cover_url")
-    if cover_url:
+    if isinstance(cover_url, str) and cover_url:
         if not replace_missing_only or not book.cover_filename:
             data = scraper.fetch_cover_image(cover_url)
             if data:
