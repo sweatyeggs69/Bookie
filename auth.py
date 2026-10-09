@@ -112,6 +112,30 @@ def login_required(f):
     return decorated
 
 
+def basic_auth_required(f):
+    """Decorator for feeds read by e-reader apps (OPDS), which can't log in
+    through the web UI. Accepts HTTP Basic credentials or a valid session."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if _session_valid():
+            return f(*args, **kwargs)
+        client = request.remote_addr or "unknown"
+        if _login_blocked(client):
+            return jsonify({"error": "Too many failed attempts. Try again later."}), 429
+        creds = request.authorization
+        if creds and creds.type == "basic":
+            if check_credentials(creds.username or "", creds.password or "", Settings):
+                _clear_failures(client)
+                return f(*args, **kwargs)
+            _record_failure(client)
+            logger.warning("Failed OPDS login attempt from %s", client)
+        resp = jsonify({"error": "Unauthorized"})
+        resp.status_code = 401
+        resp.headers["WWW-Authenticate"] = 'Basic realm="Bookie", charset="UTF-8"'
+        return resp
+    return decorated
+
+
 def register_auth_routes(app, Settings):
     """Register login/logout/setup routes on the Flask app."""
 

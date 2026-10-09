@@ -62,7 +62,7 @@ COPY --from=py-builder /install /usr/local
 
 WORKDIR /app
 
-COPY app.py models.py auth.py scraper.py covers.py mailer.py renamer.py crypto.py ./
+COPY app.py models.py auth.py scraper.py covers.py mailer.py renamer.py crypto.py opds.py ./
 COPY static/ static/
 # React build output (goes into static/dist/)
 COPY --from=frontend-builder /app/static/dist ./static/dist

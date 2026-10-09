@@ -158,6 +158,7 @@ import scraper
 import covers as cover_mgr
 import mailer
 import renamer
+from opds import register_opds_routes
 
 # Set the root logger to INFO so that INFO+ records are captured from the start.
 # logging.basicConfig() is a no-op when any handler is already registered, so
@@ -433,6 +434,7 @@ def create_app():
 
     # Register auth routes
     register_auth_routes(app, Settings)
+    register_opds_routes(app, _book_path)
 
     # -----------------------------------------------------------------------
     # Frontend – serve React SPA
@@ -1381,6 +1383,7 @@ def create_app():
         "rename_scheme", "rename_custom_template",
         "display_name",
         "log_level",
+        "opds_enabled",
     ]
 
     _MASKED = "••••••••"
