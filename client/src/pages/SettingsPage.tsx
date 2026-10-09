@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Download } from 'lucide-react'
+import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Download, Rss } from 'lucide-react'
 import { useToast } from '../contexts/toast'
 import * as api from '../api/client'
 import type { EmailAddress, Stats } from '../types'
@@ -623,6 +623,17 @@ function AccountTab() {
     if (settings?.display_name) setDisplayName(String(settings.display_name))
   }, [settings])
 
+  const opdsEnabled = settings?.opds_enabled === 'true'
+  const opdsUrl = `${window.location.origin}/opds`
+  const opdsMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.saveSettings({ opds_enabled: enabled ? 'true' : 'false' }),
+    onSuccess: (_, enabled) => {
+      qc.invalidateQueries({ queryKey: ['settings'] })
+      addToast('success', enabled ? 'OPDS feed enabled' : 'OPDS feed disabled')
+    },
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
   const saveDisplayNameMutation = useMutation({
     mutationFn: () => api.saveSettings({ display_name: displayName.trim() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Display name saved') },
@@ -741,6 +752,32 @@ function AccountTab() {
             Add Email
           </button>
         </div>
+      </section>
+
+      {/* OPDS feed for e-reader apps */}
+      <section className="card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+          <Rss className="w-4 h-4 text-ink-muted" />
+          OPDS Feed
+        </h2>
+        <p className="text-xs text-ink-muted">
+          Lets e-reader apps such as KOReader browse and download your library. Sign in from the app with your Bookie username and password.
+        </p>
+        <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+          <input
+            type="checkbox"
+            checked={opdsEnabled}
+            onChange={e => opdsMutation.mutate(e.target.checked)}
+            disabled={opdsMutation.isPending}
+          />
+          Enable OPDS feed
+        </label>
+        {opdsEnabled && (
+          <div>
+            <label className="block text-xs text-ink-muted mb-1.5">Feed URL</label>
+            <input className="field font-mono text-xs" readOnly value={opdsUrl} onFocus={e => e.target.select()} />
+          </div>
+        )}
       </section>
 
       {/* Change password */}

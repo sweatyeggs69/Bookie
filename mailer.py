@@ -12,6 +12,27 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def _connect(smtp_host: str, smtp_port: int, use_tls: bool, timeout: int) -> smtplib.SMTP:
+    if use_tls:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=timeout)
+    else:
+        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=timeout)
+    try:
+        if use_tls:
+            server.ehlo()
+            server.starttls()
+        server.ehlo()
+    except Exception:
+        server.close()
+        raise
+    return server
+
+
+def _one_line(value: str) -> str:
+    """Collapse CR/LF so untrusted text (e.g. a book title) can't inject headers."""
+    return " ".join(str(value).splitlines()).strip()
+
+
 def send_book(
     filepath: str,
     recipient: str,
@@ -40,7 +61,7 @@ def send_book(
     msg = MIMEMultipart()
     msg["From"] = formataddr(("Bookie", sender))
     msg["To"] = recipient
-    msg["Subject"] = subject
+    msg["Subject"] = _one_line(subject)
     msg.attach(MIMEText(body, "plain"))
 
     # Attach file
@@ -48,20 +69,15 @@ def send_book(
         part = MIMEBase("application", "octet-stream")
         part.set_payload(f.read())
     encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{path.name}"')
+    # Passing filename as a parameter lets the email library quote and
+    # RFC 2231-encode it, so quotes or non-ASCII characters don't break it.
+    part.add_header("Content-Disposition", "attachment", filename=path.name)
     msg.attach(part)
 
     try:
-        if use_tls:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
-            server.ehlo()
-            server.starttls()
-        else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
-        server.ehlo()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(sender, [recipient], msg.as_string())
-        server.quit()
+        with _connect(smtp_host, smtp_port, use_tls, 30) as server:
+            server.login(smtp_user, smtp_password)
+            server.sendmail(sender, [recipient], msg.as_string())
         logger.info("Book sent to %s via %s", recipient, smtp_host)
         return True, f"Successfully sent '{path.name}' to {recipient}"
     except smtplib.SMTPAuthenticationError:
@@ -95,16 +111,9 @@ def send_test_email(
     msg["Subject"] = "Bookie – SMTP Test Email"
     msg.attach(MIMEText("This is a test email sent from Bookie to verify your SMTP configuration.", "plain"))
     try:
-        if use_tls:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
-            server.ehlo()
-            server.starttls()
-        else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
-        server.ehlo()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(sender, [recipient], msg.as_string())
-        server.quit()
+        with _connect(smtp_host, smtp_port, use_tls, 30) as server:
+            server.login(smtp_user, smtp_password)
+            server.sendmail(sender, [recipient], msg.as_string())
         return True, f"Test email sent successfully to {recipient}"
     except smtplib.SMTPAuthenticationError:
         return False, "SMTP authentication failed. Check username and password."
@@ -123,15 +132,8 @@ def test_smtp_connection(
 ) -> tuple[bool, str]:
     """Test SMTP connection without sending an email."""
     try:
-        if use_tls:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-            server.ehlo()
-            server.starttls()
-        else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-        server.ehlo()
-        server.login(smtp_user, smtp_password)
-        server.quit()
+        with _connect(smtp_host, smtp_port, use_tls, 10) as server:
+            server.login(smtp_user, smtp_password)
         return True, "Connection successful"
     except Exception as exc:
         return False, str(exc)

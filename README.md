@@ -23,6 +23,9 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 **Organization**
 - Configurable file rename schemes and folder structures
 
+**E-reader Access**
+- OPDS feed at `/opds` for apps like KOReader (enable it in Settings > Account, then sign in with your Bookie username and password)
+
 <img width="807" height="555" alt="image" src="https://github.com/user-attachments/assets/0cfdb669-6d8e-405f-8bb6-4edea042438e" />
 
 >[!NOTE]
