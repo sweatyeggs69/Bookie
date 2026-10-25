@@ -21,6 +21,13 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function formatProgressSource(device: string | null, timestamp: number | null): string {
+  const when = timestamp
+    ? new Date(timestamp * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
+  return [device && `on ${device}`, when].filter(Boolean).join(', ')
+}
+
 interface TagDropdownProps {
   bookId: number
   allTags: Tag[]
@@ -394,6 +401,19 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                   Failed to save changes. Please try again.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Reading progress synced from KOReader */}
+        {book?.progress?.percentage != null && (
+          <div className="mx-5 mb-3 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-3 text-xs text-ink-muted">
+              <span className="text-ink font-medium">{Math.round(book.progress.percentage * 100)}% read</span>
+              <span className="truncate">{formatProgressSource(book.progress.device, book.progress.timestamp)}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-surface-raised overflow-hidden">
+              <div className="h-full bg-accent" style={{ width: `${book.progress.percentage * 100}%` }} />
             </div>
           </div>
         )}

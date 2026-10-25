@@ -43,6 +43,40 @@ def set_password(username: str, password: str, settings_model):
     settings_model.set("auth_password_hash", hashed)
     settings_model.set("auth_password_salt", salt)
     settings_model.set("auth_session_version", secrets.token_hex(8))
+    store_sync_key(password, settings_model)
+
+
+# ── KOReader sync key ────────────────────────────────────────────────────────
+# KOReader's progress sync never sends the password, only its MD5 hex digest.
+# That can't be checked against the stored PBKDF2 hash, so a second hash of the
+# digest is kept. It is written whenever the plain password is known: at setup,
+# on a password change, and at the first web login after upgrading.
+
+def _sync_key(password: str) -> str:
+    return hashlib.md5(password.encode()).hexdigest()
+
+
+def store_sync_key(password: str, settings_model):
+    salt = secrets.token_hex(32)
+    settings_model.set("kosync_key_hash", _hash_password(_sync_key(password), salt))
+    settings_model.set("kosync_key_salt", salt)
+
+
+def has_sync_key(settings_model) -> bool:
+    return bool(settings_model.get("kosync_key_hash"))
+
+
+def check_sync_key(username: str, key: str, settings_model) -> bool:
+    stored_user = settings_model.get("auth_username")
+    stored_hash = settings_model.get("kosync_key_hash")
+    stored_salt = settings_model.get("kosync_key_salt")
+    if not (stored_user and stored_hash and stored_salt):
+        return False
+    if username != stored_user:
+        return False
+    # KOReader sends a lowercase hex digest; normalise in case a client doesn't
+    computed = _hash_password(key.strip().lower(), stored_salt)
+    return hmac.compare_digest(computed, stored_hash)
 
 
 def _session_version(settings_model) -> str:
@@ -172,6 +206,8 @@ def register_auth_routes(app, Settings):
         password = str(data.get("password") or "")
         if check_credentials(username, password, Settings):
             _clear_failures(client)
+            if not has_sync_key(Settings):
+                store_sync_key(password, Settings)
             _start_session(username, Settings)
             return jsonify({"success": True})
         _record_failure(client)

@@ -35,6 +35,15 @@ export interface Book {
 
   // Tags
   tags: string[]
+
+  // Latest position synced from KOReader
+  progress: ReadingProgress | null
+}
+
+export interface ReadingProgress {
+  percentage: number | null
+  device: string | null
+  timestamp: number | null // Unix seconds
 }
 
 // ─── Tag ─────────────────────────────────────────────────────────────────────

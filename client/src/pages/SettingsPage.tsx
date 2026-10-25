@@ -634,6 +634,17 @@ function AccountTab() {
     onError: (e: Error) => addToast('error', e.message),
   })
 
+  const kosyncEnabled = settings?.kosync_enabled === 'true'
+  const kosyncUrl = `${window.location.origin}/kosync`
+  const kosyncMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.saveSettings({ kosync_enabled: enabled ? 'true' : 'false' }),
+    onSuccess: (_, enabled) => {
+      qc.invalidateQueries({ queryKey: ['settings'] })
+      addToast('success', enabled ? 'KOReader sync enabled' : 'KOReader sync disabled')
+    },
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
   const saveDisplayNameMutation = useMutation({
     mutationFn: () => api.saveSettings({ display_name: displayName.trim() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Display name saved') },
@@ -777,6 +788,38 @@ function AccountTab() {
             <label className="block text-xs text-ink-muted mb-1.5">Feed URL</label>
             <input className="field font-mono text-xs" readOnly value={opdsUrl} onFocus={e => e.target.select()} />
           </div>
+        )}
+      </section>
+
+      {/* KOReader progress sync */}
+      <section className="card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 text-ink-muted" />
+          KOReader Sync
+        </h2>
+        <p className="text-xs text-ink-muted">
+          Keeps your reading position in step across KOReader devices and shows how far you are through each book. In KOReader, open Tools &gt; Progress sync &gt; Custom sync server, enter the URL below, then log in with your Bookie username and password.
+        </p>
+        <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+          <input
+            type="checkbox"
+            checked={kosyncEnabled}
+            onChange={e => kosyncMutation.mutate(e.target.checked)}
+            disabled={kosyncMutation.isPending}
+          />
+          Enable KOReader sync
+        </label>
+        {kosyncEnabled && (
+          <div>
+            <label className="block text-xs text-ink-muted mb-1.5">Sync server URL</label>
+            <input className="field font-mono text-xs" readOnly value={kosyncUrl} onFocus={e => e.target.select()} />
+          </div>
+        )}
+        {kosyncEnabled && settings?.kosync_key_set === false && (
+          <p className="text-xs text-ink-muted flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            Sign out of Bookie and back in once so KOReader can log in with your password.
+          </p>
         )}
       </section>
 

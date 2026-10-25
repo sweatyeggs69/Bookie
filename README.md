@@ -25,6 +25,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 
 **E-reader Access**
 - OPDS feed at `/opds` for apps like KOReader (enable it in Settings > Account, then sign in with your Bookie username and password)
+- KOReader progress sync at `/kosync`, so reading position stays in step across devices and shows on each book (enable it in Settings > Account, then in KOReader choose Tools > Progress sync > Custom sync server)
 
 <img width="807" height="555" alt="image" src="https://github.com/user-attachments/assets/0cfdb669-6d8e-405f-8bb6-4edea042438e" />
 
