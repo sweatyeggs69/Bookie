@@ -818,7 +818,7 @@ function AccountTab() {
         {kosyncEnabled && settings?.kosync_key_set === false && (
           <p className="text-xs text-ink-muted flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-            Sign out of Bookie and back in once so KOReader can log in with your password.
+            Sign out of Bookie and back in once, or open the OPDS feed in KOReader, so KOReader can log in with your password.
           </p>
         )}
       </section>

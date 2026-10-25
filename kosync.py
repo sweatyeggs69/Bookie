@@ -121,7 +121,7 @@ def register_kosync_routes(app, book_path):
                 _clear_failures(client)
                 return f(*args, **kwargs)
             if not has_sync_key(Settings):
-                logger.warning("KOReader sync login refused: sign in to the Bookie web app once to "
+                logger.warning("KOReader sync login refused: sign in to the Bookie web app or OPDS feed once to "
                                "activate sync for your password")
             else:
                 _record_failure(client)
