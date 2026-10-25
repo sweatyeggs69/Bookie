@@ -153,12 +153,13 @@ from werkzeug.utils import secure_filename
 
 from sqlalchemy.orm import subqueryload
 from models import db, Book, Settings, EmailAddress, Tag, BookTag
-from auth import login_required, register_auth_routes
+from auth import has_sync_key, login_required, register_auth_routes
 import scraper
 import covers as cover_mgr
 import mailer
 import renamer
 from opds import register_opds_routes, wants_opds
+from kosync import record_fingerprints, register_kosync_routes
 
 # Set the root logger to INFO so that INFO+ records are captured from the start.
 # logging.basicConfig() is a no-op when any handler is already registered, so
@@ -435,6 +436,7 @@ def create_app():
     # Register auth routes
     register_auth_routes(app, Settings)
     register_opds_routes(app, _book_path)
+    register_kosync_routes(app, _book_path)
 
     # -----------------------------------------------------------------------
     # Frontend – serve React SPA
@@ -885,6 +887,8 @@ def create_app():
         filepath = _book_path(book)
         if not filepath.exists():
             abort(404)
+        # The copy may be sideloaded onto a KOReader device; let sync recognise it
+        record_fingerprints(book, filepath)
         return send_file(str(filepath), as_attachment=True, download_name=Path(book.filename).name)
 
     @app.route("/api/books/<int:book_id>/rename", methods=["POST"])
@@ -1387,6 +1391,7 @@ def create_app():
         "display_name",
         "log_level",
         "opds_enabled",
+        "kosync_enabled",
     ]
 
     _MASKED = "••••••••"
@@ -1403,6 +1408,8 @@ def create_app():
                 result[key] = _MASKED if val else ""
             else:
                 result[key] = val
+        # KOReader sync can only check passwords set or used since it was added
+        result["kosync_key_set"] = has_sync_key(Settings)
         return jsonify(result)
 
     @app.route("/api/settings", methods=["PUT"])

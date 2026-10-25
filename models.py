@@ -76,6 +76,10 @@ class Book(db.Model):
 
     # Relations
     book_tags = db.relationship("BookTag", back_populates="book", cascade="all, delete-orphan", lazy="joined")
+    fingerprints = db.relationship("BookFingerprint", back_populates="book", cascade="all, delete-orphan")
+    # selectin: one extra query per page of books instead of one per book
+    reading_progress = db.relationship("ReadingProgress", back_populates="book",
+                                       cascade="all, delete-orphan", lazy="selectin")
 
     __table_args__ = (
         db.Index("ix_books_title", "title"),
@@ -108,6 +112,52 @@ class Book(db.Model):
             "date_added": self.date_added.isoformat() if self.date_added else None,
             "date_modified": self.date_modified.isoformat() if self.date_modified else None,
             "tags": [bt.tag.name for bt in self.book_tags],
+            "progress": self.latest_progress(),
+        }
+
+    def latest_progress(self):
+        """The most recently synced reading position across all copies of this book."""
+        if not self.reading_progress:
+            return None
+        return max(self.reading_progress, key=lambda p: p.timestamp or 0).to_dict()
+
+
+class BookFingerprint(db.Model):
+    """A KOReader document ID (partial MD5 of a file, or MD5 of its filename)
+    known to belong to a book. Recorded when a book is downloaded, so a copy on
+    a device still matches after Bookie later changes the file on disk."""
+    __tablename__ = "book_fingerprints"
+
+    document = db.Column(db.String(32), primary_key=True)
+    book_id = db.Column(db.Integer, db.ForeignKey("books.id"), nullable=False)
+
+    book = db.relationship("Book", back_populates="fingerprints")
+
+    __table_args__ = (db.Index("ix_book_fingerprints_book_id", "book_id"),)
+
+
+class ReadingProgress(db.Model):
+    """Reading position pushed by KOReader's progress sync, one row per document."""
+    __tablename__ = "reading_progress"
+
+    id = db.Column(db.Integer, primary_key=True)
+    document = db.Column(db.String(32), nullable=False, unique=True)
+    book_id = db.Column(db.Integer, db.ForeignKey("books.id"))
+    progress = db.Column(db.Text)  # KOReader position: an XPointer or a page number
+    percentage = db.Column(db.Float)
+    device = db.Column(db.String(128))
+    device_id = db.Column(db.String(128))
+    timestamp = db.Column(db.Integer)  # Unix seconds, as the protocol reports it
+
+    book = db.relationship("Book", back_populates="reading_progress")
+
+    __table_args__ = (db.Index("ix_reading_progress_book_id", "book_id"),)
+
+    def to_dict(self):
+        return {
+            "percentage": self.percentage,
+            "device": self.device,
+            "timestamp": self.timestamp,
         }
 
 

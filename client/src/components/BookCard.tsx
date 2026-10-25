@@ -105,6 +105,12 @@ export default function BookCard({ book, onClick }: BookCardProps) {
             )}
           </div>
 
+          {book.progress?.percentage != null && book.progress.percentage > 0 && (
+            <div className="absolute inset-x-0 bottom-0 z-10 h-1 bg-black/40" title={`${Math.round(book.progress.percentage * 100)}% read`}>
+              <div className="h-full bg-accent" style={{ width: `${book.progress.percentage * 100}%` }} />
+            </div>
+          )}
+
           {seriesBadge && (
             <span className="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white backdrop-blur-sm border border-white/10">
               {seriesBadge}

@@ -16,6 +16,7 @@ from flask import Response, abort, request, send_file
 
 import covers as cover_mgr
 from auth import basic_auth_required
+from kosync import record_fingerprints
 from models import Book, Settings, db
 
 logger = logging.getLogger(__name__)
@@ -231,6 +232,8 @@ def register_opds_routes(app, book_path):
         path = book_path(book)
         if not path.exists():
             abort(404)
+        # Note the IDs KOReader's progress sync will use for this exact copy
+        record_fingerprints(book, path)
         fmt = (book.file_format or "").lower()
         return send_file(str(path), as_attachment=True, download_name=path.name,
                          mimetype=MIME_TYPES.get(fmt, "application/octet-stream"))
