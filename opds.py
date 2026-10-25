@@ -4,6 +4,7 @@ and download books directly from Bookie.
 The feed is off until enabled in Settings. Readers authenticate with HTTP Basic
 using the normal Bookie username and password.
 """
+import logging
 import math
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -16,6 +17,8 @@ from flask import Response, abort, request, send_file
 import covers as cover_mgr
 from auth import basic_auth_required
 from models import Book, Settings, db
+
+logger = logging.getLogger(__name__)
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 DC_NS = "http://purl.org/dc/terms/"
@@ -86,6 +89,13 @@ def _xml_response(root, mimetype: str) -> Response:
     return Response(body, mimetype=mimetype)
 
 
+def wants_opds(accept: str) -> bool:
+    """True when an Accept header asks for an OPDS feed rather than a web page.
+    KOReader sends "application/opds+json, application/atom+xml;profile=opds-catalog, */*"."""
+    accept = accept.lower()
+    return "opds-catalog" in accept or "application/opds" in accept
+
+
 def _book_entry(feed, book: Book):
     entry = _sub(feed, _a("entry"))
     _sub(entry, _a("id"), f"urn:bookie:book:{book.id}")
@@ -124,11 +134,15 @@ def register_opds_routes(app, book_path):
         @wraps(f)
         def decorated(*args, **kwargs):
             if Settings.get("opds_enabled", "false") != "true":
+                logger.warning("OPDS request for %s refused: enable OPDS in Settings > Account",
+                               request.path)
                 abort(404)
             return f(*args, **kwargs)
         return decorated
 
+    # Readers are often given the URL with a trailing slash; accept both.
     @app.route("/opds", methods=["GET"])
+    @app.route("/opds/", methods=["GET"])
     @opds_enabled
     @basic_auth_required
     def opds_root():
@@ -149,11 +163,14 @@ def register_opds_routes(app, book_path):
     @opds_enabled
     @basic_auth_required
     def opds_search_description():
-        osd = ET.Element(f"{{{OPENSEARCH_NS}}}OpenSearchDescription")
-        _sub(osd, f"{{{OPENSEARCH_NS}}}ShortName", "Bookie")
-        _sub(osd, f"{{{OPENSEARCH_NS}}}Description", "Search your Bookie library")
-        _sub(osd, f"{{{OPENSEARCH_NS}}}InputEncoding", "UTF-8")
-        _sub(osd, f"{{{OPENSEARCH_NS}}}Url", type=ACQ_TYPE, template="/opds/books?q={searchTerms}")
+        # Readers such as KOReader look up OpenSearchDescription and Url by their
+        # bare names, so declare OpenSearch as the default namespace rather than
+        # letting ElementTree give every tag an "opensearch:" prefix.
+        osd = ET.Element("OpenSearchDescription", xmlns=OPENSEARCH_NS)
+        _sub(osd, "ShortName", "Bookie")
+        _sub(osd, "Description", "Search your Bookie library")
+        _sub(osd, "InputEncoding", "UTF-8")
+        _sub(osd, "Url", type=ACQ_TYPE, template="/opds/books?q={searchTerms}")
         return _xml_response(osd, OPENSEARCH_TYPE)
 
     @app.route("/opds/books", methods=["GET"])
