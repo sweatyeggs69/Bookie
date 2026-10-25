@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Upload, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
 import * as api from '../api/client'
 import type { Tag } from '../types'
@@ -54,6 +54,7 @@ export default function UploadPage({ onClose }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
+  const qc = useQueryClient()
 
   const { data: allTags = [] } = useQuery<Tag[]>({ queryKey: ['tags'], queryFn: api.getTags })
 
@@ -98,6 +99,12 @@ export default function UploadPage({ onClose }: Props) {
         setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', error: (err as Error).message } : i))
       }
     }
+    // Cached library pages and searches predate these uploads, so drop them;
+    // otherwise searching for a new book shows the stale result until reload.
+    qc.invalidateQueries({ queryKey: ['books'] })
+    qc.invalidateQueries({ queryKey: ['series'] })
+    qc.invalidateQueries({ queryKey: ['tags'] })
+    qc.invalidateQueries({ queryKey: ['stats'] })
   }
 
   const pendingCount = items.filter(i => i.status === 'pending' || i.status === 'error').length
