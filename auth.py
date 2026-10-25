@@ -124,7 +124,10 @@ def basic_auth_required(f):
             return jsonify({"error": "Too many failed attempts. Try again later."}), 429
         creds = request.authorization
         if creds and creds.type == "basic":
-            if check_credentials(creds.username or "", creds.password or "", Settings):
+            # Strip the username the same way the web login does; e-reader
+            # keyboards often leave a trailing space after it.
+            username = (creds.username or "").strip()
+            if check_credentials(username, creds.password or "", Settings):
                 _clear_failures(client)
                 return f(*args, **kwargs)
             _record_failure(client)
