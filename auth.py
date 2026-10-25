@@ -50,7 +50,7 @@ def set_password(username: str, password: str, settings_model):
 # KOReader's progress sync never sends the password, only its MD5 hex digest.
 # That can't be checked against the stored PBKDF2 hash, so a second hash of the
 # digest is kept. It is written whenever the plain password is known: at setup,
-# on a password change, and at the first web login after upgrading.
+# on a password change, and at the first web or OPDS login after upgrading.
 
 def _sync_key(password: str) -> str:
     return hashlib.md5(password.encode()).hexdigest()
@@ -163,6 +163,9 @@ def basic_auth_required(f):
             username = (creds.username or "").strip()
             if check_credentials(username, creds.password or "", Settings):
                 _clear_failures(client)
+                # KOReader browsing the feed also activates its progress sync
+                if not has_sync_key(Settings):
+                    store_sync_key(creds.password or "", Settings)
                 return f(*args, **kwargs)
             _record_failure(client)
             logger.warning("Failed OPDS login attempt from %s", client)
