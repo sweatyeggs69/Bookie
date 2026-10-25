@@ -158,7 +158,7 @@ import scraper
 import covers as cover_mgr
 import mailer
 import renamer
-from opds import register_opds_routes
+from opds import register_opds_routes, wants_opds
 
 # Set the root logger to INFO so that INFO+ records are captured from the start.
 # logging.basicConfig() is a no-op when any handler is already registered, so
@@ -463,6 +463,9 @@ def create_app():
         # Never intercept API routes
         if path.startswith("api/") or path.startswith("static/"):
             abort(404)
+        # An e-reader pointed at the bare server address gets the catalog
+        if not path and wants_opds(request.headers.get("Accept", "")):
+            return redirect("/opds")
         target = _REACT_DIST / path
         if path and target.exists() and target.is_file():
             return send_from_directory(_REACT_DIST, path)
