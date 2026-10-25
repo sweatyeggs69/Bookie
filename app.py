@@ -463,9 +463,11 @@ def create_app():
         # Never intercept API routes
         if path.startswith("api/") or path.startswith("static/"):
             abort(404)
-        # An e-reader pointed at the bare server address gets the catalog
+        # An e-reader pointed at the bare server address gets the catalog.
+        # Serve it here rather than redirecting: some KOReader versions drop
+        # the login when following a redirect, so /opds would answer 401.
         if not path and wants_opds(request.headers.get("Accept", "")):
-            return redirect("/opds")
+            return app.view_functions["opds_root"]()
         target = _REACT_DIST / path
         if path and target.exists() and target.is_file():
             return send_from_directory(_REACT_DIST, path)
