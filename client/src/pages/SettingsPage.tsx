@@ -32,19 +32,23 @@ export default function SettingsPage() {
     window.location.hash = t
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'library',  label: 'Library' },
-    { id: 'metadata', label: 'Metadata' },
-    { id: 'email',    label: 'Email / SMTP' },
-    { id: 'account',  label: 'Account' },
-    { id: 'logs',     label: 'Logs' },
+  const tabs: { id: Tab; label: string; description: string }[] = [
+    { id: 'library',  label: 'Library',      description: 'Tags, file organization and library statistics' },
+    { id: 'metadata', label: 'Metadata',     description: 'Metadata sources and how book details are fetched' },
+    { id: 'email',    label: 'Email / SMTP', description: 'Outgoing mail server used to send books' },
+    { id: 'account',  label: 'Account',      description: 'Profile, send-to addresses, OPDS, KOReader sync and password' },
+    { id: 'logs',     label: 'Logs',         description: 'Application logs and log level' },
   ]
+  const current = tabs.find(t => t.id === tab) ?? tabs[0]
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-lg font-semibold text-ink mb-6">Settings</h1>
+    <div className="max-w-4xl px-4 py-6 md:px-8 md:py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-ink">{current.label} Settings</h1>
+        <p className="mt-2 text-base text-ink-muted">{current.description}</p>
+      </div>
 
-      {/* Tab bar — dropdown on mobile, pill row on desktop */}
+      {/* Tab bar — dropdown on mobile, underline tabs on desktop */}
       <div className="mb-6">
         {/* Mobile: select */}
         <select
@@ -55,19 +59,22 @@ export default function SettingsPage() {
           {tabs.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
 
-        {/* Desktop: pill row */}
-        <div className="hidden sm:flex gap-1 bg-surface-raised p-1 rounded-xl overflow-x-auto">
+        {/* Desktop: underline tabs */}
+        <nav className="hidden sm:flex gap-2 border-b border-line overflow-x-auto no-scrollbar" aria-label="Settings sections">
           {tabs.map(t => (
             <a
               key={t.id}
               href={`#${t.id}`}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-1 text-center
-                ${tab === t.id ? 'bg-surface-high text-ink' : 'text-ink-muted hover:text-ink'}`}
+              aria-current={tab === t.id ? 'page' : undefined}
+              className={`-mb-px border-b-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors
+                ${tab === t.id
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-ink-muted hover:border-line-strong hover:text-ink'}`}
             >
               {t.label}
             </a>
           ))}
-        </div>
+        </nav>
       </div>
 
       {tab === 'library'  && <LibraryTab />}
@@ -140,7 +147,7 @@ function EmailTab() {
   return (
     <div className="space-y-6">
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">Email (SMTP)</h2>
+        <h2 className="text-base font-semibold text-ink">Email (SMTP)</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-ink-muted mb-1.5">SMTP Host</label>
@@ -279,7 +286,7 @@ function LibraryTab() {
     <div className="space-y-6">
       {/* Tags */}
       <section className="card p-5">
-        <h2 className="text-sm font-semibold text-ink mb-4">Tags</h2>
+        <h2 className="text-base font-semibold text-ink mb-4">Tags</h2>
         <div className="flex gap-2 mb-4">
           <input
             className="field flex-1" value={newTag} onChange={e => setNewTag(e.target.value)}
@@ -311,7 +318,7 @@ function LibraryTab() {
 
       {/* File naming */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">File Naming</h2>
+        <h2 className="text-base font-semibold text-ink">File Naming</h2>
         <div>
           <label className="block text-xs text-ink-muted mb-1.5">Naming Scheme</label>
           <select className="field" value={renameScheme} onChange={e => setRenameScheme(e.target.value)}>
@@ -334,7 +341,7 @@ function LibraryTab() {
 
       {/* Folder organization */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">Folder Organization</h2>
+        <h2 className="text-base font-semibold text-ink">Folder Organization</h2>
         <select className="field" value={folderOrganization} onChange={e => setFolderOrganization(e.target.value)}>
           <option value="flat">Flat (no subfolders)</option>
           <option value="by_author">By Author</option>
@@ -350,7 +357,7 @@ function LibraryTab() {
 
       {/* Bulk rename */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">Bulk Rename</h2>
+        <h2 className="text-base font-semibold text-ink">Bulk Rename</h2>
         <p className="text-xs text-ink-muted">Preview and apply the current naming scheme to all existing files.</p>
         {bulkStatus && <p className="text-sm text-ink-muted">{bulkStatus}</p>}
         <div className="flex gap-2">
@@ -380,7 +387,7 @@ function LibraryTab() {
       {/* Library stats at bottom */}
       {stats && (
         <section className="card p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-ink">Library Statistics</h2>
+          <h2 className="text-base font-semibold text-ink">Library Statistics</h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-surface-raised rounded-lg p-3 text-center">
               <p className="text-2xl font-bold text-ink">{stats.total_books.toLocaleString()}</p>
@@ -462,7 +469,7 @@ function MetadataTab() {
   return (
     <div className="space-y-4">
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">Behavior</h2>
+        <h2 className="text-base font-semibold text-ink">Behavior</h2>
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={autoMetadata} onChange={e => setAutoMetadata(e.target.checked)} className="accent-accent w-4 h-4" />
           <div>
@@ -491,7 +498,7 @@ function MetadataTab() {
       </section>
 
       <section className="card p-5 space-y-3">
-        <h2 className="text-sm font-semibold text-ink">Source Priority</h2>
+        <h2 className="text-base font-semibold text-ink">Source Priority</h2>
         <p className="text-xs text-ink-muted">Sources are ordered by priority, top to bottom.</p>
         <div className="space-y-1">
           {priority.map((src, idx) => (
@@ -588,11 +595,11 @@ function LogsTab() {
           <option value="WARNING">WARNING</option>
           <option value="ERROR">ERROR</option>
         </select>
-        <button onClick={() => loadLogs()} disabled={loading} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm border border-line hover:bg-surface-raised transition-colors">
+        <button onClick={() => loadLogs()} disabled={loading} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-line hover:bg-surface-raised transition-colors">
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Refresh
         </button>
-        <button onClick={exportLogs} disabled={!logs} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm border border-line hover:bg-surface-raised transition-colors">
+        <button onClick={exportLogs} disabled={!logs} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-line hover:bg-surface-raised transition-colors">
           <Download className="w-3.5 h-3.5" />
           Export
         </button>
@@ -690,7 +697,7 @@ function AccountTab() {
     <div className="space-y-6">
       {/* Display Name */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">Display Name</h2>
+        <h2 className="text-base font-semibold text-ink">Display Name</h2>
         <div className="flex gap-2">
           <input
             className="field flex-1"
@@ -712,7 +719,7 @@ function AccountTab() {
 
       {/* Send-to email addresses */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
           <Mail className="w-4 h-4 text-ink-muted" />
           Send-to Email
         </h2>
@@ -767,7 +774,7 @@ function AccountTab() {
 
       {/* OPDS feed for e-reader apps */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
           <Rss className="w-4 h-4 text-ink-muted" />
           OPDS Feed
         </h2>
@@ -793,7 +800,7 @@ function AccountTab() {
 
       {/* KOReader progress sync */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
           <RefreshCw className="w-4 h-4 text-ink-muted" />
           KOReader Sync
         </h2>
@@ -825,7 +832,7 @@ function AccountTab() {
 
       {/* Change password */}
       <section className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
+        <h2 className="text-base font-semibold text-ink flex items-center gap-2">
           <Key className="w-4 h-4 text-ink-muted" />
           Change Password
         </h2>

@@ -4,8 +4,8 @@
   "description": "Personal ebook library",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e1b2e",
-  "theme_color": "#1e1b2e",
+  "background_color": "#171717",
+  "theme_color": "#171717",
   "icons": [
     {
       "src": "/static/icon-192.png",

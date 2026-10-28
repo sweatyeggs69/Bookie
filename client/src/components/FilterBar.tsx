@@ -37,7 +37,7 @@ const GRID_SIZES = [
 ]
 
 const selectCls = [
-  'appearance-none px-3 py-1.5 pr-7 rounded border border-line',
+  'appearance-none px-3 py-1.5 pr-7 rounded-lg border border-line',
   'bg-surface-raised text-ink text-sm',
   'hover:border-line-strong transition-colors',
   'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent',
@@ -195,7 +195,7 @@ export default function FilterBar() {
     } catch { /* ignore */ }
   }
 
-  const btnCls = "px-2.5 py-1.5 rounded border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
+  const btnCls = "px-2.5 py-1.5 rounded-lg border border-line bg-surface-raised text-ink-muted text-sm hover:text-ink hover:border-line-strong transition-colors"
   const selectionToolbar = (
     <div className="flex items-center justify-between gap-2 w-full">
       {/* Left: selection helpers */}
@@ -251,7 +251,7 @@ export default function FilterBar() {
           type="button"
           onClick={handleBulkDelete}
           disabled={selectedBookIds.length === 0 || deleting}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 hover:border-red-500/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Trash2 size={13} />
           Delete{selectedBookIds.length > 0 ? ` (${selectedBookIds.length})` : ''}
@@ -333,7 +333,7 @@ export default function FilterBar() {
       <button
         type="button"
         onClick={toggleOrder}
-        className="shrink-0 px-3 py-1.5 rounded border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="shrink-0 px-3 py-1.5 rounded-lg border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={`Sort ${filters.order === 'asc' ? 'ascending' : 'descending'} — click to toggle`}
       >
         {filters.order === 'asc' ? '↑ Asc' : '↓ Desc'}
@@ -391,7 +391,7 @@ export default function FilterBar() {
         type="button"
         onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
         aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-        className="h-8 px-2.5 rounded border border-line bg-surface-raised text-ink-muted hover:text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+        className="h-8 px-2.5 rounded-lg border border-line bg-surface-raised text-ink-muted hover:text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
       >
         {viewMode === 'grid' ? <Grid2x2 size={15} /> : <List size={15} />}
       </button>
@@ -400,7 +400,7 @@ export default function FilterBar() {
 
   return (
     <div className={[
-      'sticky top-14 z-30 bg-surface border-b border-line px-4 py-2.5 flex flex-col gap-2',
+      'sticky top-14 lg:top-0 z-30 bg-surface border-b border-line px-4 py-2.5 lg:py-3 flex flex-col gap-2',
       'transition-transform duration-300 ease-in-out',
       barHidden ? '-translate-y-full lg:translate-y-0' : 'translate-y-0',
     ].join(' ')}>
@@ -418,7 +418,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('filters')}
               className={[
-                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'filters'
                   ? 'border-accent text-accent bg-accent/10'
                   : hasActiveFilters
@@ -439,7 +439,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('views')}
               className={[
-                'flex items-center justify-center w-10 h-10 shrink-0 rounded border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'views'
                   ? 'border-accent text-accent bg-accent/10'
                   : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',
@@ -461,8 +461,11 @@ export default function FilterBar() {
           </div>
         ) : (
           <>
-            {/* Desktop: inline filters */}
-            <div className="hidden lg:flex flex-1 min-w-0">
+            {/* Desktop: search + inline filters */}
+            <div className="hidden lg:flex flex-1 min-w-0 items-center gap-2">
+              <div className="w-64 xl:w-80 shrink-0">
+                <SearchBar />
+              </div>
               {filterControls}
             </div>
 

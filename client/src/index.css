@@ -3,30 +3,36 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Color tokens — dark (default) ─────────────────────────────────────── */
+/* ─── Color tokens — dark (default), neutral greys ────────────────────────── */
 :root {
-  --surface:      #16161e;
-  --surface-card: #1f1f2d;
-  --surface-raised:#272738;
-  --surface-high: #303048;
-  --ink:          #eeeef8;
-  --ink-muted:    #aaaacb;
-  --ink-faint:    #72728e;
-  --line:         rgba(255,255,255,0.11);
-  --line-strong:  rgba(255,255,255,0.20);
+  /* Accent channels (r g b), overridden at runtime by src/theme.ts */
+  --accent:       59 130 246;
+  --accent-hover: 96 165 250;
+
+  --surface:      #171717;
+  --surface-card: #1f1f1f;
+  --surface-raised:#262626;
+  --surface-high: #333333;
+  --surface-hover:#262626;
+  --ink:          #f5f5f5;
+  --ink-muted:    #a3a3a3;
+  --ink-faint:    #737373;
+  --line:         rgba(64,64,64,0.6);
+  --line-strong:  #525252;
 }
 
 /* ─── Color tokens — light ───────────────────────────────────────────────── */
 [data-theme="light"] {
-  --surface:      #f0f0f7;
+  --surface:      #fafafa;
   --surface-card: #ffffff;
-  --surface-raised:#e8e8f2;
-  --surface-high: #ddddf0;
-  --ink:          #1a1a2e;
-  --ink-muted:    #5a5a7a;
-  --ink-faint:    #9898b8;
-  --line:         rgba(0,0,0,0.08);
-  --line-strong:  rgba(0,0,0,0.14);
+  --surface-raised:#f5f5f5;
+  --surface-high: #e5e5e5;
+  --surface-hover:#e5e5e5;
+  --ink:          #171717;
+  --ink-muted:    #525252;
+  --ink-faint:    #a3a3a3;
+  --line:         #d4d4d4;
+  --line-strong:  #a3a3a3;
 }
 
 [data-theme="light"] body {
@@ -46,8 +52,8 @@
 
 /* ─── Update available glow animation ────────────────────────────────────── */
 @keyframes update-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 106, 248, 0); outline-color: transparent; }
-  50%       { box-shadow: 0 0 6px 2px rgba(124, 106, 248, 0.55); outline-color: rgba(124, 106, 248, 0.55); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--accent) / 0); outline-color: transparent; }
+  50%       { box-shadow: 0 0 6px 2px rgb(var(--accent) / 0.55); outline-color: rgb(var(--accent) / 0.55); }
 }
 
 .update-glow {
@@ -76,7 +82,7 @@
   body {
     background-color: var(--surface);
     color: var(--ink);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     line-height: 1.5;
     min-height: 100dvh;
   }
@@ -94,6 +100,12 @@
 
   button {
     cursor: pointer;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"] {
+    accent-color: rgb(var(--accent));
   }
 
   /* Remove default list styles */
@@ -136,8 +148,8 @@
 
 /* ─── Text selection ──────────────────────────────────────────────────────── */
 ::selection {
-  background-color: rgba(124, 106, 248, 0.35);
-  color: #e2e2ee;
+  background-color: rgb(var(--accent) / 0.35);
+  color: var(--ink);
 }
 
 /* ─── Focus visible ring (keyboard nav only) ─────────────────────────────── */
@@ -146,7 +158,7 @@
 }
 
 :focus-visible {
-  outline: 2px solid #7c6af8;
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -175,15 +187,15 @@
 @layer components {
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
   }
 
   .btn-outline {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded border border-line bg-surface-raised hover:bg-surface-high text-ink text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-line bg-surface-raised hover:bg-surface-high text-ink text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded text-ink-muted hover:text-ink hover:bg-surface-raised text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-raised text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 disabled:cursor-not-allowed;
   }
 
   /* Card */
@@ -193,7 +205,7 @@
 
   /* Form field */
   .field {
-    @apply w-full px-3 py-2 rounded bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
+    @apply w-full px-3 py-2 rounded-lg bg-surface-raised border border-line text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
   }
 }
 
@@ -276,7 +288,7 @@
 
   /* Glass effect surface */
   .glass {
-    background-color: rgba(22, 22, 29, 0.85);
+    background-color: color-mix(in srgb, var(--surface) 85%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -287,6 +299,6 @@
   }
 
   .ring-inset-accent {
-    box-shadow: inset 0 0 0 1px #7c6af8;
+    box-shadow: inset 0 0 0 1px rgb(var(--accent));
   }
 }

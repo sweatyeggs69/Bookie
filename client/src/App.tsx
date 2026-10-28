@@ -8,7 +8,7 @@ import SetupPage from './pages/SetupPage';
 import LibraryPage from './pages/LibraryPage';
 import UploadPage from './pages/UploadPage';
 import SettingsPage from './pages/SettingsPage';
-import TopBar from './components/TopBar';
+import Sidebar from './components/Sidebar';
 
 let _toastId = 0;
 
@@ -20,8 +20,8 @@ function ToastList({ toasts, remove }: { toasts: Toast[]; remove: (id: number) =
         <div
           key={t.id}
           className={[
-            'toast-item flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border bg-surface-raised text-ink text-sm',
-            t.type === 'error' ? 'border-danger/30' : t.type === 'success' ? 'border-success/30' : 'border-line',
+            'toast-item flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border bg-surface-card text-ink text-sm',
+            t.type === 'error' ? 'border-danger/40' : t.type === 'success' ? 'border-success/40' : 'border-line',
           ].join(' ')}
         >
           {t.type === 'success' && <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />}
@@ -45,7 +45,7 @@ function ToastList({ toasts, remove }: { toasts: Toast[]; remove: (id: number) =
 type AuthState = 'loading' | 'first_run' | 'unauthenticated' | 'authenticated';
 
 export default function App() {
-  const { view, setView, setUser } = useStore();
+  const { view, setView, setUser, sidebarCollapsed } = useStore();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -80,15 +80,6 @@ export default function App() {
 
   useEffect(() => {
     checkAuth();
-    const stored = localStorage.getItem('theme') ?? 'system';
-    if (stored === 'light') {
-      document.documentElement.dataset.theme = 'light';
-    } else if (stored === 'dark') {
-      document.documentElement.dataset.theme = '';
-    } else {
-      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-      document.documentElement.dataset.theme = prefersLight ? 'light' : '';
-    }
   }, [checkAuth]);
 
   return (
@@ -110,8 +101,13 @@ export default function App() {
 
         {authState === 'authenticated' && (
           <div className="flex flex-col min-h-screen">
-            <TopBar onAuthChange={checkAuth} />
-            <main className="flex-1">
+            <Sidebar onAuthChange={checkAuth} />
+            <main
+              className={[
+                'flex-1 min-w-0 transition-[padding-left] duration-200 ease-in-out',
+                sidebarCollapsed ? 'lg:pl-14' : 'lg:pl-72',
+              ].join(' ')}
+            >
               {(view === 'library' || view === 'upload') && <LibraryPage />}
               {view === 'settings' && <SettingsPage />}
             </main>
