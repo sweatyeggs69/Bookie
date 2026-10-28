@@ -29,6 +29,7 @@ interface Props {
 export const SETTINGS_SECTIONS = [
   { id: 'library',  label: 'Library' },
   { id: 'metadata', label: 'Metadata' },
+  { id: 'cleanup',  label: 'EPUB Cleanup' },
   { id: 'email',    label: 'Email / SMTP' },
   { id: 'account',  label: 'Account' },
   { id: 'logs',     label: 'Logs' },
