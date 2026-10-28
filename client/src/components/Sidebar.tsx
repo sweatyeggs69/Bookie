@@ -10,7 +10,6 @@ import {
   Menu,
   Monitor,
   Moon,
-  Palette,
   RefreshCw,
   Settings,
   Sun,
@@ -21,15 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 import { useStore } from '../store';
 import { useToast } from '../contexts/toast';
-import {
-  ACCENTS,
-  type AccentColor,
-  type ThemeMode,
-  getAccent,
-  getThemeMode,
-  setAccent as saveAccent,
-  setThemeMode as saveThemeMode,
-} from '../theme';
+import { type ThemeMode, getThemeMode, setThemeMode as saveThemeMode } from '../theme';
 
 interface Props {
   onAuthChange: () => void;
@@ -77,54 +68,6 @@ function ThemeToggle() {
     <button type="button" onClick={next} className={iconBtn} title={`${label} (click to change)`} aria-label={label}>
       <Icon className="w-4 h-4" />
     </button>
-  );
-}
-
-function AccentPicker() {
-  const [open, setOpen] = useState(false);
-  const [accent, setAccentState] = useState<AccentColor>(getAccent);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={iconBtn}
-        title="Accent color"
-        aria-label="Accent color"
-        aria-expanded={open}
-      >
-        <Palette className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 p-2 bg-surface-card border border-line rounded-xl shadow-xl book-menu-pop flex gap-1.5">
-          {(Object.keys(ACCENTS) as AccentColor[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => { setAccentState(key); saveAccent(key); setOpen(false); }}
-              title={ACCENTS[key].label}
-              aria-label={ACCENTS[key].label}
-              className={[
-                'w-6 h-6 rounded-full transition-transform hover:scale-110',
-                accent === key ? 'ring-2 ring-offset-2 ring-offset-surface-card ring-ink-muted' : '',
-              ].join(' ')}
-              style={{ backgroundColor: ACCENTS[key].swatch }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -313,16 +256,6 @@ export default function Sidebar({ onAuthChange }: Props) {
           </button>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setView('upload')}
-            className={iconBtn}
-            title="Upload books"
-            aria-label="Upload books"
-          >
-            <Upload className="w-4 h-4" />
-          </button>
-          <AccentPicker />
           <ThemeToggle />
         </div>
       </header>
@@ -361,7 +294,6 @@ export default function Sidebar({ onAuthChange }: Props) {
               </span>
             )}
             <span className="hidden lg:contents">
-              <AccentPicker />
               <ThemeToggle />
             </span>
             <button

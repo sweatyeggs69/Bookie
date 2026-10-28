@@ -5,9 +5,9 @@
 
 /* ─── Color tokens — dark (default), neutral greys ────────────────────────── */
 :root {
-  /* Accent channels (r g b), overridden at runtime by src/theme.ts */
-  --accent:       59 130 246;
-  --accent-hover: 96 165 250;
+  /* Accent channels (r g b) */
+  --accent:       124 106 248;
+  --accent-hover: 145 128 250;
 
   --surface:      #171717;
   --surface-card: #1f1f1f;
