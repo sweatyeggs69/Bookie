@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Trash2, Save, Image, ChevronDown, Check, AlertCircle } from 'lucide-react'
+import { BookOpen, Trash2, Save, Image, ChevronDown, Check, AlertCircle, Sparkles } from 'lucide-react'
 import * as api from '../api/client'
 import { Book, Tag, MetaResult } from '../types'
 import Dialog from './Dialog'
 import MetaDialog from './MetaDialog'
 import CoverDialog from './CoverDialog'
 import Spinner from './Spinner'
+import { useToast } from '../contexts/toast'
 
 interface BookDialogProps {
   bookId: number
@@ -94,6 +95,7 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
 
 export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProps) {
   const qc = useQueryClient()
+  const { addToast } = useToast()
 
   const { data: book, isLoading, isError } = useQuery<Book>({
     queryKey: ['book', bookId],
@@ -247,6 +249,16 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
     onError: () => {},
   })
 
+  const cleanupMutation = useMutation({
+    mutationFn: () => api.cleanupBook(bookId),
+    onSuccess: ({ actions, book: cleaned }) => {
+      qc.setQueryData(['book', bookId], cleaned)
+      qc.invalidateQueries({ queryKey: ['books'] })
+      addToast('success', actions.length ? `Cleaned up: ${actions.join('; ')}` : 'Nothing to clean up')
+    },
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: () => api.deleteBook(bookId),
     onSuccess: () => {
@@ -356,6 +368,18 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                 <Image size={12} />
                 Change Cover
               </button>
+              {book.file_format?.toLowerCase() === 'epub' && (
+                <button
+                  type="button"
+                  onClick={() => cleanupMutation.mutate()}
+                  disabled={cleanupMutation.isPending}
+                  title="Runs the cleanup steps chosen in Settings, using the saved details above"
+                  className="flex items-center gap-1.5 w-full justify-center px-3 py-1.5 rounded text-xs font-medium text-ink-muted border border-line hover:bg-surface-raised hover:text-ink transition-colors disabled:opacity-60"
+                >
+                  {cleanupMutation.isPending ? <Spinner size={12} /> : <Sparkles size={12} />}
+                  Clean Up EPUB
+                </button>
+              )}
             </div>
 
             {/* Fields column */}
