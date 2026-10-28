@@ -100,6 +100,8 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
   const { data: book, isLoading, isError } = useQuery<Book>({
     queryKey: ['book', bookId],
     queryFn: () => api.getBook(bookId),
+    // Poll while a cleanup runs (on upload or from the library) until it's done
+    refetchInterval: q => (q.state.data?.cleaning ? 2000 : false),
   })
 
   const { data: allTags = [] } = useQuery<Tag[]>({
@@ -278,13 +280,15 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
 
   const isSaving = saveMutation.isPending
   const isDeleting = deleteMutation.isPending
+  // Editing is locked while the file is being cleaned and until the refreshed book arrives
+  const isCleaning = cleanupMutation.isPending || !!book?.cleaning
 
   const footer = (
     <div className="flex items-center justify-between gap-3">
       <button
         type="button"
         onClick={handleDelete}
-        disabled={isDeleting}
+        disabled={isDeleting || isCleaning}
         onBlur={() => setConfirmDelete(false)}
         className={[
           'flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium',
@@ -300,14 +304,15 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
         <button
           type="button"
           onClick={() => setShowMetaDialog(true)}
-          className="px-3 py-2 rounded text-sm font-medium text-ink border border-line hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          disabled={isCleaning}
+          className="disabled:opacity-60 px-3 py-2 rounded text-sm font-medium text-ink border border-line hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           Fetch Metadata
         </button>
         <button
           type="button"
           onClick={() => saveMutation.mutate()}
-          disabled={isSaving}
+          disabled={isSaving || isCleaning}
           className="flex items-center gap-1.5 px-4 py-2 rounded text-sm font-medium bg-accent hover:bg-accent-hover text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
         >
           {isSaving ? <Spinner size={14} className="text-white" /> : <Save size={14} />}
@@ -331,8 +336,15 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
           </div>
         )}
 
+        {book && isCleaning && (
+          <div role="status" className="mx-5 mt-5 flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-ink">
+            <Spinner size={14} />
+            Cleaning up this EPUB. Editing is paused until it finishes.
+          </div>
+        )}
+
         {book && (
-          <div className="p-5 flex flex-col sm:flex-row gap-6">
+          <fieldset disabled={isCleaning} className="p-5 flex flex-col sm:flex-row gap-6 min-w-0 disabled:opacity-60">
             {/* Cover column */}
             <div className="shrink-0 flex flex-col items-center gap-3 w-1/2 mx-auto sm:mx-0 sm:w-40">
               <div className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-surface-raised border border-line flex items-center justify-center">
@@ -426,7 +438,7 @@ export default function BookDialog({ bookId, onClose, onDelete }: BookDialogProp
                 </div>
               )}
             </div>
-          </div>
+          </fieldset>
         )}
 
         {/* Reading progress synced from KOReader */}

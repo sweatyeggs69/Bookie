@@ -1,7 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
+
+
+CLEANUP_STALE = timedelta(minutes=10)
 
 
 class Tag(db.Model):
@@ -66,6 +69,9 @@ class Book(db.Model):
     # Cover
     cover_filename = db.Column(db.String(256))
 
+    # Set while an EPUB cleanup runs on the file, so the book can't be edited meanwhile
+    cleanup_started = db.Column(db.DateTime)
+
     # Timestamps
     date_added = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     date_modified = db.Column(
@@ -113,7 +119,16 @@ class Book(db.Model):
             "date_modified": self.date_modified.isoformat() if self.date_modified else None,
             "tags": [bt.tag.name for bt in self.book_tags],
             "progress": self.latest_progress(),
+            "cleaning": self.is_cleaning(),
         }
+
+    def is_cleaning(self) -> bool:
+        """True while a cleanup is running. A start time older than CLEANUP_STALE
+        means the worker died mid-run, so the book is unlocked again."""
+        if not self.cleanup_started:
+            return False
+        started = self.cleanup_started.replace(tzinfo=None)
+        return datetime.now(timezone.utc).replace(tzinfo=None) - started < CLEANUP_STALE
 
     def latest_progress(self):
         """The most recently synced reading position across all copies of this book."""

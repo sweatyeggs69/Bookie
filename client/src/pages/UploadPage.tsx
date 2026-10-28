@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Upload, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, FileText, Tag as TagIcon, Loader2 } from 'lucide-react'
 import * as api from '../api/client'
 import type { Tag } from '../types'
 import Dialog from '../components/Dialog'
@@ -57,6 +57,8 @@ export default function UploadPage({ onClose }: Props) {
   const qc = useQueryClient()
 
   const { data: allTags = [] } = useQuery<Tag[]>({ queryKey: ['tags'], queryFn: api.getTags })
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
+  const cleansOnUpload = settings?.epub_cleanup_on_upload === 'true'
 
   function addFiles(files: File[]) {
     const valid = files.filter(f => ALLOWED.has(ext(f.name)))
@@ -224,7 +226,12 @@ export default function UploadPage({ onClose }: Props) {
                         <div className="h-full bg-accent rounded-full transition-all duration-200" style={{ width: `${item.progress}%` }} />
                       </div>
                       {item.progress >= 100 && (
-                        <p className="text-xs text-ink-muted">Processing, this may take a moment…</p>
+                        <p role="status" className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          {cleansOnUpload && ext(item.file.name) === 'epub'
+                            ? 'Processing and cleaning up the EPUB…'
+                            : 'Processing, this may take a moment…'}
+                        </p>
                       )}
                     </div>
                   )}

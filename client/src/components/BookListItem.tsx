@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal } from 'lucide-react'
+import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal, Loader2 } from 'lucide-react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
 import * as api from '../api/client'
@@ -130,6 +130,12 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
           {/* Title + Author */}
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
             <p className="text-ink text-sm font-medium leading-snug truncate">{book.title ?? book.filename}</p>
+            {book.cleaning && (
+              <p role="status" className="flex items-center gap-1 text-xs text-accent">
+                <Loader2 size={11} className="animate-spin" />
+                Cleaning up…
+              </p>
+            )}
             {book.author && (
               <button
                 type="button"

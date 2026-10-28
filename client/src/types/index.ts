@@ -29,6 +29,9 @@ export interface Book {
   series: string | null
   series_order: number | null
 
+  // True while an EPUB cleanup is rewriting the file; the book can't be edited meanwhile
+  cleaning?: boolean
+
   // Timestamps
   date_added: string
   date_modified: string
