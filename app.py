@@ -5,8 +5,10 @@ import math
 import os
 import re
 import secrets
+import shutil
 import logging
 import stat
+import tempfile
 import time
 import urllib.request
 import urllib.error
@@ -266,6 +268,13 @@ def _book_path(book) -> Path:
 
 PREVIEW_DIR = DATA_DIR / "cleanup-previews"
 PREVIEW_TTL = 3600  # seconds a cleaned preview copy stays downloadable
+
+
+def _render_before_after(original: str, cleaned: str, page: str | None) -> dict:
+    if not page:
+        return {"page": None, "page_before": "", "page_after": ""}
+    return {"page": page, "page_before": epub_cleanup.render_page(original, page),
+            "page_after": epub_cleanup.render_page(cleaned, page)}
 
 
 def _prune_previews() -> None:
@@ -926,10 +935,14 @@ def create_app():
         token = secrets.token_urlsafe(16)
         path = PREVIEW_DIR / f"{token}.epub"
         file.save(str(path))
+        original = PREVIEW_DIR / f"{token}.orig.epub"
         try:
+            shutil.copyfile(path, original)
             before = epub_cleanup.summarize(str(path))
             actions = epub_cleanup.clean_epub(str(path), {}, steps)
             after = epub_cleanup.summarize(str(path))
+            diff = epub_cleanup.preview_diff(before, after)
+            rendered = _render_before_after(str(original), str(path), epub_cleanup.first_changed_page(diff))
         except epub_cleanup.CleanupError as exc:
             path.unlink(missing_ok=True)
             return jsonify({"error": str(exc)}), 422
@@ -937,9 +950,29 @@ def create_app():
             path.unlink(missing_ok=True)
             logger.warning("Cleanup preview failed for %s: %s", file.filename, exc)
             return jsonify({"error": f"Could not clean this file: {exc}"}), 422
+        finally:
+            original.unlink(missing_ok=True)
         name = secure_filename(file.filename.rsplit(".", 1)[0]) or "book"
         (PREVIEW_DIR / f"{token}.name").write_text(f"{name}_clean.epub")
-        return jsonify({"token": token, "actions": actions, **epub_cleanup.preview_diff(before, after)})
+        return jsonify({"token": token, "actions": actions, **diff, **rendered})
+
+    @app.route("/api/cleanup/sample-preview", methods=["POST"])
+    @login_required
+    def cleanup_sample_preview():
+        """Run the chosen steps on Bookie's built-in messy sample, so the settings
+        page can show a live before/after without the user picking a file."""
+        data = request.get_json(silent=True) or {}
+        steps = epub_cleanup.parse_steps(data.get("steps")) - {"metadata"}
+        with tempfile.TemporaryDirectory() as tmp:
+            original = os.path.join(tmp, "before.epub")
+            path = os.path.join(tmp, "after.epub")
+            epub_cleanup.write_sample_epub(original)
+            shutil.copyfile(original, path)
+            before = epub_cleanup.summarize(original)
+            actions = epub_cleanup.clean_epub(path, {}, steps)
+            after = epub_cleanup.summarize(path)
+            rendered = _render_before_after(original, path, epub_cleanup.SAMPLE_PAGE)
+        return jsonify({"actions": actions, **epub_cleanup.preview_diff(before, after), **rendered})
 
     @app.route("/api/cleanup/preview/<token>", methods=["GET"])
     @login_required

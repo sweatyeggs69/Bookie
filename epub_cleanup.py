@@ -1195,6 +1195,145 @@ def preview_diff(before: dict, after: dict) -> dict:
     }
 
 
+# ── Sample book and page rendering for the settings preview ────────────────────
+
+_SAMPLE_CSS = """.calibre { display: block; margin: 0 5pt; }
+.calibre_1 { display: block; margin: 0; text-indent: 1.5em; text-align: justify; }
+.calibre_2 { display: block; font-size: 1.4em; text-align: center; margin: 1em 0 0; }
+.calibre_3 { display: block; font-size: 1em; text-align: center; margin: 0.3em 0 1.5em; }
+.calibre_4 { display: block; text-align: center; margin: 2em 0; }
+"""
+_SAMPLE_PAGE = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>{title}</title>
+<link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/>
+<meta name="Adept.expected.resource" content="urn:uuid:sample"/></head>
+<body class="calibre">{body}</body></html>"""
+_SAMPLE_CHAPTERS = [
+    ("ONE", "THE LANTERN ON THE HILL",
+     ["When Mara Quill was eleven, the lantern on Hob’s Hill went dark for the first time in a hundred years.",
+      "Nobody in Fenwick could say who had lit it, only that it had always been there, a small gold eye above the "
+      "village. Old Mr. McAllister said it watched the roads. Mara thought it simply liked the view.",
+      "“Somebody has to go up,” said her grandmother, setting down the teapot. “And it won’t "
+      "be me, with these knees.”"]),
+    ("TWO", "A KEY UNDER THE STONE",
+     ["The path up the hill was steeper than it looked from the bakery window, and colder.",
+      "At the top Mara found the lantern house shut tight, and beside the door a flat grey stone with a word "
+      "scratched into it: LIFT. So she did, and under it lay a key no longer than her thumb."]),
+    ("THREE", "WHAT THE KEEPER LEFT",
+     ["Inside there was a chair, a coat on a peg, and a letter addressed to whoever comes next.",
+      "Mara read it twice by the light of the window, then once more aloud, because the room seemed to be "
+      "listening."]),
+]
+
+
+def _sample_files() -> dict[str, str]:
+    """A small Calibre-style EPUB with the usual problems, for previewing cleanup."""
+    files = {}
+    info = ('<p class="calibre_4">Este libro fue maquetado por ePubLibre</p>'
+            '<p class="calibre_4">www.epublibre.org</p>')
+    files["OEBPS/Text/info.xhtml"] = _SAMPLE_PAGE.format(title="", body=info)
+    links = "".join(f'<p class="calibre_1"><a href="ch{i:02d}.xhtml">{num} {title}</a></p>'
+                    for i, (num, title, _) in enumerate(_SAMPLE_CHAPTERS, start=1))
+    links += '<p class="calibre_1"><a href="epilogue.xhtml">EPILOGUE</a></p>'
+    files["OEBPS/Text/contents.xhtml"] = _SAMPLE_PAGE.format(
+        title="", body=f'<h1 class="calibre_2">CONTENTS</h1>{links}')
+    for i, (num, title, paras) in enumerate(_SAMPLE_CHAPTERS, start=1):
+        body = (f'<a id="filepos{i * 1000}"></a><p class="calibre_2">{num}</p><p class="calibre_3">{title}</p>'
+                + "".join(f'<p class="calibre_1">{p.replace("Quill", "Qu⁠ill")}</p>' for p in paras)
+                + '<div class="mbp_pagebreak"></div>')
+        files[f"OEBPS/Text/ch{i:02d}.xhtml"] = _SAMPLE_PAGE.format(title="", body=body)
+    files["OEBPS/Text/epilogue.xhtml"] = _SAMPLE_PAGE.format(
+        title="", body='<h2 class="calibre_2">EPILOGUE</h2><p class="calibre_1">The lantern on Hob’s Hill '
+                       'has not gone out since.</p>')
+    files["OEBPS/Styles/stylesheet.css"] = _SAMPLE_CSS
+    pages = ["info", "contents"] + [f"ch{i:02d}" for i in range(1, len(_SAMPLE_CHAPTERS) + 1)] + ["epilogue"]
+    manifest = "".join(f'<item id="{p}" href="Text/{p}.xhtml" media-type="application/xhtml+xml"/>' for p in pages)
+    spine = "".join(f'<itemref idref="{p}"/>' for p in pages)
+    files["OEBPS/content.opf"] = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid">'
+        '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">'
+        '<dc:title>The Lantern Keeper</dc:title><dc:creator>Sample Author</dc:creator>'
+        '<dc:contributor opf:role="bkp">calibre (7.0) [https://calibre-ebook.com]</dc:contributor>'
+        '<dc:identifier id="uid">bookie-sample</dc:identifier><dc:language>en</dc:language>'
+        '<meta name="calibre:title_sort" content="Lantern Keeper, The"/></metadata>'
+        '<manifest><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>'
+        '<item id="css" href="Styles/stylesheet.css" media-type="text/css"/>'
+        f'{manifest}</manifest><spine toc="ncx">{spine}</spine></package>')
+    points = "".join(
+        f'<navPoint id="n{i}" playOrder="{i}"><navLabel><text>{num}</text></navLabel>'
+        f'<content src="Text/ch{i:02d}.xhtml"/></navPoint>' for i, (num, _, _) in enumerate(_SAMPLE_CHAPTERS, start=1))
+    files["OEBPS/toc.ncx"] = (
+        '<?xml version="1.0" encoding="utf-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
+        '<head><meta name="dtb:uid" content="bookie-sample"/><meta name="dtb:depth" content="1"/></head>'
+        f'<docTitle><text>The Lantern Keeper</text></docTitle><navMap>{points}</navMap></ncx>')
+    files["META-INF/container.xml"] = (
+        '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        '<rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+        '</rootfiles></container>')
+    return files
+
+
+SAMPLE_PAGE = "OEBPS/Text/ch01.xhtml"
+
+
+def write_sample_epub(path: str):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(zipfile.ZipInfo("mimetype"), "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        for name, text in _sample_files().items():
+            z.writestr(name, text)
+
+
+_UNSAFE_TAGS = {"script", "iframe", "object", "embed", "img", "image", "svg", "video", "audio", "form", "link",
+                "meta", "base", "style"}
+_CSS_URL = re.compile(r"url\((?!\s*['\"]?data:)[^)]*\)", re.IGNORECASE)
+
+
+def render_page(path: str, name: str) -> str:
+    """A self-contained, inert HTML copy of one page with its stylesheets inlined,
+    for showing in a sandboxed frame. Scripts, images and remote URLs are dropped."""
+    epub = _Epub(path)
+    tree = epub.parse(name)
+    if tree is None:
+        return ""
+    root = tree.getroot()
+    css = []
+    for el in root.iter():
+        if _ln(el) == "link" and "stylesheet" in (el.get("rel") or "") and el.get("href"):
+            data = epub.contents.get(_resolve(name, el.get("href")))
+            if data:
+                css.append(data.decode("utf-8", errors="replace"))
+        elif _ln(el) == "style" and el.text:
+            css.append(el.text)
+    body = _body(tree)
+    if body is None:
+        return ""
+    for el in list(body.iter()):
+        if _ln(el) in _UNSAFE_TAGS:
+            _remove_keep_tail(el)
+        elif isinstance(el.tag, str):
+            for attr in list(el.attrib):
+                if attr.lower().startswith("on") or (attr in ("href", "src") and not el.get(attr).startswith("#")):
+                    del el.attrib[attr]
+    style = _CSS_URL.sub("none", "\n".join(css))
+    style = re.sub(r"@import[^;]*;", "", style)
+    inner = etree.tostring(body, encoding="unicode", method="html")
+    return ('<!doctype html><html><head><meta charset="utf-8">'
+            '<style>body{font-family:Georgia,serif;color:#222;background:#fff;margin:1em 1.2em;font-size:15px}'
+            f'</style><style>{style}</style></head>{inner}</html>')
+
+
+def first_changed_page(diff: dict) -> str | None:
+    """The page worth showing in a rendered before/after: the first whose heading changed."""
+    for p in diff["pages"]:
+        if p["after"] and p["after"]["heading"] != p["before"]["heading"] and "Chapter" in p["after"]["heading"]:
+            return p["page"]
+    for p in diff["pages"]:
+        if p["after"]:
+            return p["page"]
+    return None
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def parse_steps(raw: str | None) -> set[str]:

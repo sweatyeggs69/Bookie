@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Download, Rss, Upload } from 'lucide-react'
 import { useToast } from '../contexts/toast'
 import * as api from '../api/client'
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const current = tabs.find(t => t.id === tab) ?? tabs[0]
 
   return (
-    <div className="max-w-4xl px-4 py-6 md:px-8 md:py-8">
+    <div className={`${tab === 'cleanup' ? 'max-w-6xl' : 'max-w-4xl'} px-4 py-6 md:px-8 md:py-8`}>
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-ink">{current.label} Settings</h1>
         <p className="mt-2 text-base text-ink-muted">{current.description}</p>
@@ -488,77 +488,102 @@ function CleanupTab() {
   )
 
   return (
-    <div className="space-y-4">
-      <section className="card p-5 space-y-4">
-        <h2 className="text-base font-semibold text-ink">On Upload</h2>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" checked={onUpload} onChange={e => setOnUpload(e.target.checked)} className="accent-accent w-4 h-4" />
-          <div>
-            <p className="text-sm text-ink">Clean up EPUBs on upload</p>
-            <p className="text-xs text-ink-muted">Run the steps below on every EPUB you upload, after its metadata is fetched</p>
-          </div>
-        </label>
-      </section>
-
-      <section className="card p-5 space-y-4">
-        <h2 className="text-base font-semibold text-ink">Cleanup Steps</h2>
-        <p className="text-xs text-ink-muted">Used on upload, from a book's details, and for bulk cleanup. The story text is never changed.</p>
-        {CLEANUP_STEPS.map(step => (
-          <label key={step.id} className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={steps.has(step.id)} onChange={() => toggleStep(step.id)} className="accent-accent w-4 h-4" />
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+      {/* On small screens the columns dissolve so the preview sits right under the steps */}
+      <div className="contents lg:flex lg:flex-col lg:gap-4">
+        <section className="card p-5 space-y-4">
+          <h2 className="text-base font-semibold text-ink">On Upload</h2>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={onUpload} onChange={e => setOnUpload(e.target.checked)} className="accent-accent w-4 h-4" />
             <div>
-              <p className="text-sm text-ink">{step.label}</p>
-              <p className="text-xs text-ink-muted">{step.description}</p>
+              <p className="text-sm text-ink">Clean up EPUBs on upload</p>
+              <p className="text-xs text-ink-muted">Run the steps below on every EPUB you upload, after its metadata is fetched</p>
             </div>
           </label>
-        ))}
-        <button className="btn-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save
-        </button>
-      </section>
+        </section>
 
-      <CleanupPreviewCard steps={CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id))} />
-
-      <section className="card p-5 space-y-4">
-        <h2 className="text-base font-semibold text-ink">Clean Up Library</h2>
-        <p className="text-xs text-ink-muted">
-          Run the saved steps on every EPUB already in the library. To clean only some books, select them in the
-          library and choose Clean Up. Books already on a device keep their old copy until downloaded again.
-        </p>
-        {dirty && <p className="text-xs text-accent">Save your changes above first, the cleanup uses the saved steps.</p>}
-        <button className="btn-outline text-sm" onClick={cleanLibrary} disabled={progress !== null || steps.size === 0}>
-          {progress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-          {progress ? `Cleaning ${progress.done}/${progress.total}…` : 'Clean Up All EPUBs'}
-        </button>
-        {result && (
-          <div className="text-sm text-ink-muted space-y-1">
-            <p>Done. {result.cleaned} cleaned, {result.unchanged} already clean{result.errors.length ? `, ${result.errors.length} failed` : ''}.</p>
-            {result.errors.length > 0 && (
-              <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
-                {result.errors.map(e => <div key={e.id} className="text-danger">{e.title ?? `Book ${e.id}`}: {e.error}</div>)}
+        <section className="card p-5 space-y-4">
+          <h2 className="text-base font-semibold text-ink">Cleanup Steps</h2>
+          <p className="text-xs text-ink-muted">Used on upload, from a book's details, and for bulk cleanup. The story text is never changed.</p>
+          {CLEANUP_STEPS.map(step => (
+            <label key={step.id} className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={steps.has(step.id)} onChange={() => toggleStep(step.id)} className="accent-accent w-4 h-4" />
+              <div>
+                <p className="text-sm text-ink">{step.label}</p>
+                <p className="text-xs text-ink-muted">{step.description}</p>
               </div>
-            )}
-          </div>
-        )}
-      </section>
+            </label>
+          ))}
+          <button className="btn-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save
+          </button>
+        </section>
+
+        <section className="card p-5 space-y-4 order-last lg:order-none">
+          <h2 className="text-base font-semibold text-ink">Clean Up Library</h2>
+          <p className="text-xs text-ink-muted">
+            Run the saved steps on every EPUB already in the library. To clean only some books, select them in the
+            library and choose Clean Up. Books already on a device keep their old copy until downloaded again.
+          </p>
+          {dirty && <p className="text-xs text-accent">Save your changes above first, the cleanup uses the saved steps.</p>}
+          <button className="btn-outline text-sm" onClick={cleanLibrary} disabled={progress !== null || steps.size === 0}>
+            {progress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            {progress ? `Cleaning ${progress.done}/${progress.total}…` : 'Clean Up All EPUBs'}
+          </button>
+          {result && (
+            <div className="text-sm text-ink-muted space-y-1">
+              <p>Done. {result.cleaned} cleaned, {result.unchanged} already clean{result.errors.length ? `, ${result.errors.length} failed` : ''}.</p>
+              {result.errors.length > 0 && (
+                <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
+                  {result.errors.map(e => <div key={e.id} className="text-danger">{e.title ?? `Book ${e.id}`}: {e.error}</div>)}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+        <CleanupPreviewCard steps={CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id))} />
+      </div>
     </div>
   )
+}
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(t)
+  }, [value, ms])
+  return debounced
 }
 
 function CleanupPreviewCard({ steps }: { steps: string[] }) {
   const { addToast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
+  const [mode, setMode] = useState<'sample' | 'file'>('sample')
   const [fileName, setFileName] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState<api.CleanupPreview | null>(null)
+  const [filePreview, setFilePreview] = useState<api.CleanupPreview | null>(null)
+
+  // The sample re-runs whenever the ticked steps change, after a short pause
+  const stepKey = useDebounced(steps.join(','), 250)
+  const sample = useQuery({
+    queryKey: ['cleanupSample', stepKey],
+    queryFn: () => api.previewCleanupSample(stepKey ? stepKey.split(',') : []),
+    enabled: mode === 'sample',
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+  })
 
   async function run(file: File) {
     setFileName(file.name)
     setBusy(true)
-    setPreview(null)
+    setFilePreview(null)
     try {
-      setPreview(await api.previewCleanup(file, steps))
+      setFilePreview(await api.previewCleanup(file, steps))
     } catch (e) {
       addToast('error', (e as Error).message)
     } finally {
@@ -567,119 +592,174 @@ function CleanupPreviewCard({ steps }: { steps: string[] }) {
     }
   }
 
-  const pageName = (p: string) => p.split('/').pop() ?? p
-  const tocChanged = preview && preview.toc_before.join('\n') !== preview.toc_after.join('\n')
-  const tocRows = preview ? Math.max(preview.toc_before.length, preview.toc_after.length) : 0
+  const preview = mode === 'sample' ? sample.data ?? null : filePreview
+  const updating = mode === 'sample' && (sample.isFetching || stepKey !== steps.join(','))
 
   return (
     <section className="card p-5 space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-ink">Preview</h2>
-        <p className="text-xs text-ink-muted mt-1">
-          Try the ticked steps on an EPUB without adding it to the library. Unsaved changes to the steps are used.
-          Writing metadata is skipped, since the file isn't a library book.
-        </p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-ink flex items-center gap-2">
+            Preview
+            {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-muted" />}
+          </h2>
+          <p className="text-xs text-ink-muted mt-1">
+            {mode === 'sample'
+              ? 'A short messy sample book, cleaned with the ticked steps. It updates as you change them. Writing metadata is not shown.'
+              : 'Try the ticked steps on one of your EPUBs without adding it to the library. Writing metadata is skipped.'}
+          </p>
+        </div>
+        <div className="ml-auto flex shrink-0 rounded-lg border border-line overflow-hidden text-xs">
+          {(['sample', 'file'] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m}
+              className={`px-2.5 py-1.5 ${mode === m ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'}`}>
+              {m === 'sample' ? 'Sample' : 'Your EPUB'}
+            </button>
+          ))}
+        </div>
       </div>
-      <input ref={inputRef} type="file" accept=".epub,application/epub+zip" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) run(f) }} />
-      <div className="flex flex-wrap items-center gap-2">
-        <button className="btn-outline text-sm" onClick={() => inputRef.current?.click()} disabled={busy || steps.length === 0}>
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-          {busy ? 'Cleaning…' : 'Choose EPUB'}
-        </button>
-        {fileName && <span className="text-xs text-ink-muted truncate max-w-full">{fileName}</span>}
-        {preview && (
-          <a className="btn-primary text-sm ml-auto" href={api.cleanupPreviewDownloadUrl(preview.token)}>
-            <Download className="w-3.5 h-3.5" />
-            Download cleaned copy
-          </a>
-        )}
-      </div>
 
-      {preview && (
-        <div className="space-y-5">
-          {preview.actions.length === 0 ? (
-            <p className="text-sm text-ink-muted">Nothing to change with these steps.</p>
-          ) : (
-            <ul className="text-sm text-ink list-disc pl-5 space-y-0.5">
-              {preview.actions.map(a => <li key={a}>{a}</li>)}
-            </ul>
-          )}
+      {mode === 'file' && (
+        <>
+          <input ref={inputRef} type="file" accept=".epub,application/epub+zip" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) run(f) }} />
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="btn-outline text-sm" onClick={() => inputRef.current?.click()} disabled={busy || steps.length === 0}>
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {busy ? 'Cleaning…' : 'Choose EPUB'}
+            </button>
+            {fileName && <span className="text-xs text-ink-muted truncate max-w-full">{fileName}</span>}
+            {filePreview?.token && (
+              <a className="btn-primary text-sm ml-auto" href={api.cleanupPreviewDownloadUrl(filePreview.token)}>
+                <Download className="w-3.5 h-3.5" />
+                Download cleaned copy
+              </a>
+            )}
+          </div>
+        </>
+      )}
 
-          {preview.pages.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-ink mb-2">Pages</h3>
-              <div className="overflow-x-auto rounded-lg border border-line">
-                <table className="w-full text-xs">
-                  <thead className="bg-surface-raised text-ink-muted">
-                    <tr>
-                      <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
-                      <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.pages.map(p => (
-                      <tr key={p.page} className="border-t border-line align-top">
-                        <td className="px-3 py-2">
-                          <p className="text-ink">{p.before.heading || <span className="text-ink-faint">No heading</span>}</p>
-                          <p className="text-ink-muted mt-0.5">Title: {p.before.title || <span className="text-ink-faint">empty</span>}</p>
-                          <p className="text-ink-faint font-mono mt-0.5 truncate">{pageName(p.page)}</p>
-                        </td>
-                        <td className="px-3 py-2">
-                          {p.after ? (
-                            <>
-                              <p className="text-ink">{p.after.heading || <span className="text-ink-faint">No heading</span>}</p>
-                              <p className="text-ink-muted mt-0.5">Title: {p.after.title || <span className="text-ink-faint">empty</span>}</p>
-                            </>
-                          ) : (
-                            <p className="text-danger">Page removed</p>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+      {mode === 'sample' && sample.isError && (
+        <p className="text-sm text-danger">Could not load the sample: {(sample.error as Error).message}</p>
+      )}
+      {preview && <CleanupPreviewResult preview={preview} />}
+    </section>
+  )
+}
 
-          {tocChanged && (
-            <div>
-              <h3 className="text-sm font-semibold text-ink mb-2">Table of Contents</h3>
-              <div className="overflow-x-auto rounded-lg border border-line max-h-96 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-surface-raised text-ink-muted sticky top-0">
-                    <tr>
-                      <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
-                      <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: tocRows }, (_, i) => {
-                      const b = preview.toc_before[i] ?? ''
-                      const a = preview.toc_after[i] ?? ''
-                      return (
-                        <tr key={i} className="border-t border-line">
-                          <td className="px-3 py-1.5 text-ink-muted">{b}</td>
-                          <td className={`px-3 py-1.5 ${a !== b ? 'text-accent' : 'text-ink-muted'}`}>{a}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+function PageFrame({ label, html }: { label: string; html: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-medium text-ink-muted mb-1">{label}</p>
+      {html ? (
+        <iframe title={`${label} page`} sandbox="" srcDoc={html}
+          className="w-full h-80 rounded-lg border border-line bg-white" />
+      ) : (
+        <div className="h-80 rounded-lg border border-line flex items-center justify-center text-xs text-ink-faint">Page removed</div>
+      )}
+    </div>
+  )
+}
 
-          {(preview.removed_files.length > 0 || preview.added_files.length > 0) && (
-            <div className="text-xs text-ink-muted space-y-1">
-              {preview.removed_files.length > 0 && <p>Removed files: <span className="font-mono">{preview.removed_files.map(pageName).join(', ')}</span></p>}
-              {preview.added_files.length > 0 && <p>Added files: <span className="font-mono">{preview.added_files.map(pageName).join(', ')}</span></p>}
-            </div>
-          )}
+function CleanupPreviewResult({ preview }: { preview: api.CleanupPreview }) {
+  const pageName = (p: string) => p.split('/').pop() ?? p
+  const tocChanged = preview.toc_before.join('\n') !== preview.toc_after.join('\n')
+  const tocRows = Math.max(preview.toc_before.length, preview.toc_after.length)
+
+  return (
+    <div className="space-y-5">
+      {preview.actions.length === 0 ? (
+        <p className="text-sm text-ink-muted">Nothing to change with these steps.</p>
+      ) : (
+        <ul className="text-sm text-ink list-disc pl-5 space-y-0.5">
+          {preview.actions.map(a => <li key={a}>{a}</li>)}
+        </ul>
+      )}
+
+      {preview.page && (
+        <div>
+          <h3 className="text-sm font-semibold text-ink mb-2">
+            Page <span className="font-mono font-normal text-xs text-ink-muted">{pageName(preview.page)}</span>
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <PageFrame label="Before" html={preview.page_before} />
+            <PageFrame label="After" html={preview.page_after} />
+          </div>
         </div>
       )}
-    </section>
+
+      {preview.pages.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-ink mb-2">Page Headings and Titles</h3>
+          <div className="overflow-x-auto rounded-lg border border-line">
+            <table className="w-full text-xs">
+              <thead className="bg-surface-raised text-ink-muted">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
+                  <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.pages.map(p => (
+                  <tr key={p.page} className="border-t border-line align-top">
+                    <td className="px-3 py-2">
+                      <p className="text-ink">{p.before.heading || <span className="text-ink-faint">No heading</span>}</p>
+                      <p className="text-ink-muted mt-0.5">Title: {p.before.title || <span className="text-ink-faint">empty</span>}</p>
+                      <p className="text-ink-faint font-mono mt-0.5 truncate">{pageName(p.page)}</p>
+                    </td>
+                    <td className="px-3 py-2">
+                      {p.after ? (
+                        <>
+                          <p className="text-ink">{p.after.heading || <span className="text-ink-faint">No heading</span>}</p>
+                          <p className="text-ink-muted mt-0.5">Title: {p.after.title || <span className="text-ink-faint">empty</span>}</p>
+                        </>
+                      ) : (
+                        <p className="text-danger">Page removed</p>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tocChanged && (
+        <div>
+          <h3 className="text-sm font-semibold text-ink mb-2">Table of Contents</h3>
+          <div className="overflow-x-auto rounded-lg border border-line max-h-96 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-surface-raised text-ink-muted sticky top-0">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
+                  <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: tocRows }, (_, i) => {
+                  const b = preview.toc_before[i] ?? ''
+                  const a = preview.toc_after[i] ?? ''
+                  return (
+                    <tr key={i} className="border-t border-line">
+                      <td className="px-3 py-1.5 text-ink-muted">{b}</td>
+                      <td className={`px-3 py-1.5 ${a !== b ? 'text-accent' : 'text-ink-muted'}`}>{a}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(preview.removed_files.length > 0 || preview.added_files.length > 0) && (
+        <div className="text-xs text-ink-muted space-y-1">
+          {preview.removed_files.length > 0 && <p>Removed files: <span className="font-mono">{preview.removed_files.map(pageName).join(', ')}</span></p>}
+          {preview.added_files.length > 0 && <p>Added files: <span className="font-mono">{preview.added_files.map(pageName).join(', ')}</span></p>}
+        </div>
+      )}
+    </div>
   )
 }
 
