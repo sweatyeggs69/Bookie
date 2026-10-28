@@ -7,6 +7,9 @@ Each step is independent and can be switched off in settings:
   junk         strip Calibre/Sigil leftovers: empty filepos anchors, mbp_pagebreak
                divs, word joiners, Adobe Adept and generator meta
   headings     turn a chapter's styled first paragraph ("Chapter 3", "IV") into a real h1
+  heading_style  restyle chapter openings as a small "CHAPTER" label over the number,
+               with the chapter's title below in title case; carried into page
+               titles, the table of contents and the book's own contents page
   titles       fill empty <title> tags from the page's heading
   toc          rebuild a missing or one-entry table of contents from the headings
   toc_case     change all-caps table of contents entries to title case
@@ -29,7 +32,7 @@ from lxml import etree
 
 logger = logging.getLogger(__name__)
 
-STEPS = ["metadata", "distributor", "junk", "headings", "titles", "toc", "toc_case"]
+STEPS = ["metadata", "distributor", "junk", "headings", "heading_style", "titles", "toc", "toc_case"]
 
 MAX_EPUB_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 
@@ -600,6 +603,9 @@ def _page_heading(tree) -> str:
     body = _body(tree)
     if body is None:
         return ""
+    styled = _styled_chapter_label(body)
+    if styled:
+        return styled
     for level in ("h1", "h2"):
         for el in body.iter():
             if _ln(el) == level and _text(el):
@@ -843,6 +849,278 @@ def _step_toc_case(epub: _Epub) -> list[str]:
     return [f"Fixed {count} all-caps table of contents entr{'ies' if count != 1 else 'y'}"] if count else []
 
 
+# ── Chapter heading style ──────────────────────────────────────────────────────
+
+_LABEL_WORDS = r"chapter|chap\.?|part|book|cap[ií]tulo|chapitre|kapitel"
+_NUMBER_PART = rf"\d{{1,3}}|[ivxlcdm]{{1,7}}|(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*"
+# "Chapter One", "CHAPTER 3: THE DOOR", "IV. The Door", "ONE". Without a label word
+# a title must follow punctuation, so "One Day in June" is not read as chapter One
+_CHAPTER_HEAD_RE = re.compile(
+    rf"^(?:(?P<label>{_LABEL_WORDS})\s+(?P<num>{_NUMBER_PART})\.?(?:\s*[:.–—-]\s*|\s+)(?P<title>.+)"
+    rf"|(?P<label2>{_LABEL_WORDS})\s+(?P<num2>{_NUMBER_PART})\.?"
+    rf"|(?P<num3>{_NUMBER_PART})\.?(?:\s*[:.–—-]\s*(?P<title3>.+))?)$",
+    re.IGNORECASE,
+)
+_SUBTITLE_MAX_CHARS = 80
+_SUBTITLE_END = tuple(".!?…\"”’,;:")
+_SECTION_HEADING_MAX_CHARS = 60
+_LABEL_NAMES = {"Chapter", "Part", "Book", "Capítulo", "Chapitre", "Kapitel"}
+HEADING_CSS = "bookie-headings.css"
+_HEADING_CSS_TEXT = """/* Chapter headings, added by Bookie's EPUB cleanup */
+h1.chapter-title, h1.section-title, h2.chapter-subtitle {
+  hyphens: none; -webkit-hyphens: none; page-break-after: avoid; text-indent: 0; }
+h1.chapter-title { text-align: center; margin: 2em 0 0; font-size: 1.6em; font-weight: bold; line-height: 1.1; }
+h1.chapter-title .chapter-label { display: block; font-size: 0.45em; font-weight: normal;
+  letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 0.4em; }
+h1.chapter-title .chapter-number { display: block; }
+h2.chapter-subtitle { text-align: center; margin: 0.5em 0 2em; font-size: 1em; font-weight: normal;
+  letter-spacing: 0.08em; text-transform: uppercase; }
+h1.section-title { text-align: center; margin: 2em 0 1.5em; font-size: 1.3em; font-weight: bold;
+  letter-spacing: 0.08em; text-transform: uppercase; }
+"""
+
+
+def _classes(el) -> list[str]:
+    return (el.get("class") or "").split()
+
+
+def _styled_chapter_label(body) -> str:
+    """ "Chapter One: Lucy Looks into a Wardrobe" for a page already in the styled form."""
+    h1 = next((el for el in body.iter() if _ln(el) == "h1" and "chapter-title" in _classes(el)), None)
+    if h1 is None:
+        return ""
+    label = _text(h1)
+    sub = next((el for el in body.iter() if _ln(el) == "h2" and "chapter-subtitle" in _classes(el)), None)
+    return f"{label}: {_text(sub)}" if sub is not None and _text(sub) else label
+
+
+def _lines(el) -> list[str]:
+    """The element's text split at <br/>, whitespace collapsed."""
+    parts, cur = [], [el.text or ""]
+    for child in el:
+        if _ln(child) == "br":
+            parts.append("".join(cur))
+            cur = [child.tail or ""]
+        else:
+            cur.append("".join(child.itertext()) if isinstance(child.tag, str) else "")
+            cur.append(child.tail or "")
+    parts.append("".join(cur))
+    return [t for t in (re.sub(r"\s+", " ", p).strip() for p in parts) if t]
+
+
+def _text_blocks(body) -> list:
+    """Innermost block elements with visible text, in document order."""
+    return [el for el in body.iter()
+            if _ln(el) in _BLOCKS and _text(el) and not any(_ln(d) in _BLOCKS for d in el.iterdescendants())]
+
+
+def _format_number(num: str) -> str:
+    num = re.sub(r"\s+", " ", num.strip())
+    if num.isdigit():
+        return num
+    if _ROMAN_RE.match(num.upper()) and not re.fullmatch(_NUMBER_WORDS, num, re.IGNORECASE):
+        return num.upper()
+    return " ".join(_cap_word(w) for w in num.split(" "))
+
+
+def _format_label(word: str) -> str:
+    word = word.lower().rstrip(".")
+    return "Chapter" if word == "chap" else _cap_word(word)
+
+
+def _is_subtitle(cand, after) -> bool:
+    if _ln(cand) in _HEADINGS:
+        return True
+    text = _text(cand)
+    if len(text) > _SUBTITLE_MAX_CHARS or text.endswith(_SUBTITLE_END) or cand.find(".//{*}img") is not None:
+        return False
+    letters = [c for c in text if c.isalpha()]
+    if letters and all(c.isupper() for c in letters):
+        return True
+    # A line styled differently from the paragraph after it is a title, not story text
+    return after is not None and (cand.get("class") or "") != (after.get("class") or "")
+
+
+def _new_el(like, tag: str, **attrs):
+    ns = etree.QName(like).namespace
+    el = etree.Element(f"{{{ns}}}{tag}" if ns else tag)
+    for key, val in attrs.items():
+        if val:
+            el.set(key, val)
+    return el
+
+
+def _swap(old, new):
+    new.tail = old.tail
+    old.getparent().replace(old, new)
+
+
+def _restyle_page(tree, casing: dict[str, str]):
+    """Restyle one page's opening heading. Returns (new label, old texts) or None."""
+    body = _body(tree)
+    if body is None or _styled_chapter_label(body):
+        return None
+    blocks = _text_blocks(body)
+    if not blocks:
+        return None
+    first = blocks[0]
+    if "section-title" in _classes(first):
+        return None
+    if _ln(first) not in _HEADINGS | {"p", "div", "blockquote"} or first.find(".//{*}img") is not None:
+        return None
+    lines = _lines(first)
+    if not lines or len(lines[0]) > _HEADING_MAX_CHARS:
+        return None
+    m = _CHAPTER_HEAD_RE.match(lines[0])
+    old_texts = [" ".join(lines)] + lines
+
+    if not m:
+        # Not numbered: a section opening such as "EPILOGUE" or "ABOUT THE AUTHOR"
+        if _ln(first) not in _HEADINGS or len(lines) > 1 or len(lines[0]) > _SECTION_HEADING_MAX_CHARS:
+            return None
+        if any(_ln(c) not in {"span", "em", "i", "b", "strong"} for c in first if isinstance(c.tag, str)):
+            return None
+        label = title_case_label(lines[0], casing)
+        h1 = _new_el(first, "h1", id=first.get("id"), **{"class": "section-title"})
+        h1.text = label
+        _swap(first, h1)
+        return label, old_texts
+
+    label_word = m.group("label") or m.group("label2") or "Chapter"
+    number = _format_number(m.group("num") or m.group("num2") or m.group("num3"))
+    title = m.group("title") or m.group("title3") or (" ".join(lines[1:]) if len(lines) > 1 else "")
+    subtitle_el = None
+    if not title and len(blocks) > 1 and _is_subtitle(blocks[1], blocks[2] if len(blocks) > 2 else None):
+        subtitle_el = blocks[1]
+        title = _text(subtitle_el)
+    # Ways a table of contents may have written this chapter: "SIX", "Chapter 6",
+    # "SIX INTO THE FOREST", "Chapter Six: Into the Forest"
+    raw_num = m.group("num") or m.group("num2") or m.group("num3")
+    for head in {raw_num, number, f"{label_word} {raw_num}", f"{label_word} {number}"}:
+        old_texts.append(head)
+        if title:
+            old_texts.append(f"{head} {title}")
+
+    h1 = _new_el(first, "h1", id=first.get("id"), **{"class": "chapter-title"})
+    lab = _new_el(first, "span", **{"class": "chapter-label"})
+    lab.text = _format_label(label_word)
+    lab.tail = " "
+    num = _new_el(first, "span", **{"class": "chapter-number"})
+    num.text = number
+    h1.extend([lab, num])
+    _swap(first, h1)
+
+    new_label = f"{lab.text} {number}"
+    if title:
+        title = title_case_label(title, casing)
+        h2 = _new_el(h1, "h2", id=subtitle_el.get("id") if subtitle_el is not None else None,
+                     **{"class": "chapter-subtitle"})
+        h2.text = title
+        if subtitle_el is not None:
+            _swap(subtitle_el, h2)
+        else:
+            h2.tail, h1.tail = h1.tail, "\n"
+            h1.addnext(h2)
+        new_label += f": {title}"
+    return new_label, old_texts
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\W+", "", text).upper()
+
+
+def _heading_stylesheet(epub: _Epub) -> str:
+    """Zip path of Bookie's heading stylesheet, adding it to the book if needed."""
+    css_dirs = [posixpath.dirname(path) for _, _, path, mtype in epub.items() if mtype == "text/css"]
+    base = css_dirs[0] if css_dirs else posixpath.dirname(epub.opf_path)
+    path = posixpath.join(base, HEADING_CSS) if base else HEADING_CSS
+    if path not in epub.contents:
+        epub.contents[path] = _HEADING_CSS_TEXT.encode("utf-8")
+        epub.added.append(path)
+        etree.SubElement(epub.manifest, f"{{{OPF_NS}}}item", id="bookie-headings-css",
+                         href=_relative(epub.opf_path, path), **{"media-type": "text/css"})
+        epub.touch(epub.opf_path)
+    return path
+
+
+def _link_stylesheet(tree, page: str, css: str):
+    head = next((el for el in tree.getroot() if _ln(el) == "head"), None)
+    if head is None:
+        return
+    href = _relative(page, css)
+    if any(_ln(el) == "link" and el.get("href") == href for el in head):
+        return
+    head.append(_new_el(head, "link", rel="stylesheet", type="text/css", href=href))
+
+
+def _set_title(tree, label: str):
+    head = next((el for el in tree.getroot() if _ln(el) == "head"), None)
+    if head is None:
+        return
+    title = next((el for el in head if _ln(el) == "title"), None)
+    if title is None:
+        title = _new_el(head, "title")
+        head.insert(0, title)
+    for child in list(title):
+        title.remove(child)
+    title.text = label
+
+
+def _step_heading_style(epub: _Epub) -> list[str]:
+    casing = book_casing(epub)
+    restyled: dict[str, tuple[str, set[str]]] = {}
+    for name in epub.spine_docs():
+        tree = epub.parse(name)
+        if tree is None:
+            continue
+        result = _restyle_page(tree, casing)
+        if result:
+            label, old = result
+            restyled[name] = (label, {_norm(t) for t in old if t})
+            _set_title(tree, label)
+            epub.touch(name)
+    if not restyled:
+        return []
+
+    css = _heading_stylesheet(epub)
+    for name in restyled:
+        _link_stylesheet(epub.trees[name], name, css)
+
+    # Table of contents entries and the book's own contents page follow the new
+    # headings, but only where an entry still reads like the old heading
+    def relabel(el, target: str) -> bool:
+        label, old = restyled[target]
+        if len(el) == 0 and el.text and el.text != label and _norm(el.text) in old:
+            el.text = label
+            return True
+        return False
+
+    ncx = epub.ncx_path()
+    if ncx and epub.parse(ncx) is not None:
+        for point in epub.trees[ncx].getroot().iter(f"{{{NCX_NS}}}navPoint"):
+            content = point.find(f"{{{NCX_NS}}}content")
+            text = point.find(f"{{{NCX_NS}}}navLabel/{{{NCX_NS}}}text")
+            target = _resolve(ncx, content.get("src", "")) if content is not None else ""
+            if text is not None and target in restyled and relabel(text, target):
+                epub.touch(ncx)
+    for name in epub.spine_docs():
+        if epub.parse(name) is None:
+            continue
+        for a in epub.trees[name].getroot().iter(f"{{{XHTML_NS}}}a"):
+            target = _resolve(name, a.get("href", "")) if a.get("href") else ""
+            if target in restyled and relabel(a, target):
+                epub.touch(name)
+
+    chapters = sum(1 for label, _ in restyled.values() if label.split(" ")[0] in _LABEL_NAMES)
+    sections = len(restyled) - chapters
+    parts = []
+    if chapters:
+        parts.append(f"Styled {chapters} chapter heading{'s' if chapters != 1 else ''}")
+    if sections:
+        parts.append(f"Styled {sections} section heading{'s' if sections != 1 else ''}")
+    return parts
+
+
 def _new_ncx(epub: _Epub, book_title: str):
     root = etree.Element(f"{{{NCX_NS}}}ncx", nsmap={None: NCX_NS}, version="2005-1")
     head = etree.SubElement(root, f"{{{NCX_NS}}}head")
@@ -853,6 +1131,68 @@ def _new_ncx(epub: _Epub, book_title: str):
     etree.SubElement(title, f"{{{NCX_NS}}}text").text = book_title or ""
     etree.SubElement(root, f"{{{NCX_NS}}}navMap")
     return etree.ElementTree(root)
+
+
+# ── Preview ───────────────────────────────────────────────────────────────────
+
+def _page_summary(tree) -> tuple[str, str]:
+    """(page title, opening heading as a reader sees it) for one content page."""
+    head = next((el for el in tree.getroot() if _ln(el) == "head"), None)
+    title = next((el for el in head if _ln(el) == "title"), None) if head is not None else None
+    body = _body(tree)
+    if body is None:
+        return (_text(title) if title is not None else ""), ""
+    heading = _styled_chapter_label(body)
+    if not heading:
+        blocks = _text_blocks(body)
+        lines = _lines(blocks[0]) if blocks else []
+        if lines and len(" ".join(lines)) <= _HEADING_MAX_CHARS + 40:
+            heading = " / ".join(lines)
+            if (len(lines) == 1 and len(blocks) > 1 and _CHAPTER_HEAD_RE.match(lines[0])
+                    and len(_text(blocks[1])) <= _SUBTITLE_MAX_CHARS):
+                heading += " / " + _text(blocks[1])
+    return (_text(title) if title is not None else ""), heading
+
+
+def summarize(path: str) -> dict:
+    """What a reader sees of an epub's structure: table of contents and each page's
+    title and opening heading. Used to show a before/after preview of a cleanup."""
+    epub = _Epub(path)
+    toc = []
+    ncx = epub.ncx_path()
+    nav = epub.nav_path()
+    if ncx and epub.parse(ncx) is not None:
+        toc = [_text(t) for t in epub.trees[ncx].getroot().iter(f"{{{NCX_NS}}}text")
+               if _ln(t.getparent()) == "navLabel"]
+    elif nav and epub.parse(nav) is not None:
+        for nav_el in epub.trees[nav].getroot().iter(f"{{{XHTML_NS}}}nav"):
+            if nav_el.get(f"{{{EPUB_NS}}}type") == "toc":
+                toc = [_text(a) for a in nav_el.iter(f"{{{XHTML_NS}}}a")]
+    pages = {}
+    for name in epub.spine_docs():
+        tree = epub.parse(name)
+        if tree is not None:
+            title, heading = _page_summary(tree)
+            pages[name] = {"title": title, "heading": heading}
+    return {"toc": toc, "pages": pages,
+            "files": sorted(n for n in epub.contents if not n.endswith("/"))}
+
+
+def preview_diff(before: dict, after: dict) -> dict:
+    pages = []
+    for name, b in before["pages"].items():
+        a = after["pages"].get(name)
+        if a is None:
+            pages.append({"page": name, "before": b, "after": None})
+        elif a != b:
+            pages.append({"page": name, "before": b, "after": a})
+    return {
+        "pages": pages,
+        "toc_before": before["toc"],
+        "toc_after": after["toc"],
+        "removed_files": sorted(set(before["files"]) - set(after["files"])),
+        "added_files": sorted(set(after["files"]) - set(before["files"])),
+    }
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -885,6 +1225,8 @@ def clean_epub(path: str, meta: dict, steps: set[str]) -> list[str]:
         actions += _step_junk(epub)
     if "headings" in steps:
         actions += _step_headings(epub)
+    if "heading_style" in steps:
+        actions += _step_heading_style(epub)
     if "titles" in steps:
         actions += _step_titles(epub, title)
     if "toc" in steps:

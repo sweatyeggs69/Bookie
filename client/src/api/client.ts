@@ -148,6 +148,36 @@ export function bulkCleanupBooks(ids: number[]): Promise<BulkCleanupResult> {
   })
 }
 
+export interface PageSummary {
+  title: string
+  heading: string
+}
+
+export interface CleanupPreview {
+  token: string
+  actions: string[]
+  pages: { page: string; before: PageSummary; after: PageSummary | null }[]
+  toc_before: string[]
+  toc_after: string[]
+  removed_files: string[]
+  added_files: string[]
+}
+
+/** Clean an uploaded EPUB with the given steps, without adding it to the library. */
+export async function previewCleanup(file: File, steps: string[]): Promise<CleanupPreview> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('steps', steps.join(','))
+  const response = await fetch('/api/cleanup/preview', { method: 'POST', body: form, credentials: 'include' })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof body?.error === 'string' ? body.error : `HTTP ${response.status}`)
+  return body as CleanupPreview
+}
+
+export function cleanupPreviewDownloadUrl(token: string): string {
+  return `/api/cleanup/preview/${encodeURIComponent(token)}`
+}
+
 /** Clean books a few at a time, so progress can be shown and no request runs long. */
 export async function cleanupInBatches(
   ids: number[],
