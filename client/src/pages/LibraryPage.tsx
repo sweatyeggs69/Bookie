@@ -38,6 +38,9 @@ export default function LibraryPage() {
         order: filters.order,
       }),
     placeholderData: prev => prev,
+    // Keep checking while a book on this page is being cleaned, so its
+    // indicator clears as soon as the cleanup finishes
+    refetchInterval: q => (q.state.data?.books.some(b => b.cleaning) ? 2000 : false),
   })
 
   const books = data?.books ?? []

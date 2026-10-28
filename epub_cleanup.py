@@ -732,14 +732,72 @@ def _cap_word(word: str) -> str:
     return "-".join(part(p) for p in word.split("-"))
 
 
-def _title_case_segment(segment: str) -> str:
+_WORD_RE = re.compile(r"[^\W\d_][\w'\u2019-]*")
+_WORD_STRIP = ".,;!?()[]\"'\u2018\u2019\u201c\u201d"
+
+
+def book_casing(epub: "_Epub") -> dict[str, str]:
+    """How the book itself spells words that aren't plain lower case, keyed by the
+    lower-cased word: "fbi" -> "FBI", "mcdonald" -> "McDonald", "paris" -> "Paris".
+
+    Words the book mostly writes in lower case are left out, and so is text in
+    headings and all-caps paragraphs, which would teach the wrong casing.
+    """
+    counts: dict[str, dict[str, int]] = {}
+    for name in epub.spine_docs():
+        tree = epub.parse(name)
+        body = _body(tree) if tree is not None else None
+        if body is None:
+            continue
+        for el in body.iter():
+            if _ln(el) not in {"p", "li", "blockquote", "div", "td"}:
+                continue
+            # Direct text only, so nested blocks aren't counted twice
+            text = " ".join(t for t in [el.text] + [c.tail for c in el] if t)
+            for child in el:
+                # Inline children only; skip comments and entity references
+                if isinstance(child.tag, str) and _ln(child) not in _BLOCKS and _ln(child) not in _HEADINGS:
+                    text += " " + "".join(child.itertext())
+            letters = [c for c in text if c.isalpha()]
+            if not letters or all(c.isupper() for c in letters):
+                continue
+            for word in _WORD_RE.findall(text):
+                word = word.strip("-'\u2019")
+                if len(word) < 2:
+                    continue
+                forms = counts.setdefault(word.lower(), {})
+                forms[word] = forms.get(word, 0) + 1
+    casing = {}
+    for key, forms in counts.items():
+        best = max(forms, key=forms.get)
+        if best != key:
+            casing[key] = best
+    return casing
+
+
+def _lookup(bare: str, casing: dict[str, str]) -> str | None:
+    found = casing.get(bare.lower())
+    if found:
+        return found
+    # Possessives: "MCDONALD'S" -> "McDonald's"
+    m = re.match(r"^(.+?)(['\u2019][sS])$", bare)
+    if m and casing.get(m.group(1).lower()):
+        return casing[m.group(1).lower()] + m.group(2).lower()
+    return None
+
+
+def _title_case_segment(segment: str, casing: dict[str, str]) -> str:
     words = segment.split(" ")
     out = []
     for i, word in enumerate(words):
-        bare = word.strip(".,;!?()[]\"'\u2018\u2019\u201c\u201d")
+        bare = word.strip(_WORD_STRIP)
         prev = re.sub(r"[^\w.]", "", words[i - 1]).lower() if i else ""
+        known = _lookup(bare, casing) if bare else None
         if bare and _ROMAN_RE.match(bare) and (len([w for w in words if w]) == 1 or prev in _NUMBERED or bare == "I"):
             out.append(word)  # a chapter number like "IV", or the pronoun "I"
+        elif known:
+            # The book's own spelling keeps names and acronyms right
+            out.append(word.replace(bare, known, 1))
         elif i and bare.lower() in _SMALL_WORDS:
             out.append(word.lower())
         else:
@@ -747,13 +805,14 @@ def _title_case_segment(segment: str) -> str:
     return " ".join(out)
 
 
-def title_case_label(label: str) -> str:
-    """Title-case each all-caps segment of a table of contents label."""
+def title_case_label(label: str, casing: dict[str, str] | None = None) -> str:
+    """Title-case each all-caps segment of a table of contents label, using
+    *casing* (from book_casing) for proper nouns and acronyms."""
     parts = _SEGMENT_SPLIT.split(label)
     for i in range(0, len(parts), 2):  # odd indexes are the separators
         letters = [c for c in parts[i] if c.isalpha()]
         if len(letters) >= 2 and all(c.isupper() for c in letters):
-            parts[i] = _title_case_segment(parts[i])
+            parts[i] = _title_case_segment(parts[i], casing or {})
     return "".join(parts)
 
 
@@ -769,11 +828,14 @@ def _step_toc_case(epub: _Epub) -> list[str]:
         for nav_el in epub.trees[nav].getroot().iter(f"{{{XHTML_NS}}}nav"):
             if nav_el.get(f"{{{EPUB_NS}}}type") == "toc":
                 labels += [(nav, a) for a in nav_el.iter(f"{{{XHTML_NS}}}a")]
+    casing = None
     for name, el in labels:
         # Only plain-text labels; markup inside a link is left alone
-        if len(el) or not el.text:
+        if len(el) or not el.text or title_case_label(el.text) == el.text:
             continue
-        fixed = title_case_label(el.text)
+        if casing is None:
+            casing = book_casing(epub)
+        fixed = title_case_label(el.text, casing)
         if fixed != el.text:
             el.text = fixed
             epub.touch(name)

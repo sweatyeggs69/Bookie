@@ -189,7 +189,14 @@ export default function FilterBar() {
   const handleBulkCleanup = async () => {
     if (selectedBookIds.length === 0 || cleanupProgress) return
     setCleanupProgress({ done: 0, total: selectedBookIds.length })
-    const res = await api.cleanupInBatches(selectedBookIds, (done, total) => setCleanupProgress({ done, total }))
+    // Refresh shortly after each batch starts so the books being cleaned show
+    // their indicator; the library keeps polling while any of them are
+    const showCleaning = () => setTimeout(() => qc.invalidateQueries({ queryKey: ['books'] }), 400)
+    showCleaning()
+    const res = await api.cleanupInBatches(selectedBookIds, (done, total) => {
+      setCleanupProgress({ done, total })
+      showCleaning()
+    })
     setCleanupProgress(null)
     qc.invalidateQueries({ queryKey: ['books'] })
     const parts = [`${res.cleaned} cleaned`, `${res.unchanged} already clean`]

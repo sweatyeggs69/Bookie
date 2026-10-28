@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal } from 'lucide-react'
+import { BookOpen, MoreVertical, Download, Send, Check, CheckSquare, MoreHorizontal, Loader2 } from 'lucide-react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Book, EmailAddress } from '../types'
 import * as api from '../api/client'
@@ -104,6 +104,13 @@ export default function BookCard({ book, onClick }: BookCardProps) {
               </div>
             )}
           </div>
+
+          {book.cleaning && (
+            <div role="status" className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1.5 bg-black/55 text-white text-xs font-medium">
+              <Loader2 size={20} className="animate-spin" />
+              Cleaning up…
+            </div>
+          )}
 
           {book.progress?.percentage != null && book.progress.percentage > 0 && (
             <div className="absolute inset-x-0 bottom-0 z-10 h-1 bg-black/40" title={`${Math.round(book.progress.percentage * 100)}% read`}>

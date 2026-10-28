@@ -12,7 +12,7 @@ import urllib.request
 import urllib.error
 import zipfile
 import xml.etree.ElementTree as ET
-from datetime import timedelta, date
+from datetime import datetime, timedelta, timezone, date
 from pathlib import Path
 
 import crypto
@@ -149,6 +149,7 @@ from flask import (
     redirect,
     session,
     abort,
+    make_response,
 )
 from werkzeug.utils import secure_filename
 
@@ -261,6 +262,14 @@ def _book_path(book) -> Path:
     if not path.is_relative_to(BOOKS_DIR.resolve()):
         abort(400)
     return path
+
+
+def _editable_book(book_id: int):
+    """The book, or a 409 while an EPUB cleanup is rewriting its file."""
+    book = Book.query.get_or_404(book_id)
+    if book.is_cleaning():
+        abort(make_response(jsonify({"error": "This book is being cleaned up. Try again in a moment."}), 409))
+    return book
 
 
 def _id_list(data: dict, key: str = "ids") -> list[int]:
@@ -686,14 +695,28 @@ def create_app():
         file.save(str(dest))
         size = dest.stat().st_size
 
+        # Lock the book for the whole import when it will be cleaned, so it
+        # can't be edited while metadata is fetched and the file is rewritten
+        clean = ext == "epub" and Settings.get("epub_cleanup_on_upload", "false") == "true"
         book = Book(
             filename=filename,
             file_format=ext,
             file_size=size,
             title=Path(filename).stem,
+            cleanup_started=datetime.now(timezone.utc) if clean else None,
         )
         db.session.add(book)
         db.session.commit()
+        try:
+            _process_upload(book, dest, ext, clean)
+        finally:
+            if book.cleanup_started:
+                book.cleanup_started = None
+                db.session.commit()
+        return jsonify(book.to_dict()), 201
+
+    def _process_upload(book, dest, ext, clean):
+        filename = book.filename
 
         # Extract embedded cover
         cover_data = None
@@ -727,18 +750,16 @@ def create_app():
         except Exception as exc:
             logger.warning("Rename failed for uploaded book %s: %s", filename, exc)
 
-        if ext == "epub" and Settings.get("epub_cleanup_on_upload", "false") == "true":
+        if clean:
             try:
-                _cleanup_book(book)
+                _cleanup_book(book, locked=True)
             except Exception as exc:
                 logger.warning("Cleanup failed for uploaded book %s: %s", book.filename, exc)
-
-        return jsonify(book.to_dict()), 201
 
     @app.route("/api/books/<int:book_id>", methods=["PUT"])
     @login_required
     def update_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         data = request.get_json(silent=True)
         if data is None:
             data = {}
@@ -787,7 +808,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>", methods=["DELETE"])
     @login_required
     def delete_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         filepath = _book_path(book)
         parent = filepath.parent
         if filepath.exists():
@@ -813,7 +834,7 @@ def create_app():
         updated = 0
         for book_id in ids:
             book = db.session.get(Book, book_id)
-            if not book:
+            if not book or book.is_cleaning():
                 continue
             _auto_fetch_metadata(book)
             # Keep file names in line with the new metadata, as a single fetch does
@@ -831,7 +852,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/cleanup", methods=["POST"])
     @login_required
     def cleanup_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         if book.file_format != "epub":
             return jsonify({"error": "Cleanup only supports EPUB files"}), 400
         try:
@@ -840,6 +861,9 @@ def create_app():
             return jsonify({"error": "File not found on disk"}), 404
         except epub_cleanup.CleanupError as exc:
             return jsonify({"error": str(exc)}), 422
+        except Exception as exc:
+            logger.warning("Cleanup failed for book %s: %s", book_id, exc)
+            return jsonify({"error": f"Cleanup failed: {exc}"}), 500
         return jsonify({"actions": actions, "book": book.to_dict()})
 
     @app.route("/api/books/bulk-cleanup", methods=["POST"])
@@ -852,7 +876,7 @@ def create_app():
         errors = []
         for book_id in ids:
             book = db.session.get(Book, book_id)
-            if not book or book.file_format != "epub":
+            if not book or book.file_format != "epub" or book.is_cleaning():
                 skipped += 1
                 continue
             try:
@@ -872,7 +896,7 @@ def create_app():
         deleted = 0
         for book_id in ids:
             book = db.session.get(Book, book_id)
-            if not book:
+            if not book or book.is_cleaning():
                 continue
             filepath = _book_path(book)
             parent = filepath.parent
@@ -942,7 +966,7 @@ def create_app():
     @login_required
     def rename_book(book_id):
         """Rename a specific book's file using a given scheme or custom template."""
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         data = request.get_json(silent=True) or {}
         scheme = data.get("scheme", "author_title")
         custom_tpl = data.get("custom_template", "")
@@ -1016,6 +1040,9 @@ def create_app():
         errors = []
         for book in books:
             src = BOOKS_DIR / book.filename
+            if book.is_cleaning():
+                errors.append({"id": book.id, "original": book.filename, "error": "Being cleaned up, try again shortly"})
+                continue
             if not src.exists():
                 errors.append({"id": book.id, "original": book.filename, "error": "File not found"})
                 continue
@@ -1089,7 +1116,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/apply-metadata", methods=["POST"])
     @login_required
     def apply_metadata(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         meta = request.get_json(silent=True) or {}
         # Explicit user selection always replaces all fields
         _apply_metadata(book, meta, replace_missing_only=False)
@@ -1166,7 +1193,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/cover", methods=["POST"])
     @login_required
     def upload_cover(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         file_obj = request.files.get("file") or request.files.get("cover")
         if file_obj:
             data = file_obj.read()
@@ -1201,7 +1228,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/cover/embed", methods=["POST"])
     @login_required
     def embed_cover(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         if book.file_format != "epub":
             return jsonify({"error": "Cover embedding only supported for EPUB files"}), 400
         path = cover_mgr.get_cover_path(book_id)
@@ -1222,7 +1249,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/cover", methods=["DELETE"])
     @login_required
     def delete_cover_route(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         cover_mgr.delete_cover(book_id)
         book.cover_filename = None
         db.session.commit()
@@ -1535,7 +1562,7 @@ def create_app():
     @login_required
     def organize_book(book_id):
         """Move a book file into Author/ or Author/Series/ subfolder."""
-        book = Book.query.get_or_404(book_id)
+        book = _editable_book(book_id)
         src = BOOKS_DIR / book.filename
         if not src.exists():
             return jsonify({"error": "File not found on disk"}), 404
@@ -1649,22 +1676,32 @@ def _rename_and_organize(book, file_path: Path):
     _db.session.commit()
 
 
-def _cleanup_book(book: Book) -> list[str]:
-    """Run the enabled epub cleanup steps on *book*'s file. Returns what changed."""
+def _cleanup_book(book: Book, locked: bool = False) -> list[str]:
+    """Run the enabled epub cleanup steps on *book*'s file. Returns what changed.
+
+    The book is marked as cleaning while this runs, so the UI shows progress and
+    edits are refused; *locked* means the caller already marked it."""
     path = _book_path(book)
     if not path.exists():
         raise FileNotFoundError(path)
-    steps = epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps"))
-    actions = epub_cleanup.clean_epub(str(path), {
-        "title": book.title, "author": book.author, "publisher": book.publisher,
-        "language": book.language, "description": book.description,
-        "published_date": book.published_date, "isbn": book.isbn, "isbn13": book.isbn13,
-        "series": book.series, "series_order": book.series_order,
-    }, steps)
-    if actions:
-        book.file_size = path.stat().st_size
+    if not locked:
+        book.cleanup_started = datetime.now(timezone.utc)
         db.session.commit()
-        logger.info("Cleaned %s: %s", book.filename, "; ".join(actions))
+    try:
+        steps = epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps"))
+        actions = epub_cleanup.clean_epub(str(path), {
+            "title": book.title, "author": book.author, "publisher": book.publisher,
+            "language": book.language, "description": book.description,
+            "published_date": book.published_date, "isbn": book.isbn, "isbn13": book.isbn13,
+            "series": book.series, "series_order": book.series_order,
+        }, steps)
+        if actions:
+            book.file_size = path.stat().st_size
+            logger.info("Cleaned %s: %s", book.filename, "; ".join(actions))
+    finally:
+        if not locked:
+            book.cleanup_started = None
+        db.session.commit()
     return actions
 
 
@@ -1674,6 +1711,7 @@ def _migrate_db(app):
     migrations = [
         "ALTER TABLE books ADD COLUMN series TEXT",
         "ALTER TABLE books ADD COLUMN series_order REAL",
+        "ALTER TABLE books ADD COLUMN cleanup_started DATETIME",
         "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE)",
         "CREATE TABLE IF NOT EXISTS book_tags (id INTEGER PRIMARY KEY AUTOINCREMENT, book_id INTEGER REFERENCES books(id), tag_id INTEGER REFERENCES tags(id), UNIQUE(book_id, tag_id))",
         "CREATE INDEX IF NOT EXISTS ix_books_language ON books (language)",
