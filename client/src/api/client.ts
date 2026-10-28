@@ -125,6 +125,52 @@ export function bulkRemoveTag(ids: number[], tag: string): Promise<{ removed: nu
   })
 }
 
+export interface CleanupResult {
+  actions: string[]
+  book: Book
+}
+
+export function cleanupBook(id: number): Promise<CleanupResult> {
+  return api<CleanupResult>(`/api/books/${id}/cleanup`, { method: 'POST' })
+}
+
+export interface BulkCleanupResult {
+  cleaned: number
+  unchanged: number
+  skipped: number
+  errors: { id: number; title: string | null; error: string }[]
+}
+
+export function bulkCleanupBooks(ids: number[]): Promise<BulkCleanupResult> {
+  return api<BulkCleanupResult>('/api/books/bulk-cleanup', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  })
+}
+
+/** Clean books a few at a time, so progress can be shown and no request runs long. */
+export async function cleanupInBatches(
+  ids: number[],
+  onProgress: (done: number, total: number) => void,
+  batchSize = 5,
+): Promise<BulkCleanupResult> {
+  const total: BulkCleanupResult = { cleaned: 0, unchanged: 0, skipped: 0, errors: [] }
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize)
+    try {
+      const res = await bulkCleanupBooks(batch)
+      total.cleaned += res.cleaned
+      total.unchanged += res.unchanged
+      total.skipped += res.skipped
+      total.errors.push(...res.errors)
+    } catch (e) {
+      total.errors.push(...batch.map(id => ({ id, title: null, error: (e as Error).message })))
+    }
+    onProgress(Math.min(i + batchSize, ids.length), ids.length)
+  }
+  return total
+}
+
 // ─── Series ───────────────────────────────────────────────────────────────────
 
 export function getSeries(): Promise<string[]> {
@@ -504,6 +550,10 @@ export default {
   saveMetadataSources,
   // Bulk rename
   bulkRename,
+  // Epub cleanup
+  cleanupBook,
+  bulkCleanupBooks,
+  cleanupInBatches,
   // Logs
   getLogs,
   setLogLevel,

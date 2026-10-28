@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import * as api from '../api/client'
 import { Tag } from '../types'
 import SearchBar from './SearchBar'
+import { useToast } from '../contexts/toast'
 
 const FORMAT_OPTIONS = [
   { value: '', label: 'All Formats' },
@@ -67,6 +68,8 @@ export default function FilterBar() {
   const [selectionHasTaggedBooks, setSelectionHasTaggedBooks] = useState(false)
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [fetchMetaProgress, setFetchMetaProgress] = useState<{ done: number; total: number } | null>(null)
+  const [cleanupProgress, setCleanupProgress] = useState<{ done: number; total: number } | null>(null)
+  const { addToast } = useToast()
   const qc = useQueryClient()
 
   const toggleMobilePanel = (panel: 'filters' | 'views') =>
@@ -183,6 +186,18 @@ export default function FilterBar() {
     qc.invalidateQueries({ queryKey: ['books'] })
   }
 
+  const handleBulkCleanup = async () => {
+    if (selectedBookIds.length === 0 || cleanupProgress) return
+    setCleanupProgress({ done: 0, total: selectedBookIds.length })
+    const res = await api.cleanupInBatches(selectedBookIds, (done, total) => setCleanupProgress({ done, total }))
+    setCleanupProgress(null)
+    qc.invalidateQueries({ queryKey: ['books'] })
+    const parts = [`${res.cleaned} cleaned`, `${res.unchanged} already clean`]
+    if (res.skipped) parts.push(`${res.skipped} not EPUB`)
+    if (res.errors.length) parts.push(`${res.errors.length} failed`)
+    addToast(res.errors.length ? 'error' : 'success', `Cleanup: ${parts.join(', ')}`)
+  }
+
   const handleSelectAllLibrary = async () => {
     try {
       const { ids } = await api.getBookIds({
@@ -216,6 +231,18 @@ export default function FilterBar() {
           {fetchingMeta && fetchMetaProgress
             ? `${fetchMetaProgress.done}/${fetchMetaProgress.total}`
             : 'Fetch Metadata'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleBulkCleanup}
+          disabled={selectedBookIds.length === 0 || cleanupProgress !== null}
+          className={`${btnCls} disabled:opacity-40 disabled:cursor-not-allowed`}
+          title="Run EPUB cleanup on the selected books"
+        >
+          {cleanupProgress
+            ? `${cleanupProgress.done}/${cleanupProgress.total}`
+            : 'Clean Up'}
         </button>
 
         {tags.length > 0 && (

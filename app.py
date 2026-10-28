@@ -75,6 +75,7 @@ def _extract_epub_metadata(path: Path) -> dict:
         for el in oroot.findall(".//dc:identifier", ns):
             scheme = (el.get("{http://www.idpf.org/2007/opf}scheme") or "").lower()
             val = re.sub(r"[-\s]", "", el.text or "")
+            val = re.sub(r"^urn:isbn:", "", val, flags=re.IGNORECASE)
             if val.isdigit():
                 if len(val) == 13 and isbn13 is None:
                     isbn13 = val
@@ -160,6 +161,7 @@ import mailer
 import renamer
 from opds import register_opds_routes, wants_opds
 from kosync import record_fingerprints, register_kosync_routes
+import epub_cleanup
 
 # Set the root logger to INFO so that INFO+ records are captured from the start.
 # logging.basicConfig() is a no-op when any handler is already registered, so
@@ -725,6 +727,12 @@ def create_app():
         except Exception as exc:
             logger.warning("Rename failed for uploaded book %s: %s", filename, exc)
 
+        if ext == "epub" and Settings.get("epub_cleanup_on_upload", "false") == "true":
+            try:
+                _cleanup_book(book)
+            except Exception as exc:
+                logger.warning("Cleanup failed for uploaded book %s: %s", book.filename, exc)
+
         return jsonify(book.to_dict()), 201
 
     @app.route("/api/books/<int:book_id>", methods=["PUT"])
@@ -819,6 +827,43 @@ def create_app():
             if updated < len(ids):
                 time.sleep(1)  # be polite to metadata sources
         return jsonify({"updated": updated})
+
+    @app.route("/api/books/<int:book_id>/cleanup", methods=["POST"])
+    @login_required
+    def cleanup_book(book_id):
+        book = Book.query.get_or_404(book_id)
+        if book.file_format != "epub":
+            return jsonify({"error": "Cleanup only supports EPUB files"}), 400
+        try:
+            actions = _cleanup_book(book)
+        except FileNotFoundError:
+            return jsonify({"error": "File not found on disk"}), 404
+        except epub_cleanup.CleanupError as exc:
+            return jsonify({"error": str(exc)}), 422
+        return jsonify({"actions": actions, "book": book.to_dict()})
+
+    @app.route("/api/books/bulk-cleanup", methods=["POST"])
+    @login_required
+    def bulk_cleanup_books():
+        """Clean the given books. The client sends small batches so a large
+        library never runs into the worker timeout."""
+        ids = _id_list(request.get_json(silent=True) or {})
+        cleaned = unchanged = skipped = 0
+        errors = []
+        for book_id in ids:
+            book = db.session.get(Book, book_id)
+            if not book or book.file_format != "epub":
+                skipped += 1
+                continue
+            try:
+                if _cleanup_book(book):
+                    cleaned += 1
+                else:
+                    unchanged += 1
+            except Exception as exc:
+                logger.warning("Cleanup failed for book %s: %s", book_id, exc)
+                errors.append({"id": book_id, "title": book.title, "error": str(exc)})
+        return jsonify({"cleaned": cleaned, "unchanged": unchanged, "skipped": skipped, "errors": errors})
 
     @app.route("/api/books/bulk-delete", methods=["POST"])
     @login_required
@@ -1394,6 +1439,7 @@ def create_app():
         "log_level",
         "opds_enabled",
         "kosync_enabled",
+        "epub_cleanup_on_upload", "epub_cleanup_steps",
     ]
 
     _MASKED = "••••••••"
@@ -1601,6 +1647,25 @@ def _rename_and_organize(book, file_path: Path):
 
     from models import db as _db
     _db.session.commit()
+
+
+def _cleanup_book(book: Book) -> list[str]:
+    """Run the enabled epub cleanup steps on *book*'s file. Returns what changed."""
+    path = _book_path(book)
+    if not path.exists():
+        raise FileNotFoundError(path)
+    steps = epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps"))
+    actions = epub_cleanup.clean_epub(str(path), {
+        "title": book.title, "author": book.author, "publisher": book.publisher,
+        "language": book.language, "description": book.description,
+        "published_date": book.published_date, "isbn": book.isbn, "isbn13": book.isbn13,
+        "series": book.series, "series_order": book.series_order,
+    }, steps)
+    if actions:
+        book.file_size = path.stat().st_size
+        db.session.commit()
+        logger.info("Cleaned %s: %s", book.filename, "; ".join(actions))
+    return actions
 
 
 def _migrate_db(app):

@@ -5,8 +5,8 @@ import { useToast } from '../contexts/toast'
 import * as api from '../api/client'
 import type { EmailAddress, Stats } from '../types'
 
-type Tab = 'library' | 'metadata' | 'email' | 'account' | 'logs'
-const VALID_TABS: Tab[] = ['library', 'metadata', 'email', 'account', 'logs']
+type Tab = 'library' | 'metadata' | 'cleanup' | 'email' | 'account' | 'logs'
+const VALID_TABS: Tab[] = ['library', 'metadata', 'cleanup', 'email', 'account', 'logs']
 const DEFAULT_TAB: Tab = 'library'
 
 function getHashTab(): Tab {
@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const tabs: { id: Tab; label: string; description: string }[] = [
     { id: 'library',  label: 'Library',      description: 'Tags, file organization and library statistics' },
     { id: 'metadata', label: 'Metadata',     description: 'Metadata sources and how book details are fetched' },
+    { id: 'cleanup',  label: 'EPUB Cleanup', description: 'Tidy EPUB files on upload or across the library' },
     { id: 'email',    label: 'Email / SMTP', description: 'Outgoing mail server used to send books' },
     { id: 'account',  label: 'Account',      description: 'Profile, send-to addresses, OPDS, KOReader sync and password' },
     { id: 'logs',     label: 'Logs',         description: 'Application logs and log level' },
@@ -79,6 +80,7 @@ export default function SettingsPage() {
 
       {tab === 'library'  && <LibraryTab />}
       {tab === 'metadata' && <MetadataTab />}
+      {tab === 'cleanup'  && <CleanupTab />}
       {tab === 'email'    && <EmailTab />}
       {tab === 'account'  && <AccountTab />}
       {tab === 'logs'     && <LogsTab />}
@@ -410,6 +412,132 @@ function LibraryTab() {
           )}
         </section>
       )}
+    </div>
+  )
+}
+
+// ── EPUB Cleanup Tab ──────────────────────────────────────────────────────────
+
+const CLEANUP_STEPS: { id: string; label: string; description: string }[] = [
+  { id: 'metadata',    label: 'Write metadata into the file', description: "Save Bookie's title, author, series and ISBN into the EPUB so readers like KOReader show the same details" },
+  { id: 'distributor', label: 'Remove distributor pages',     description: "Drop short pages added by ePubLibre, Anna's Archive and similar releases, plus their logos" },
+  { id: 'junk',        label: 'Remove conversion leftovers',  description: 'Strip empty Calibre anchors and page-break divs, invisible word joiners, and Adobe/Sigil/Calibre tags' },
+  { id: 'headings',    label: 'Fix chapter headings',         description: 'Turn a chapter\'s styled first line ("Chapter 3", "IV", "Epilogue") into a real heading' },
+  { id: 'titles',      label: 'Fill empty page titles',       description: "Give each page a title from its heading" },
+  { id: 'toc',         label: 'Rebuild missing table of contents', description: 'When the table of contents is empty or has a single entry, rebuild it from the chapter headings' },
+]
+
+function CleanupTab() {
+  const { addToast } = useToast()
+  const qc = useQueryClient()
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
+  const { data: stats } = useQuery<Stats>({ queryKey: ['stats'], queryFn: api.getStats })
+
+  const [onUpload, setOnUpload] = useState(false)
+  const [steps, setSteps] = useState<Set<string>>(new Set(CLEANUP_STEPS.map(s => s.id)))
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [result, setResult] = useState<api.BulkCleanupResult | null>(null)
+
+  useEffect(() => {
+    if (settings) {
+      setOnUpload(settings.epub_cleanup_on_upload === 'true')
+      // Unset means every step is on
+      const raw = settings.epub_cleanup_steps
+      if (typeof raw === 'string') setSteps(new Set(raw.split(',').filter(Boolean)))
+    }
+  }, [settings])
+
+  const saveMutation = useMutation({
+    mutationFn: () => api.saveSettings({
+      epub_cleanup_on_upload: onUpload ? 'true' : 'false',
+      epub_cleanup_steps: CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id)).join(','),
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); addToast('success', 'Saved') },
+    onError: (e: Error) => addToast('error', e.message),
+  })
+
+  function toggleStep(id: string) {
+    setSteps(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function cleanLibrary() {
+    const epubCount = stats?.formats?.epub ?? 0
+    if (!window.confirm(`Clean up ${epubCount ? `all ${epubCount} EPUB files` : 'every EPUB'} in the library with the saved steps? Files are changed in place.`)) return
+    setResult(null)
+    try {
+      const { ids } = await api.getBookIds({ format: 'epub' })
+      setProgress({ done: 0, total: ids.length })
+      const res = await api.cleanupInBatches(ids, (done, total) => setProgress({ done, total }))
+      setResult(res)
+      qc.invalidateQueries({ queryKey: ['books'] })
+      qc.invalidateQueries({ queryKey: ['stats'] })
+    } catch (e) {
+      addToast('error', (e as Error).message)
+    } finally {
+      setProgress(null)
+    }
+  }
+
+  const dirty = settings && (
+    (settings.epub_cleanup_on_upload === 'true') !== onUpload ||
+    (typeof settings.epub_cleanup_steps === 'string'
+      ? settings.epub_cleanup_steps
+      : CLEANUP_STEPS.map(s => s.id).join(',')) !== CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id)).join(',')
+  )
+
+  return (
+    <div className="space-y-4">
+      <section className="card p-5 space-y-4">
+        <h2 className="text-base font-semibold text-ink">On Upload</h2>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" checked={onUpload} onChange={e => setOnUpload(e.target.checked)} className="accent-accent w-4 h-4" />
+          <div>
+            <p className="text-sm text-ink">Clean up EPUBs on upload</p>
+            <p className="text-xs text-ink-muted">Run the steps below on every EPUB you upload, after its metadata is fetched</p>
+          </div>
+        </label>
+      </section>
+
+      <section className="card p-5 space-y-4">
+        <h2 className="text-base font-semibold text-ink">Cleanup Steps</h2>
+        <p className="text-xs text-ink-muted">Used on upload, from a book's details, and for bulk cleanup. The story text is never changed.</p>
+        {CLEANUP_STEPS.map(step => (
+          <label key={step.id} className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={steps.has(step.id)} onChange={() => toggleStep(step.id)} className="accent-accent w-4 h-4" />
+            <div>
+              <p className="text-sm text-ink">{step.label}</p>
+              <p className="text-xs text-ink-muted">{step.description}</p>
+            </div>
+          </label>
+        ))}
+        <button className="btn-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save
+        </button>
+      </section>
+
+      <section className="card p-5 space-y-4">
+        <h2 className="text-base font-semibold text-ink">Clean Up Library</h2>
+        <p className="text-xs text-ink-muted">
+          Run the saved steps on every EPUB already in the library. To clean only some books, select them in the
+          library and choose Clean Up. Books already on a device keep their old copy until downloaded again.
+        </p>
+        {dirty && <p className="text-xs text-accent">Save your changes above first, the cleanup uses the saved steps.</p>}
+        <button className="btn-outline text-sm" onClick={cleanLibrary} disabled={progress !== null || steps.size === 0}>
+          {progress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {progress ? `Cleaning ${progress.done}/${progress.total}…` : 'Clean Up All EPUBs'}
+        </button>
+        {result && (
+          <div className="text-sm text-ink-muted space-y-1">
+            <p>Done. {result.cleaned} cleaned, {result.unchanged} already clean{result.errors.length ? `, ${result.errors.length} failed` : ''}.</p>
+            {result.errors.length > 0 && (
+              <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
+                {result.errors.map(e => <div key={e.id} className="text-danger">{e.title ?? `Book ${e.id}`}: {e.error}</div>)}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
