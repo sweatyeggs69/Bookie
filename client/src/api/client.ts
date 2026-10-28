@@ -154,13 +154,25 @@ export interface PageSummary {
 }
 
 export interface CleanupPreview {
-  token: string
+  token?: string
   actions: string[]
   pages: { page: string; before: PageSummary; after: PageSummary | null }[]
   toc_before: string[]
   toc_after: string[]
   removed_files: string[]
   added_files: string[]
+  /** One page rendered as inert HTML, before and after, for a sandboxed frame. */
+  page: string | null
+  page_before: string
+  page_after: string
+}
+
+/** Run the given steps on Bookie's built-in sample book. */
+export function previewCleanupSample(steps: string[]): Promise<CleanupPreview> {
+  return api<CleanupPreview>('/api/cleanup/sample-preview', {
+    method: 'POST',
+    body: JSON.stringify({ steps: steps.join(',') }),
+  })
 }
 
 /** Clean an uploaded EPUB with the given steps, without adding it to the library. */
