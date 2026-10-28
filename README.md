@@ -8,7 +8,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 
 > This project is built with Claude.
 
-<img width="100%" alt="Bookie UI" src="https://github.com/user-attachments/assets/e0755ecb-c6f7-4ed3-b57e-337dd64876e7" />
+<img width="100%" alt="Bookie UI" src="https://github.com/user-attachments/assets/3f75298f-90bb-42ec-8041-64373625a6c0" />
 
 ---
 
@@ -28,7 +28,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 - OPDS feed at `/opds` for apps like KOReader (enable it in Settings > Account, then sign in with your Bookie username and password)
 - KOReader progress sync at `/kosync`, so reading position stays in step across devices and shows on each book (enable it in Settings > Account, then in KOReader choose Tools > Progress sync > Custom sync server)
 
-<img width="807" height="555" alt="image" src="https://github.com/user-attachments/assets/0cfdb669-6d8e-405f-8bb6-4edea042438e" />
+<img width="816" height="606" alt="image" src="https://github.com/user-attachments/assets/bedce27a-7bec-4810-9e3f-6ba03d236b79" />
 
 >[!NOTE]
 >When migrating from a different solution, it is recommended you import your books into Bookie to ensure proper metadata management.
