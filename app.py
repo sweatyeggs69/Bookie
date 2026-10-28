@@ -264,6 +264,23 @@ def _book_path(book) -> Path:
     return path
 
 
+PREVIEW_DIR = DATA_DIR / "cleanup-previews"
+PREVIEW_TTL = 3600  # seconds a cleaned preview copy stays downloadable
+
+
+def _prune_previews() -> None:
+    """Delete preview copies older than PREVIEW_TTL."""
+    if not PREVIEW_DIR.exists():
+        return
+    cutoff = time.time() - PREVIEW_TTL
+    for f in PREVIEW_DIR.iterdir():
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+        except OSError:
+            pass
+
+
 def _editable_book(book_id: int):
     """The book, or a 409 while an EPUB cleanup is rewriting its file."""
     book = Book.query.get_or_404(book_id)
@@ -890,6 +907,52 @@ def create_app():
                 logger.warning("Cleanup failed for book %s: %s", book_id, exc)
                 errors.append({"id": book_id, "title": book.title, "error": str(exc)})
         return jsonify({"cleaned": cleaned, "unchanged": unchanged, "skipped": skipped, "errors": errors})
+
+    @app.route("/api/cleanup/preview", methods=["POST"])
+    @login_required
+    def cleanup_preview():
+        """Clean an uploaded EPUB without adding it to the library, and report
+        what changed. The cleaned copy can be downloaded for a while afterwards."""
+        file = request.files.get("file")
+        if not file or not file.filename:
+            return jsonify({"error": "No file provided"}), 400
+        if not file.filename.lower().endswith(".epub") or not _magic_ok(file, "epub"):
+            return jsonify({"error": "Choose an EPUB file"}), 400
+        # Steps from the form, so unsaved checkboxes can be tried out
+        raw_steps = request.form.get("steps")
+        steps = epub_cleanup.parse_steps(raw_steps) - {"metadata"}
+        _prune_previews()
+        PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+        token = secrets.token_urlsafe(16)
+        path = PREVIEW_DIR / f"{token}.epub"
+        file.save(str(path))
+        try:
+            before = epub_cleanup.summarize(str(path))
+            actions = epub_cleanup.clean_epub(str(path), {}, steps)
+            after = epub_cleanup.summarize(str(path))
+        except epub_cleanup.CleanupError as exc:
+            path.unlink(missing_ok=True)
+            return jsonify({"error": str(exc)}), 422
+        except Exception as exc:
+            path.unlink(missing_ok=True)
+            logger.warning("Cleanup preview failed for %s: %s", file.filename, exc)
+            return jsonify({"error": f"Could not clean this file: {exc}"}), 422
+        name = secure_filename(file.filename.rsplit(".", 1)[0]) or "book"
+        (PREVIEW_DIR / f"{token}.name").write_text(f"{name}_clean.epub")
+        return jsonify({"token": token, "actions": actions, **epub_cleanup.preview_diff(before, after)})
+
+    @app.route("/api/cleanup/preview/<token>", methods=["GET"])
+    @login_required
+    def cleanup_preview_download(token):
+        if not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", token):
+            abort(404)
+        path = PREVIEW_DIR / f"{token}.epub"
+        if not path.exists():
+            return jsonify({"error": "This preview has expired. Run it again."}), 404
+        name_file = PREVIEW_DIR / f"{token}.name"
+        name = name_file.read_text() if name_file.exists() else "book_clean.epub"
+        return send_file(str(path), as_attachment=True, download_name=name,
+                         mimetype="application/epub+zip")
 
     @app.route("/api/books/bulk-delete", methods=["POST"])
     @login_required

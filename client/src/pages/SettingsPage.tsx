@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Download, Rss } from 'lucide-react'
+import { Save, Plus, Trash2, Loader2, AlertCircle, Key, Mail, RefreshCw, Download, Rss, Upload } from 'lucide-react'
 import { useToast } from '../contexts/toast'
 import * as api from '../api/client'
 import type { EmailAddress, Stats } from '../types'
@@ -423,6 +423,7 @@ const CLEANUP_STEPS: { id: string; label: string; description: string }[] = [
   { id: 'distributor', label: 'Remove distributor pages',     description: "Drop short pages added by ePubLibre, Anna's Archive and similar releases, plus their logos" },
   { id: 'junk',        label: 'Remove conversion leftovers',  description: 'Strip empty Calibre anchors and page-break divs, invisible word joiners, and Adobe/Sigil/Calibre tags' },
   { id: 'headings',    label: 'Fix chapter headings',         description: 'Turn a chapter\'s styled first line ("Chapter 3", "IV", "Epilogue") into a real heading' },
+  { id: 'heading_style', label: 'Style chapter headings',   description: 'Show each chapter as a small "CHAPTER" label over the number, with its title below ("Lucy Looks into a Wardrobe"). Page titles, the table of contents and the book\'s contents page follow' },
   { id: 'titles',      label: 'Fill empty page titles',       description: "Give each page a title from its heading" },
   { id: 'toc',         label: 'Rebuild missing table of contents', description: 'When the table of contents is empty or has a single entry, rebuild it from the chapter headings' },
   { id: 'toc_case',    label: 'Fix all-caps table of contents', description: 'Change entries like "CHAPTER ONE: THE WRONG DOOR" to "Chapter One: The Wrong Door". Chapter pages are not changed' },
@@ -517,6 +518,8 @@ function CleanupTab() {
         </button>
       </section>
 
+      <CleanupPreviewCard steps={CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id))} />
+
       <section className="card p-5 space-y-4">
         <h2 className="text-base font-semibold text-ink">Clean Up Library</h2>
         <p className="text-xs text-ink-muted">
@@ -540,6 +543,143 @@ function CleanupTab() {
         )}
       </section>
     </div>
+  )
+}
+
+function CleanupPreviewCard({ steps }: { steps: string[] }) {
+  const { addToast } = useToast()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<api.CleanupPreview | null>(null)
+
+  async function run(file: File) {
+    setFileName(file.name)
+    setBusy(true)
+    setPreview(null)
+    try {
+      setPreview(await api.previewCleanup(file, steps))
+    } catch (e) {
+      addToast('error', (e as Error).message)
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const pageName = (p: string) => p.split('/').pop() ?? p
+  const tocChanged = preview && preview.toc_before.join('\n') !== preview.toc_after.join('\n')
+  const tocRows = preview ? Math.max(preview.toc_before.length, preview.toc_after.length) : 0
+
+  return (
+    <section className="card p-5 space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-ink">Preview</h2>
+        <p className="text-xs text-ink-muted mt-1">
+          Try the ticked steps on an EPUB without adding it to the library. Unsaved changes to the steps are used.
+          Writing metadata is skipped, since the file isn't a library book.
+        </p>
+      </div>
+      <input ref={inputRef} type="file" accept=".epub,application/epub+zip" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) run(f) }} />
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="btn-outline text-sm" onClick={() => inputRef.current?.click()} disabled={busy || steps.length === 0}>
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          {busy ? 'Cleaning…' : 'Choose EPUB'}
+        </button>
+        {fileName && <span className="text-xs text-ink-muted truncate max-w-full">{fileName}</span>}
+        {preview && (
+          <a className="btn-primary text-sm ml-auto" href={api.cleanupPreviewDownloadUrl(preview.token)}>
+            <Download className="w-3.5 h-3.5" />
+            Download cleaned copy
+          </a>
+        )}
+      </div>
+
+      {preview && (
+        <div className="space-y-5">
+          {preview.actions.length === 0 ? (
+            <p className="text-sm text-ink-muted">Nothing to change with these steps.</p>
+          ) : (
+            <ul className="text-sm text-ink list-disc pl-5 space-y-0.5">
+              {preview.actions.map(a => <li key={a}>{a}</li>)}
+            </ul>
+          )}
+
+          {preview.pages.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-ink mb-2">Pages</h3>
+              <div className="overflow-x-auto rounded-lg border border-line">
+                <table className="w-full text-xs">
+                  <thead className="bg-surface-raised text-ink-muted">
+                    <tr>
+                      <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
+                      <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.pages.map(p => (
+                      <tr key={p.page} className="border-t border-line align-top">
+                        <td className="px-3 py-2">
+                          <p className="text-ink">{p.before.heading || <span className="text-ink-faint">No heading</span>}</p>
+                          <p className="text-ink-muted mt-0.5">Title: {p.before.title || <span className="text-ink-faint">empty</span>}</p>
+                          <p className="text-ink-faint font-mono mt-0.5 truncate">{pageName(p.page)}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          {p.after ? (
+                            <>
+                              <p className="text-ink">{p.after.heading || <span className="text-ink-faint">No heading</span>}</p>
+                              <p className="text-ink-muted mt-0.5">Title: {p.after.title || <span className="text-ink-faint">empty</span>}</p>
+                            </>
+                          ) : (
+                            <p className="text-danger">Page removed</p>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tocChanged && (
+            <div>
+              <h3 className="text-sm font-semibold text-ink mb-2">Table of Contents</h3>
+              <div className="overflow-x-auto rounded-lg border border-line max-h-96 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-surface-raised text-ink-muted sticky top-0">
+                    <tr>
+                      <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
+                      <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: tocRows }, (_, i) => {
+                      const b = preview.toc_before[i] ?? ''
+                      const a = preview.toc_after[i] ?? ''
+                      return (
+                        <tr key={i} className="border-t border-line">
+                          <td className="px-3 py-1.5 text-ink-muted">{b}</td>
+                          <td className={`px-3 py-1.5 ${a !== b ? 'text-accent' : 'text-ink-muted'}`}>{a}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {(preview.removed_files.length > 0 || preview.added_files.length > 0) && (
+            <div className="text-xs text-ink-muted space-y-1">
+              {preview.removed_files.length > 0 && <p>Removed files: <span className="font-mono">{preview.removed_files.map(pageName).join(', ')}</span></p>}
+              {preview.added_files.length > 0 && <p>Added files: <span className="font-mono">{preview.added_files.map(pageName).join(', ')}</span></p>}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
