@@ -4,11 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import App from './App'
 import './index.css'
-import { applyAccent, applyTheme, getAccent, getThemeMode } from './theme'
+import { applyTheme, getThemeMode } from './theme'
 
 // Apply saved appearance before first paint
 applyTheme(getThemeMode())
-applyAccent(getAccent())
 
 // ─── Service Worker registration & update check ───────────────────────────────
 
