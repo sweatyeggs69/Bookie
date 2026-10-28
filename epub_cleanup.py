@@ -9,6 +9,7 @@ Each step is independent and can be switched off in settings:
   headings     turn a chapter's styled first paragraph ("Chapter 3", "IV") into a real h1
   titles       fill empty <title> tags from the page's heading
   toc          rebuild a missing or one-entry table of contents from the headings
+  toc_case     change all-caps table of contents entries to title case
 
 Files that don't parse as XML are left untouched, and nothing is written
 unless a step actually changed something.
@@ -28,7 +29,7 @@ from lxml import etree
 
 logger = logging.getLogger(__name__)
 
-STEPS = ["metadata", "distributor", "junk", "headings", "titles", "toc"]
+STEPS = ["metadata", "distributor", "junk", "headings", "titles", "toc", "toc_case"]
 
 MAX_EPUB_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024
 
@@ -715,6 +716,71 @@ def _step_toc(epub: _Epub, book_title: str) -> list[str]:
     return [f"Rebuilt the table of contents ({len(entries)} entries)"]
 
 
+_SMALL_WORDS = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into",
+                "nor", "of", "on", "or", "the", "to", "with"}
+_ROMAN_RE = re.compile(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$")
+_NUMBERED = {"chapter", "part", "book", "volume", "vol.", "act", "section"}
+# A label is split on these so "Chapter 4: THE WRONG DOOR" fixes just the caps part
+_SEGMENT_SPLIT = re.compile(r"(\s*[:\u2013\u2014|]\s*|\s+-\s+)")
+
+
+def _cap_word(word: str) -> str:
+    """Upper-case the first letter of each hyphenated part, lower-case the rest."""
+    def part(p):
+        m = re.search(r"[^\W\d_]", p)
+        return p[:m.start()] + p[m.start()].upper() + p[m.start() + 1:].lower() if m else p.lower()
+    return "-".join(part(p) for p in word.split("-"))
+
+
+def _title_case_segment(segment: str) -> str:
+    words = segment.split(" ")
+    out = []
+    for i, word in enumerate(words):
+        bare = word.strip(".,;!?()[]\"'\u2018\u2019\u201c\u201d")
+        prev = re.sub(r"[^\w.]", "", words[i - 1]).lower() if i else ""
+        if bare and _ROMAN_RE.match(bare) and (len([w for w in words if w]) == 1 or prev in _NUMBERED or bare == "I"):
+            out.append(word)  # a chapter number like "IV", or the pronoun "I"
+        elif i and bare.lower() in _SMALL_WORDS:
+            out.append(word.lower())
+        else:
+            out.append(_cap_word(word))
+    return " ".join(out)
+
+
+def title_case_label(label: str) -> str:
+    """Title-case each all-caps segment of a table of contents label."""
+    parts = _SEGMENT_SPLIT.split(label)
+    for i in range(0, len(parts), 2):  # odd indexes are the separators
+        letters = [c for c in parts[i] if c.isalpha()]
+        if len(letters) >= 2 and all(c.isupper() for c in letters):
+            parts[i] = _title_case_segment(parts[i])
+    return "".join(parts)
+
+
+def _step_toc_case(epub: _Epub) -> list[str]:
+    count = 0
+    labels = []
+    ncx = epub.ncx_path()
+    if ncx and epub.parse(ncx) is not None:
+        labels += [(ncx, el) for el in epub.trees[ncx].getroot().iter(f"{{{NCX_NS}}}text")
+                   if _ln(el.getparent()) == "navLabel"]
+    nav = epub.nav_path()
+    if nav and epub.parse(nav) is not None:
+        for nav_el in epub.trees[nav].getroot().iter(f"{{{XHTML_NS}}}nav"):
+            if nav_el.get(f"{{{EPUB_NS}}}type") == "toc":
+                labels += [(nav, a) for a in nav_el.iter(f"{{{XHTML_NS}}}a")]
+    for name, el in labels:
+        # Only plain-text labels; markup inside a link is left alone
+        if len(el) or not el.text:
+            continue
+        fixed = title_case_label(el.text)
+        if fixed != el.text:
+            el.text = fixed
+            epub.touch(name)
+            count += 1
+    return [f"Fixed {count} all-caps table of contents entr{'ies' if count != 1 else 'y'}"] if count else []
+
+
 def _new_ncx(epub: _Epub, book_title: str):
     root = etree.Element(f"{{{NCX_NS}}}ncx", nsmap={None: NCX_NS}, version="2005-1")
     head = etree.SubElement(root, f"{{{NCX_NS}}}head")
@@ -761,6 +827,8 @@ def clean_epub(path: str, meta: dict, steps: set[str]) -> list[str]:
         actions += _step_titles(epub, title)
     if "toc" in steps:
         actions += _step_toc(epub, title)
+    if "toc_case" in steps:
+        actions += _step_toc_case(epub)
 
     if epub.dirty or epub.removed:
         epub.write(path)

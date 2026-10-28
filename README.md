@@ -22,7 +22,7 @@ A self-hosted ebook manager built for simplicity. Organize your library, fetch m
 
 **Organization**
 - Configurable file rename schemes and folder structures
-- EPUB cleanup on upload or across the library: writes Bookie's metadata into the file, removes distributor pages and Calibre/Sigil leftovers, fixes chapter headings, and rebuilds a missing table of contents (pick the steps in Settings > EPUB Cleanup)
+- EPUB cleanup on upload or across the library: writes Bookie's metadata into the file, removes distributor pages and Calibre/Sigil leftovers, fixes chapter headings, rebuilds a missing table of contents, and fixes all-caps table of contents entries (pick the steps in Settings > EPUB Cleanup)
 
 **E-reader Access**
 - OPDS feed at `/opds` for apps like KOReader (enable it in Settings > Account, then sign in with your Bookie username and password)
