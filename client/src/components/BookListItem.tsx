@@ -184,7 +184,7 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-0.5 w-44 bg-surface-raised border border-line rounded-lg shadow-xl py-1 z-50">
+              <div className="absolute right-0 top-full mt-0.5 w-44 bg-surface-card border border-line rounded-xl shadow-xl py-1 overflow-hidden z-50">
                 <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                   <CheckSquare size={14} className="text-ink-muted" /> Select

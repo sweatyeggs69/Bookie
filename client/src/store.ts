@@ -11,6 +11,7 @@ interface PersistedPrefs {
   page: number
   filters: Filters
   view: 'library' | 'settings'
+  sidebarCollapsed: boolean
 }
 
 // ─── Full store shape ─────────────────────────────────────────────────────────
@@ -23,6 +24,10 @@ interface StoreState extends Omit<PersistedPrefs, 'view'> {
   // Navigation
   view: 'library' | 'upload' | 'settings'
   setView: (view: 'library' | 'upload' | 'settings') => void
+
+  // Desktop sidebar collapsed to an icon rail (persisted)
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
 
   // Filters (changing any filter resets to page 1)
   filters: Filters
@@ -82,6 +87,9 @@ export const useStore = create<StoreState>()(
       // Navigation
       view: 'library',
       setView: (view) => set({ view }),
+
+      sidebarCollapsed: false,
+      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
 
       // Filters
       filters: { ...defaultFilters },
@@ -147,6 +155,7 @@ export const useStore = create<StoreState>()(
         page: state.page,
         filters: state.filters,
         view: state.view === 'upload' ? 'library' : state.view,
+        sidebarCollapsed: state.sidebarCollapsed,
       }),
     },
   ),

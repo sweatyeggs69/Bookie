@@ -82,7 +82,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
         onKeyDown={e => e.key === 'Enter' && handleCardClick()}
         className={[
           'group relative flex flex-col w-full text-left',
-          'rounded-lg overflow-visible',
+          'rounded-xl overflow-visible',
           'border transition-all duration-200 ease-out',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
           'cursor-pointer min-w-0',
@@ -93,7 +93,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
         aria-label={`${selectionMode ? 'Select' : 'Open'} ${book.title ?? book.filename}`}
       >
         {/* Cover */}
-        <div className="relative w-full rounded-t-lg overflow-hidden" style={{ paddingBottom: '150%' }}>
+        <div className="relative w-full rounded-t-xl overflow-hidden" style={{ paddingBottom: '150%' }}>
           <div className="absolute inset-0">
             {coverUrl ? (
               <img src={coverUrl} alt={book.title ?? book.filename} onError={() => setImgError(true)}
@@ -164,7 +164,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden />
           <div
-            className="fixed z-50 w-36 bg-surface-raised border border-line rounded-lg shadow-xl py-1 book-menu-pop"
+            className="fixed z-50 w-36 bg-surface-card border border-line rounded-xl shadow-xl py-1 overflow-hidden book-menu-pop"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button type="button" onClick={() => { setMenuOpen(false); setSelectionMode(true); toggleBookSelection(book.id) }}

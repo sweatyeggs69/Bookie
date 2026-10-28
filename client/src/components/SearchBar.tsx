@@ -89,7 +89,7 @@ export default function SearchBar() {
         onKeyDown={handleKeyDown}
         onFocus={() => dropdownResults.length > 0 && setDropdownOpen(true)}
         placeholder="Search books, authors…"
-        className="w-full bg-surface-raised border border-line rounded pl-9 pr-9 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+        className="w-full bg-surface-raised border border-line rounded-lg pl-9 pr-9 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
         autoComplete="off"
         spellCheck={false}
       />
@@ -106,7 +106,7 @@ export default function SearchBar() {
       )}
 
       {dropdownOpen && dropdownResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border border-line bg-surface-raised shadow-xl shadow-black/40 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-line bg-surface-card shadow-xl shadow-black/40 overflow-hidden">
           {dropdownResults.map(book => (
             <button
               key={book.id}
