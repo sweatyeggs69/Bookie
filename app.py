@@ -803,6 +803,7 @@ def create_app():
                 _rename_and_organize(book, file_path)
             except Exception as exc:
                 logger.warning("Rename after save failed for book %s: %s", book_id, exc)
+        _write_metadata_to_file(book)
         return jsonify(book.to_dict())
 
     @app.route("/api/books/<int:book_id>", methods=["DELETE"])
@@ -844,6 +845,7 @@ def create_app():
                     _rename_and_organize(book, file_path)
                 except Exception as exc:
                     logger.warning("Rename after bulk fetch failed for book %s: %s", book_id, exc)
+            _write_metadata_to_file(book)
             updated += 1
             if updated < len(ids):
                 time.sleep(1)  # be polite to metadata sources
@@ -1109,7 +1111,10 @@ def create_app():
         results = scraper.search_all_sources(query)
 
         if apply_to_book and results:
+            if book.is_cleaning():
+                return jsonify({"error": "This book is being cleaned up. Try again in a moment."}), 409
             _apply_metadata(book, results[0])
+            _write_metadata_to_file(book)
 
         return jsonify(results)
 
@@ -1127,6 +1132,7 @@ def create_app():
                 _rename_and_organize(book, file_path)
             except Exception as exc:
                 logger.warning("Rename after metadata apply failed for book %s: %s", book_id, exc)
+        _write_metadata_to_file(book)
         return jsonify(book.to_dict())
 
     @app.route("/api/metadata/search", methods=["GET"])
@@ -1676,7 +1682,18 @@ def _rename_and_organize(book, file_path: Path):
     _db.session.commit()
 
 
-def _cleanup_book(book: Book, locked: bool = False) -> list[str]:
+def _write_metadata_to_file(book: Book):
+    """After the user edits a book's details, save them into the EPUB too, when
+    the "Write metadata into the file" cleanup step is on. Never fails the edit."""
+    if book.file_format != "epub" or "metadata" not in epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps")):
+        return
+    try:
+        _cleanup_book(book, steps={"metadata"})
+    except Exception as exc:
+        logger.warning("Writing metadata into %s failed: %s", book.filename, exc)
+
+
+def _cleanup_book(book: Book, locked: bool = False, steps: set[str] | None = None) -> list[str]:
     """Run the enabled epub cleanup steps on *book*'s file. Returns what changed.
 
     The book is marked as cleaning while this runs, so the UI shows progress and
@@ -1688,7 +1705,8 @@ def _cleanup_book(book: Book, locked: bool = False) -> list[str]:
         book.cleanup_started = datetime.now(timezone.utc)
         db.session.commit()
     try:
-        steps = epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps"))
+        if steps is None:
+            steps = epub_cleanup.parse_steps(Settings.get("epub_cleanup_steps"))
         actions = epub_cleanup.clean_epub(str(path), {
             "title": book.title, "author": book.author, "publisher": book.publisher,
             "language": book.language, "description": book.description,

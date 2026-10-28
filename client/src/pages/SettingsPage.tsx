@@ -419,7 +419,7 @@ function LibraryTab() {
 // ── EPUB Cleanup Tab ──────────────────────────────────────────────────────────
 
 const CLEANUP_STEPS: { id: string; label: string; description: string }[] = [
-  { id: 'metadata',    label: 'Write metadata into the file', description: "Save Bookie's title, author, series and ISBN into the EPUB so readers like KOReader show the same details" },
+  { id: 'metadata',    label: 'Write metadata into the file', description: "Save Bookie's title, author, series and ISBN into the EPUB so readers like KOReader show the same details. Also runs whenever you edit or fetch a book's details" },
   { id: 'distributor', label: 'Remove distributor pages',     description: "Drop short pages added by ePubLibre, Anna's Archive and similar releases, plus their logos" },
   { id: 'junk',        label: 'Remove conversion leftovers',  description: 'Strip empty Calibre anchors and page-break divs, invisible word joiners, and Adobe/Sigil/Calibre tags' },
   { id: 'headings',    label: 'Fix chapter headings',         description: 'Turn a chapter\'s styled first line ("Chapter 3", "IV", "Epilogue") into a real heading' },
