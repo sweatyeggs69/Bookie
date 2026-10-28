@@ -1319,7 +1319,8 @@ def render_page(path: str, name: str) -> str:
     style = re.sub(r"@import[^;]*;", "", style)
     inner = etree.tostring(body, encoding="unicode", method="html")
     return ('<!doctype html><html><head><meta charset="utf-8">'
-            '<style>body{font-family:Georgia,serif;color:#222;background:#fff;margin:1em 1.2em;font-size:15px}'
+            '<style>html{scrollbar-width:thin;color-scheme:light}'
+            'body{font-family:Georgia,serif;color:#222;background:#fff;margin:1em 1.2em;font-size:14px}'
             f'</style><style>{style}</style></head>{inner}</html>')
 
 

@@ -419,14 +419,14 @@ function LibraryTab() {
 // ── EPUB Cleanup Tab ──────────────────────────────────────────────────────────
 
 const CLEANUP_STEPS: { id: string; label: string; description: string }[] = [
-  { id: 'metadata',    label: 'Write metadata into the file', description: "Save Bookie's title, author, series and ISBN into the EPUB so readers like KOReader show the same details. Also runs whenever you edit or fetch a book's details" },
-  { id: 'distributor', label: 'Remove distributor pages',     description: "Drop short pages added by ePubLibre, Anna's Archive and similar releases, plus their logos" },
-  { id: 'junk',        label: 'Remove conversion leftovers',  description: 'Strip empty Calibre anchors and page-break divs, invisible word joiners, and Adobe/Sigil/Calibre tags' },
-  { id: 'headings',    label: 'Fix chapter headings',         description: 'Turn a chapter\'s styled first line ("Chapter 3", "IV", "Epilogue") into a real heading' },
-  { id: 'heading_style', label: 'Style chapter headings',   description: 'Show each chapter as a small "CHAPTER" label over the number, with its title below ("Lucy Looks into a Wardrobe"). Page titles, the table of contents and the book\'s contents page follow' },
-  { id: 'titles',      label: 'Fill empty page titles',       description: "Give each page a title from its heading" },
-  { id: 'toc',         label: 'Rebuild missing table of contents', description: 'When the table of contents is empty or has a single entry, rebuild it from the chapter headings' },
-  { id: 'toc_case',    label: 'Fix all-caps table of contents', description: 'Change entries like "CHAPTER ONE: THE WRONG DOOR" to "Chapter One: The Wrong Door". Chapter pages are not changed' },
+  { id: 'metadata',      label: 'Write metadata into the file', description: "Title, author, series and ISBN, so KOReader matches Bookie. Also runs when you edit a book" },
+  { id: 'distributor',   label: 'Remove distributor pages',     description: "ePubLibre, Anna's Archive and similar pages and logos" },
+  { id: 'junk',          label: 'Remove conversion leftovers',  description: 'Empty Calibre anchors, page-break divs, word joiners and tool tags' },
+  { id: 'headings',      label: 'Fix chapter headings',         description: 'Turn a styled first line like "Chapter 3" or "IV" into a real heading' },
+  { id: 'heading_style', label: 'Style chapter headings',       description: 'Small "CHAPTER" label over the number, title below. Titles and contents follow' },
+  { id: 'titles',        label: 'Fill empty page titles',       description: 'Give each page a title from its heading' },
+  { id: 'toc',           label: 'Rebuild missing contents',     description: 'Rebuild an empty or one-entry table of contents from the headings' },
+  { id: 'toc_case',      label: 'Fix all-caps contents',        description: '"CHAPTER ONE: THE WRONG DOOR" becomes "Chapter One: The Wrong Door"' },
 ]
 
 function CleanupTab() {
@@ -487,47 +487,53 @@ function CleanupTab() {
       : CLEANUP_STEPS.map(s => s.id).join(',')) !== CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id)).join(',')
   )
 
+  const checkbox = 'accent-accent w-4 h-4 mt-0.5 shrink-0'
+
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
       {/* On small screens the columns dissolve so the preview sits right under the steps */}
       <div className="contents lg:flex lg:flex-col lg:gap-4">
-        <section className="card p-5 space-y-4">
-          <h2 className="text-base font-semibold text-ink">On Upload</h2>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={onUpload} onChange={e => setOnUpload(e.target.checked)} className="accent-accent w-4 h-4" />
+        <section className="card p-4 space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" checked={onUpload} onChange={e => setOnUpload(e.target.checked)} className={checkbox} />
             <div>
-              <p className="text-sm text-ink">Clean up EPUBs on upload</p>
-              <p className="text-xs text-ink-muted">Run the steps below on every EPUB you upload, after its metadata is fetched</p>
+              <p className="text-sm font-medium text-ink">Clean up EPUBs on upload</p>
+              <p className="text-xs text-ink-muted leading-snug">Runs after the book's metadata is fetched</p>
             </div>
           </label>
-        </section>
 
-        <section className="card p-5 space-y-4">
-          <h2 className="text-base font-semibold text-ink">Cleanup Steps</h2>
-          <p className="text-xs text-ink-muted">Used on upload, from a book's details, and for bulk cleanup. The story text is never changed.</p>
-          {CLEANUP_STEPS.map(step => (
-            <label key={step.id} className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={steps.has(step.id)} onChange={() => toggleStep(step.id)} className="accent-accent w-4 h-4" />
-              <div>
-                <p className="text-sm text-ink">{step.label}</p>
-                <p className="text-xs text-ink-muted">{step.description}</p>
-              </div>
-            </label>
-          ))}
-          <button className="btn-primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <div className="border-t border-line pt-4 space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold text-ink">Steps</h2>
+              <p className="text-xs text-ink-muted leading-snug">The story text is never changed.</p>
+            </div>
+            {CLEANUP_STEPS.map(step => (
+              <label key={step.id} className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={steps.has(step.id)} onChange={() => toggleStep(step.id)} className={checkbox} />
+                <div>
+                  <p className="text-sm text-ink leading-snug">{step.label}</p>
+                  <p className="text-xs text-ink-muted leading-snug">{step.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <button className="btn-primary w-full justify-center" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !dirty}>
             {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
+            {dirty ? 'Save' : 'Saved'}
           </button>
         </section>
 
-        <section className="card p-5 space-y-4 order-last lg:order-none">
-          <h2 className="text-base font-semibold text-ink">Clean Up Library</h2>
-          <p className="text-xs text-ink-muted">
-            Run the saved steps on every EPUB already in the library. To clean only some books, select them in the
-            library and choose Clean Up. Books already on a device keep their old copy until downloaded again.
-          </p>
-          {dirty && <p className="text-xs text-accent">Save your changes above first, the cleanup uses the saved steps.</p>}
-          <button className="btn-outline text-sm" onClick={cleanLibrary} disabled={progress !== null || steps.size === 0}>
+        <section className="card p-4 space-y-3 order-last lg:order-none">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Clean Up Library</h2>
+            <p className="text-xs text-ink-muted leading-snug mt-0.5">
+              Run the saved steps on every EPUB in the library. To clean only some, select them in the library
+              and choose Clean Up.
+            </p>
+          </div>
+          {dirty && <p className="text-xs text-accent">Save your changes first, this uses the saved steps.</p>}
+          <button className="btn-outline text-sm w-full justify-center" onClick={cleanLibrary} disabled={progress !== null || steps.size === 0}>
             {progress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             {progress ? `Cleaning ${progress.done}/${progress.total}…` : 'Clean Up All EPUBs'}
           </button>
@@ -544,7 +550,7 @@ function CleanupTab() {
         </section>
       </div>
 
-      <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+      <div className="lg:sticky lg:top-6">
         <CleanupPreviewCard steps={CLEANUP_STEPS.map(s => s.id).filter(id => steps.has(id))} />
       </div>
     </div>
@@ -593,50 +599,42 @@ function CleanupPreviewCard({ steps }: { steps: string[] }) {
   }
 
   const preview = mode === 'sample' ? sample.data ?? null : filePreview
-  const updating = mode === 'sample' && (sample.isFetching || stepKey !== steps.join(','))
+  const updating = (mode === 'sample' && (sample.isFetching || stepKey !== steps.join(','))) || busy
 
   return (
-    <section className="card p-5 space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-ink flex items-center gap-2">
-            Preview
-            {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-muted" />}
-          </h2>
-          <p className="text-xs text-ink-muted mt-1">
-            {mode === 'sample'
-              ? 'A short messy sample book, cleaned with the ticked steps. It updates as you change them. Writing metadata is not shown.'
-              : 'Try the ticked steps on one of your EPUBs without adding it to the library. Writing metadata is skipped.'}
-          </p>
-        </div>
+    <section className="card p-4 space-y-4">
+      <div className="flex items-center gap-3">
+        <h2 className="text-sm font-semibold text-ink">Preview</h2>
+        {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-muted" />}
         <div className="ml-auto flex shrink-0 rounded-lg border border-line overflow-hidden text-xs">
           {(['sample', 'file'] as const).map(m => (
             <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m}
-              className={`px-2.5 py-1.5 ${mode === m ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'}`}>
-              {m === 'sample' ? 'Sample' : 'Your EPUB'}
+              className={`px-2.5 py-1 ${mode === m ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'}`}>
+              {m === 'sample' ? 'Sample book' : 'Your EPUB'}
             </button>
           ))}
         </div>
       </div>
 
       {mode === 'file' && (
-        <>
+        <div className="flex flex-wrap items-center gap-2">
           <input ref={inputRef} type="file" accept=".epub,application/epub+zip" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) run(f) }} />
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="btn-outline text-sm" onClick={() => inputRef.current?.click()} disabled={busy || steps.length === 0}>
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-              {busy ? 'Cleaning…' : 'Choose EPUB'}
-            </button>
-            {fileName && <span className="text-xs text-ink-muted truncate max-w-full">{fileName}</span>}
-            {filePreview?.token && (
-              <a className="btn-primary text-sm ml-auto" href={api.cleanupPreviewDownloadUrl(filePreview.token)}>
-                <Download className="w-3.5 h-3.5" />
-                Download cleaned copy
-              </a>
-            )}
-          </div>
-        </>
+          <button className="btn-outline text-sm" onClick={() => inputRef.current?.click()} disabled={busy || steps.length === 0}>
+            <Upload className="w-3.5 h-3.5" />
+            {busy ? 'Cleaning…' : fileName ? 'Choose another' : 'Choose EPUB'}
+          </button>
+          {fileName && <span className="text-xs text-ink-muted truncate min-w-0 flex-1">{fileName}</span>}
+          {filePreview?.token && (
+            <a className="btn-primary text-sm" href={api.cleanupPreviewDownloadUrl(filePreview.token)}>
+              <Download className="w-3.5 h-3.5" />
+              Download
+            </a>
+          )}
+          {!fileName && (
+            <p className="w-full text-xs text-ink-muted">Nothing is added to the library. Writing metadata is skipped.</p>
+          )}
+        </div>
       )}
 
       {mode === 'sample' && sample.isError && (
@@ -649,116 +647,126 @@ function CleanupPreviewCard({ steps }: { steps: string[] }) {
 
 function PageFrame({ label, html }: { label: string; html: string }) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs font-medium text-ink-muted mb-1">{label}</p>
+    <figure className="min-w-0">
+      <figcaption className="text-[11px] font-medium uppercase tracking-wider text-ink-muted mb-1.5">{label}</figcaption>
       {html ? (
         <iframe title={`${label} page`} sandbox="" srcDoc={html}
-          className="w-full h-80 rounded-lg border border-line bg-white" />
+          className="block w-full aspect-[3/4] max-h-[26rem] rounded-md border border-line bg-white shadow-sm" />
       ) : (
-        <div className="h-80 rounded-lg border border-line flex items-center justify-center text-xs text-ink-faint">Page removed</div>
+        <div className="aspect-[3/4] max-h-[26rem] rounded-md border border-dashed border-line flex items-center justify-center text-xs text-ink-faint">
+          Page removed
+        </div>
       )}
+    </figure>
+  )
+}
+
+type DetailTab = 'changes' | 'pages' | 'toc'
+
+function CleanupPreviewResult({ preview }: { preview: api.CleanupPreview }) {
+  const [tab, setTab] = useState<DetailTab>('changes')
+  const pageName = (p: string) => p.split('/').pop() ?? p
+  const tocRows = Math.max(preview.toc_before.length, preview.toc_after.length)
+  const tocChanges = Array.from({ length: tocRows }, (_, i) => (preview.toc_before[i] ?? '') !== (preview.toc_after[i] ?? '')).filter(Boolean).length
+
+  const tabs: { id: DetailTab; label: string; count: number }[] = [
+    { id: 'changes', label: 'Changes', count: preview.actions.length },
+    { id: 'pages', label: 'Headings', count: preview.pages.length },
+    { id: 'toc', label: 'Contents', count: tocChanges },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {preview.page ? (
+        <div className="grid grid-cols-2 gap-3">
+          <PageFrame label="Before" html={preview.page_before} />
+          <PageFrame label="After" html={preview.page_after} />
+        </div>
+      ) : (
+        <p className="text-sm text-ink-muted">No page changes to show with these steps.</p>
+      )}
+
+      <div>
+        <div className="flex gap-4 border-b border-line text-xs" role="tablist">
+          {tabs.map(t => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+              className={`-mb-px pb-2 border-b-2 transition-colors ${tab === t.id ? 'border-accent text-ink font-medium' : 'border-transparent text-ink-muted hover:text-ink'}`}>
+              {t.label}
+              <span className="ml-1.5 rounded-full bg-surface-raised px-1.5 py-0.5 text-[10px] text-ink-muted">{t.count}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="pt-3 max-h-72 overflow-y-auto">
+          {tab === 'changes' && (
+            preview.actions.length === 0 ? (
+              <p className="text-xs text-ink-muted">Nothing to change with these steps.</p>
+            ) : (
+              <ul className="text-xs text-ink space-y-1.5">
+                {preview.actions.map(a => (
+                  <li key={a} className="flex items-start gap-2">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-accent shrink-0" />{a}
+                  </li>
+                ))}
+                {preview.removed_files.length > 0 && (
+                  <li className="text-ink-muted pt-1">Removed: <span className="font-mono">{preview.removed_files.map(pageName).join(', ')}</span></li>
+                )}
+                {preview.added_files.length > 0 && (
+                  <li className="text-ink-muted">Added: <span className="font-mono">{preview.added_files.map(pageName).join(', ')}</span></li>
+                )}
+              </ul>
+            )
+          )}
+
+          {tab === 'pages' && (
+            preview.pages.length === 0 ? (
+              <p className="text-xs text-ink-muted">No headings or page titles change.</p>
+            ) : (
+              <BeforeAfterRows rows={preview.pages.map(p => ({
+                key: p.page,
+                before: p.before.heading || '(no heading)',
+                after: p.after ? p.after.heading || '(no heading)' : null,
+                note: p.after && p.after.title !== p.before.title ? `Title: ${p.after.title || 'empty'}` : undefined,
+              }))} />
+            )
+          )}
+
+          {tab === 'toc' && (
+            tocRows === 0 ? (
+              <p className="text-xs text-ink-muted">This book has no table of contents.</p>
+            ) : (
+              <BeforeAfterRows rows={Array.from({ length: tocRows }, (_, i) => ({
+                key: String(i),
+                before: preview.toc_before[i] ?? '',
+                after: preview.toc_after[i] ?? '',
+              }))} />
+            )
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
-function CleanupPreviewResult({ preview }: { preview: api.CleanupPreview }) {
-  const pageName = (p: string) => p.split('/').pop() ?? p
-  const tocChanged = preview.toc_before.join('\n') !== preview.toc_after.join('\n')
-  const tocRows = Math.max(preview.toc_before.length, preview.toc_after.length)
-
+function BeforeAfterRows({ rows }: { rows: { key: string; before: string; after: string | null; note?: string }[] }) {
   return (
-    <div className="space-y-5">
-      {preview.actions.length === 0 ? (
-        <p className="text-sm text-ink-muted">Nothing to change with these steps.</p>
-      ) : (
-        <ul className="text-sm text-ink list-disc pl-5 space-y-0.5">
-          {preview.actions.map(a => <li key={a}>{a}</li>)}
-        </ul>
-      )}
-
-      {preview.page && (
-        <div>
-          <h3 className="text-sm font-semibold text-ink mb-2">
-            Page <span className="font-mono font-normal text-xs text-ink-muted">{pageName(preview.page)}</span>
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <PageFrame label="Before" html={preview.page_before} />
-            <PageFrame label="After" html={preview.page_after} />
+    <div className="text-xs divide-y divide-line">
+      {rows.map(r => {
+        const changed = r.after !== r.before
+        return (
+          <div key={r.key} className="grid grid-cols-2 gap-3 py-1.5">
+            <p className="text-ink-muted break-words">{r.before}</p>
+            <div className="break-words">
+              {r.after === null ? (
+                <p className="text-danger">Removed</p>
+              ) : (
+                <p className={changed ? 'text-ink' : 'text-ink-muted'}>{r.after}</p>
+              )}
+              {r.note && <p className="text-ink-faint mt-0.5">{r.note}</p>}
+            </div>
           </div>
-        </div>
-      )}
-
-      {preview.pages.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-ink mb-2">Page Headings and Titles</h3>
-          <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="w-full text-xs">
-              <thead className="bg-surface-raised text-ink-muted">
-                <tr>
-                  <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
-                  <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.pages.map(p => (
-                  <tr key={p.page} className="border-t border-line align-top">
-                    <td className="px-3 py-2">
-                      <p className="text-ink">{p.before.heading || <span className="text-ink-faint">No heading</span>}</p>
-                      <p className="text-ink-muted mt-0.5">Title: {p.before.title || <span className="text-ink-faint">empty</span>}</p>
-                      <p className="text-ink-faint font-mono mt-0.5 truncate">{pageName(p.page)}</p>
-                    </td>
-                    <td className="px-3 py-2">
-                      {p.after ? (
-                        <>
-                          <p className="text-ink">{p.after.heading || <span className="text-ink-faint">No heading</span>}</p>
-                          <p className="text-ink-muted mt-0.5">Title: {p.after.title || <span className="text-ink-faint">empty</span>}</p>
-                        </>
-                      ) : (
-                        <p className="text-danger">Page removed</p>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tocChanged && (
-        <div>
-          <h3 className="text-sm font-semibold text-ink mb-2">Table of Contents</h3>
-          <div className="overflow-x-auto rounded-lg border border-line max-h-96 overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-surface-raised text-ink-muted sticky top-0">
-                <tr>
-                  <th className="text-left font-medium px-3 py-2 w-1/2">Before</th>
-                  <th className="text-left font-medium px-3 py-2 w-1/2">After</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: tocRows }, (_, i) => {
-                  const b = preview.toc_before[i] ?? ''
-                  const a = preview.toc_after[i] ?? ''
-                  return (
-                    <tr key={i} className="border-t border-line">
-                      <td className="px-3 py-1.5 text-ink-muted">{b}</td>
-                      <td className={`px-3 py-1.5 ${a !== b ? 'text-accent' : 'text-ink-muted'}`}>{a}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {(preview.removed_files.length > 0 || preview.added_files.length > 0) && (
-        <div className="text-xs text-ink-muted space-y-1">
-          {preview.removed_files.length > 0 && <p>Removed files: <span className="font-mono">{preview.removed_files.map(pageName).join(', ')}</span></p>}
-          {preview.added_files.length > 0 && <p>Added files: <span className="font-mono">{preview.added_files.map(pageName).join(', ')}</span></p>}
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }
