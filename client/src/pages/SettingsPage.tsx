@@ -425,6 +425,7 @@ const CLEANUP_STEPS: { id: string; label: string; description: string }[] = [
   { id: 'headings',    label: 'Fix chapter headings',         description: 'Turn a chapter\'s styled first line ("Chapter 3", "IV", "Epilogue") into a real heading' },
   { id: 'titles',      label: 'Fill empty page titles',       description: "Give each page a title from its heading" },
   { id: 'toc',         label: 'Rebuild missing table of contents', description: 'When the table of contents is empty or has a single entry, rebuild it from the chapter headings' },
+  { id: 'toc_case',    label: 'Fix all-caps table of contents', description: 'Change entries like "CHAPTER ONE: THE WRONG DOOR" to "Chapter One: The Wrong Door". Chapter pages are not changed' },
 ]
 
 function CleanupTab() {
