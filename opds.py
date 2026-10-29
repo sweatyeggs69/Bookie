@@ -151,13 +151,47 @@ def register_opds_routes(app, book_path):
         for entry_id, title, href, summary in (
             ("all", "All books", "/opds/books", "Every book, sorted by title"),
             ("recent", "Recently added", "/opds/books?sort=recent", "Newest books first"),
+            ("series", "By series", "/opds/series", "Browse series, books in reading order"),
         ):
             entry = _sub(feed, _a("entry"))
             _sub(entry, _a("id"), f"urn:bookie:{entry_id}")
             _sub(entry, _a("title"), title)
             _sub(entry, _a("updated"), _iso(None))
             _sub(entry, _a("content"), summary, type="text")
-            _link(entry, "subsection", href, ACQ_TYPE)
+            _link(entry, "subsection", href, NAV_TYPE if entry_id == "series" else ACQ_TYPE)
+        return _xml_response(feed, NAV_TYPE)
+
+    @app.route("/opds/series", methods=["GET"])
+    @opds_enabled
+    @basic_auth_required
+    def opds_series():
+        page = max(1, request.args.get("page", 1, type=int))
+        query = (db.session.query(Book.series, db.func.count(Book.id),
+                                  db.func.max(Book.date_modified))
+                 .filter(Book.series.isnot(None), Book.series != "")
+                 .group_by(Book.series)
+                 .order_by(db.func.lower(Book.series)))
+        total = query.count()
+        pages = max(1, math.ceil(total / PER_PAGE))
+        rows = query.offset((page - 1) * PER_PAGE).limit(PER_PAGE).all()
+
+        def href(p: int) -> str:
+            return f"/opds/series?page={p}"
+
+        feed = _feed("urn:bookie:series", "By series", href(page), NAV_TYPE)
+        if page > 1:
+            _link(feed, "first", href(1), NAV_TYPE)
+            _link(feed, "previous", href(page - 1), NAV_TYPE)
+        if page < pages:
+            _link(feed, "next", href(page + 1), NAV_TYPE)
+            _link(feed, "last", href(pages), NAV_TYPE)
+        for name, count, updated in rows:
+            entry = _sub(feed, _a("entry"))
+            _sub(entry, _a("id"), f"urn:bookie:series:{quote(name, safe="")}")
+            _sub(entry, _a("title"), name)
+            _sub(entry, _a("updated"), _iso(updated))
+            _sub(entry, _a("content"), f"{count} book{'s' if count != 1 else ''}", type="text")
+            _link(entry, "subsection", f"/opds/books?series={quote(name, safe="")}", ACQ_TYPE)
         return _xml_response(feed, NAV_TYPE)
 
     @app.route("/opds/search.xml", methods=["GET"])
@@ -180,6 +214,7 @@ def register_opds_routes(app, book_path):
     def opds_books():
         q = request.args.get("q", "").strip()
         sort = request.args.get("sort", "")
+        series = request.args.get("series", "").strip()
         page = max(1, request.args.get("page", 1, type=int))
 
         query = Book.query
@@ -191,7 +226,14 @@ def register_opds_routes(app, book_path):
                 Book.author.ilike(like, escape="\\"),
                 Book.series.ilike(like, escape="\\"),
             ))
-        if sort == "recent":
+        if series:
+            # One series, in reading order; unnumbered books go last
+            query = query.filter(Book.series == series).order_by(
+                Book.series_order.is_(None), Book.series_order.asc(),
+                Book.title.asc(), Book.id.asc())
+            title = series
+            sort = ""
+        elif sort == "recent":
             query = query.order_by(Book.date_added.desc(), Book.id.desc())
             title = "Recently added"
         else:
@@ -209,9 +251,12 @@ def register_opds_routes(app, book_path):
                 params.append(f"q={quote(q)}")
             if sort:
                 params.append(f"sort={sort}")
+            if series:
+                params.append(f"series={quote(series, safe="")}")
             return "/opds/books?" + "&".join(params)
 
-        feed = _feed(f"urn:bookie:books:{sort or 'title'}:{q}", title, href(page), ACQ_TYPE)
+        feed_kind = f"series:{quote(series, safe="")}" if series else (sort or "title")
+        feed = _feed(f"urn:bookie:books:{feed_kind}:{q}", title, href(page), ACQ_TYPE)
         _sub(feed, f"{{{OPENSEARCH_NS}}}totalResults", str(total))
         _sub(feed, f"{{{OPENSEARCH_NS}}}itemsPerPage", str(PER_PAGE))
         if page > 1:
