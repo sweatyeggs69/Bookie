@@ -68,6 +68,30 @@ function useBookRoute() {
   return { bookId, open, close }
 }
 
+// Each grid size shows fewer columns than its card width alone would fit:
+// two fewer on Small, one fewer on Medium and Large, never below one.
+const GRID_GAP = 12
+const COLUMN_REDUCTION: Record<number, number> = { 120: 2, 160: 1, 210: 1 }
+
+function useGridColumns(minWidth: number) {
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const [count, setCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!el) return
+    const update = () => {
+      const fit = Math.floor((el.clientWidth + GRID_GAP) / (minWidth + GRID_GAP))
+      setCount(Math.max(1, fit - (COLUMN_REDUCTION[minWidth] ?? 1)))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [el, minWidth])
+
+  return { ref: setEl, count }
+}
+
 export default function LibraryPage() {
   const { filters, page, setPage, perPage, viewMode, gridSize, setVisibleBookIds } = useStore()
   const { bookId: selectedBookId, open: setSelectedBookId, close: closeBook } = useBookRoute()
@@ -94,6 +118,8 @@ export default function LibraryPage() {
 
   const books = data?.books ?? []
   const pages = data?.pages ?? 1
+
+  const gridCols = useGridColumns(gridSize)
 
   useEffect(() => {
     setVisibleBookIds((data?.books ?? []).map(b => b.id))
@@ -142,8 +168,13 @@ export default function LibraryPage() {
 
         {viewMode === 'grid' && books.length > 0 && (
           <div
+            ref={gridCols.ref}
             className="grid gap-3"
-            style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${gridSize}px, 1fr))` }}
+            style={{
+              gridTemplateColumns: gridCols.count
+                ? `repeat(${gridCols.count}, minmax(0, 1fr))`
+                : `repeat(auto-fill, minmax(${gridSize}px, 1fr))`,
+            }}
           >
             {books.map(book => (
               <BookCard key={book.id} book={book} onClick={() => setSelectedBookId(book.id)} />
