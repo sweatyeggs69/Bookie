@@ -45,6 +45,17 @@ PLACEHOLDERS = [
 ]
 
 
+def _format_index(value) -> str:
+    """Series index as text: 1.0 -> "1", 2.5 -> "2.5", None -> ""."""
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if num != num or num in (float("inf"), float("-inf")):
+        return ""
+    return str(int(num)) if num.is_integer() else f"{num:g}"
+
+
 def _safe(text: str, max_len: int = 80) -> str:
     """Normalize a string for use in a filename."""
     if not text:
@@ -115,7 +126,7 @@ def apply_scheme(
         "isbn13":       metadata.get("isbn13") or "",
         "language":     (metadata.get("language") or "").lower(),
         "series":       _safe(metadata.get("series") or ""),
-        "series_index": str(metadata.get("series_index") or ""),
+        "series_index": _format_index(metadata.get("series_index")),
         "original":     _safe(original_stem),
         "ext":          ext.lstrip("."),
     }

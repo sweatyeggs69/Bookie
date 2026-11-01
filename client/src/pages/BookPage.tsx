@@ -432,7 +432,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-ink-muted uppercase tracking-wide">Order</label>
-                  <input type="number" value={seriesOrder} onChange={e => setSeriesOrder(e.target.value)} placeholder="-" min={0} step={0.1} className="field" />
+                  <input type="number" inputMode="numeric" value={seriesOrder} onChange={e => setSeriesOrder(e.target.value)} placeholder="-" min={0} step={1} className="field" />
                 </div>
               </div>
 
