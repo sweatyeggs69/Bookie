@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useStore } from '../store'
@@ -6,7 +6,7 @@ import * as api from '../api/client'
 import FilterBar from '../components/FilterBar'
 import BookCard from '../components/BookCard'
 import BookListItem from '../components/BookListItem'
-import BookDialog from '../components/BookDialog'
+import BookPage from './BookPage'
 
 function getPageNumbers(current: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -20,8 +20,57 @@ function getPageNumbers(current: number, total: number): (number | '…')[] {
   return result
 }
 
+// The open book lives in the URL hash (#book/123) so the browser back
+// button and a page refresh both behave like the other views.
+function getHashBookId(): number | null {
+  const m = window.location.hash.match(/^#book\/(\d+)$/)
+  return m ? Number(m[1]) : null
+}
+
+function useBookRoute() {
+  const [bookId, setBookId] = useState<number | null>(getHashBookId)
+  // True when the book was opened from the grid, so closing can step back in history
+  const pushedRef = useRef(false)
+  const scrollRef = useRef(0)
+
+  useEffect(() => {
+    const onHashChange = () => setBookId(getHashBookId())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  // Top of the page when a book opens; back to where the grid was when it closes
+  useEffect(() => {
+    if (bookId !== null) {
+      window.scrollTo(0, 0)
+    } else {
+      pushedRef.current = false
+      const y = scrollRef.current
+      requestAnimationFrame(() => window.scrollTo(0, y))
+    }
+  }, [bookId])
+
+  const open = (id: number) => {
+    scrollRef.current = window.scrollY
+    pushedRef.current = true
+    window.location.hash = `book/${id}`
+  }
+
+  const close = () => {
+    if (pushedRef.current) {
+      history.back()
+    } else {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+      setBookId(null)
+    }
+  }
+
+  return { bookId, open, close }
+}
+
 export default function LibraryPage() {
-  const { filters, page, setPage, perPage, viewMode, gridSize, selectedBookId, setSelectedBookId, setVisibleBookIds } = useStore()
+  const { filters, page, setPage, perPage, viewMode, gridSize, setVisibleBookIds } = useStore()
+  const { bookId: selectedBookId, open: setSelectedBookId, close: closeBook } = useBookRoute()
 
   const queryKey = ['books', filters, page, perPage]
   const { data, isFetching, isError, error } = useQuery({
@@ -51,6 +100,10 @@ export default function LibraryPage() {
   }, [data?.books, setVisibleBookIds])
 
   const pageNumbers = getPageNumbers(page, pages)
+
+  if (selectedBookId !== null) {
+    return <BookPage key={selectedBookId} bookId={selectedBookId} onClose={closeBook} onDelete={closeBook} />
+  }
 
   return (
     <div>
@@ -148,13 +201,6 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {selectedBookId !== null && (
-        <BookDialog
-          bookId={selectedBookId}
-          onClose={() => setSelectedBookId(null)}
-          onDelete={() => setSelectedBookId(null)}
-        />
-      )}
     </div>
   )
 }
