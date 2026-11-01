@@ -304,8 +304,10 @@ export default function FilterBar() {
     </div>
   )
 
-  const filterControls = (
-    <div className="flex flex-wrap items-center gap-2">
+  // On desktop the filters render with `contents` so each control becomes a
+  // direct item of the toolbar row and wraps as part of it.
+  const renderFilterControls = (cls = 'flex flex-wrap items-center gap-2') => (
+    <div className={cls}>
       <Sel>
         <select
           value={filters.format}
@@ -351,7 +353,7 @@ export default function FilterBar() {
         </Sel>
       )}
 
-      <Sel width="w-32">
+      <Sel width="w-36">
         <select
           value={filters.sort}
           onChange={e => setFilters({ sort: e.target.value as typeof filters.sort })}
@@ -495,17 +497,17 @@ export default function FilterBar() {
           </div>
         ) : (
           <>
-            {/* Desktop: search + inline filters */}
-            <div className="hidden lg:flex flex-1 min-w-0 items-center gap-2">
-              <div className="w-64 xl:w-80 shrink-0">
+            {/* Desktop: search, filters and view controls in one wrapping row.
+                When space runs out, controls flow onto a second row instead of
+                stacking into a column. */}
+            <div className="hidden lg:flex flex-1 min-w-0 flex-wrap items-center gap-2">
+              <div className="w-56 xl:w-72 shrink-0">
                 <SearchBar />
               </div>
-              {filterControls}
-            </div>
-
-            {/* Desktop: right controls */}
-            <div className="hidden lg:flex items-center gap-2 shrink-0">
-              {viewControls}
+              {renderFilterControls('contents')}
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {viewControls}
+              </div>
             </div>
           </>
         )}
@@ -514,7 +516,7 @@ export default function FilterBar() {
       {/* Mobile: collapsible panels — only one shown at a time */}
       {!selectionMode && mobilePanel === 'filters' && (
         <div className="lg:hidden pb-1">
-          {filterControls}
+          {renderFilterControls()}
         </div>
       )}
       {!selectionMode && mobilePanel === 'views' && (
