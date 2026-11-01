@@ -73,32 +73,42 @@ const AREA_PADDING = 16 // px-4 py-4 on the content area
 const LIST_GAP = 4 // space-y-1
 const CARD_INFO_H = 70 // title + author block under the cover, until measured
 
-// The library shows exactly one screen of books, with no scrolling. The
-// grid size picks how many rows share the height (Small the most, Large the
-// fewest), cards are sized so those rows fill it, and as many columns as fit
-// across are used.
+// The library shows exactly one screen of books, with no scrolling. On wider
+// screens each grid size has a target card width; as many whole rows and
+// columns as fit at about that size are used. On phones the size sets the
+// column count and rows fill the height.
 interface GridLayout { rows: number; cols: number; cardW: number }
 
-function gridLayout(w: number, h: number, size: number, infoH: number): GridLayout {
-  const rowsFor = (cardW: number) =>
-    Math.max(1, Math.round((h + GRID_GAP) / (cardW * 1.5 + infoH + GRID_GAP)))
-  const small = rowsFor(120)
-  let medium = rowsFor(160)
-  let large = rowsFor(210)
-  // Keep the three sizes distinct where the height allows it
-  if (medium >= small && small > 1) medium = small - 1
-  if (large >= medium && medium > 1) large = medium - 1
-  const rows = size <= 120 ? small : size >= 210 ? large : medium
+// Target card width for each size on wider screens
+const DESKTOP_CARD_W: Record<number, number> = { 120: 125, 160: 165, 210: 230 }
 
-  const rowH = (h - GRID_GAP * (rows - 1)) / rows
-  let cardW = Math.min((rowH - infoH) / 1.5, size * 1.6, w)
-  let cols = Math.max(1, Math.floor((w + GRID_GAP) / (cardW + GRID_GAP)))
-  // Shrink cards a little rather than leave a wide gap at the sides
-  const tighter = (w - GRID_GAP * cols) / (cols + 1)
-  if (tighter >= cardW * 0.85) {
-    cols += 1
-    cardW = tighter
-  }
+// On phone-width screens the size picks the column count instead
+const PHONE_MAX_W = 600
+const PHONE_COLS: Record<number, number> = { 120: 4, 160: 3, 210: 2 }
+
+function phoneLayout(w: number, h: number, size: number, infoH: number): GridLayout {
+  const cols = PHONE_COLS[size] ?? 3
+  const colW = (w - GRID_GAP * (cols - 1)) / cols
+  const fitW = (rows: number) => ((h - GRID_GAP * (rows - 1)) / rows - infoH) / 1.5
+  const slot = colW * 1.5 + infoH + GRID_GAP
+  // Add the extra row that would fill the height only if the cards shrink
+  // by no more than 15% to make room for it
+  let rows = Math.max(1, Math.floor((h + GRID_GAP) / slot))
+  if (fitW(rows + 1) >= colW * 0.85) rows += 1
+  const cardW = Math.min(colW, fitW(rows))
+  return { rows, cols, cardW: Math.max(40, Math.floor(cardW)) }
+}
+
+function gridLayout(w: number, h: number, size: number, infoH: number): GridLayout {
+  if (w < PHONE_MAX_W) return phoneLayout(w, h, size, infoH)
+  const target = DESKTOP_CARD_W[size] ?? 165
+  const fitW = (rows: number) => ((h - GRID_GAP * (rows - 1)) / rows - infoH) / 1.5
+  let rows = Math.max(1, Math.floor((h + GRID_GAP) / (target * 1.5 + infoH + GRID_GAP)))
+  // Squeeze in one more row if the cards only shrink a little for it
+  if (fitW(rows + 1) >= target * 0.85) rows += 1
+  // Cards stay near their target width, growing at most 10% to fill the height
+  const cardW = Math.min(fitW(rows), target * 1.1, w)
+  const cols = Math.max(1, Math.floor((w + GRID_GAP) / (cardW + GRID_GAP)))
   return { rows, cols, cardW: Math.max(40, Math.floor(cardW)) }
 }
 
@@ -281,7 +291,7 @@ export default function LibraryPage() {
       {pages > 1 && books.length > 0 && (
         <nav
           aria-label="Pagination"
-          className="shrink-0 bg-surface border-t border-line px-4 py-1 flex items-center justify-center gap-1"
+          className="shrink-0 bg-surface border-t border-line px-4 py-1.5 flex items-center justify-center gap-1"
         >
           <button
             className="btn-outline !px-1.5 !py-1 disabled:opacity-40"
@@ -300,7 +310,7 @@ export default function LibraryPage() {
                 key={p}
                 onClick={() => setPage(p as number)}
                 className={[
-                  'min-w-[1.75rem] px-1.5 py-0.5 rounded text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  'min-w-[1.875rem] px-1.5 py-1 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   page === p
                     ? 'bg-accent text-white font-medium'
                     : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
