@@ -391,7 +391,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
             disabled={isCleaning}
             className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)] min-w-0 disabled:opacity-60"
           >
-            {/* Cover art. Shares the first grid row with the details card, so both are the same height. */}
+            {/* Cover art. Shares a grid row with the details card, so both are the same height. */}
             <div className="w-56 max-w-full mx-auto md:w-full md:col-start-1 md:row-start-1">
               <div className="w-full aspect-[2/3] rounded-xl overflow-hidden bg-surface-raised border border-line flex items-center justify-center shadow-lg shadow-black/20">
                 {coverUrl ? (
@@ -406,34 +406,6 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                   <BookOpen size={56} className="text-ink-faint" />
                 )}
               </div>
-            </div>
-
-            {/* Cover actions, below the art */}
-            <div className="w-56 max-w-full mx-auto md:w-full md:col-start-1 md:row-start-2 flex flex-col gap-2">
-              {pendingCoverPreview && (
-                <div className="flex items-center justify-center gap-2 text-xs">
-                  <span className="text-accent">New cover selected. Save to apply.</span>
-                  <button type="button" onClick={clearPendingCover} className="text-ink-muted hover:text-ink underline">
-                    Clear
-                  </button>
-                </div>
-              )}
-              <button type="button" onClick={() => setShowCoverDialog(true)} className="btn-outline justify-center w-full">
-                <Image size={14} />
-                Change Cover
-              </button>
-              {book.file_format?.toLowerCase() === 'epub' && (
-                <button
-                  type="button"
-                  onClick={() => cleanupMutation.mutate()}
-                  disabled={cleanupMutation.isPending}
-                  title="Runs the cleanup steps chosen in Settings, using the saved details"
-                  className="btn-outline justify-center w-full"
-                >
-                  {cleanupMutation.isPending ? <Spinner size={14} /> : <Sparkles size={14} />}
-                  Clean Up EPUB
-                </button>
-              )}
             </div>
 
             {/* Details card, stretched to the cover's height on wider screens */}
@@ -471,6 +443,36 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                   onTagAdded={handleTagAdded}
                   onTagRemoved={handleTagRemoved}
                 />
+              </div>
+
+              {/* Cover and file actions */}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setShowCoverDialog(true)} className="btn-outline justify-center whitespace-nowrap px-3 sm:px-4 flex-1 sm:flex-none">
+                    <Image size={14} />
+                    Change Cover
+                  </button>
+                  {book.file_format?.toLowerCase() === 'epub' && (
+                    <button
+                      type="button"
+                      onClick={() => cleanupMutation.mutate()}
+                      disabled={cleanupMutation.isPending}
+                      title="Runs the cleanup steps chosen in Settings, using the saved details"
+                      className="btn-outline justify-center whitespace-nowrap px-3 sm:px-4 flex-1 sm:flex-none"
+                    >
+                      {cleanupMutation.isPending ? <Spinner size={14} /> : <Sparkles size={14} />}
+                      Clean Up EPUB
+                    </button>
+                  )}
+                </div>
+                {pendingCoverPreview && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-accent">New cover selected. Save to apply.</span>
+                    <button type="button" onClick={clearPendingCover} className="text-ink-muted hover:text-ink underline">
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
 
               {saveMutation.isError && (
