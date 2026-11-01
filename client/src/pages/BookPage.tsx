@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Trash2, Save, Image, ChevronDown, Check, AlertCircle, Sparkles, ArrowLeft, Search } from 'lucide-react'
+import { BookOpen, Trash2, Save, ChevronDown, Check, AlertCircle, Sparkles, ArrowLeft, Search, Pencil, EllipsisVertical } from 'lucide-react'
 import * as api from '../api/client'
 import { Book, Tag, MetaResult } from '../types'
 import MetaDialog from '../components/MetaDialog'
@@ -98,6 +98,84 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
   )
 }
 
+interface ActionsMenuProps {
+  open: boolean
+  setOpen: (open: boolean) => void
+  disabled: boolean
+  isEpub: boolean
+  cleaning: boolean
+  deleting: boolean
+  confirmDelete: boolean
+  onCleanup: () => void
+  onFetchMetadata: () => void
+  onDelete: () => void
+  onDismissDelete: () => void
+}
+
+function ActionsMenu({
+  open, setOpen, disabled, isEpub, cleaning, deleting, confirmDelete,
+  onCleanup, onFetchMetadata, onDelete, onDismissDelete,
+}: ActionsMenuProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) { onDismissDelete(); return }
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  const item = 'flex items-center gap-2.5 w-full px-3 py-2 text-sm text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="More actions"
+        className="btn-outline !px-2.5 justify-center"
+      >
+        {cleaning || deleting ? <Spinner size={16} /> : <EllipsisVertical size={16} />}
+      </button>
+
+      {open && (
+        <div role="menu" className="absolute right-0 z-30 mt-2 w-52 overflow-hidden rounded-xl border border-line bg-surface-raised py-1 shadow-xl shadow-black/40">
+          {isEpub && (
+            <button type="button" role="menuitem" onClick={onCleanup} disabled={disabled || cleaning}
+              title="Runs the cleanup steps chosen in Settings, using the saved details"
+              className={`${item} text-ink hover:bg-surface-high`}>
+              <Sparkles size={14} className="text-ink-muted" />
+              Clean Up EPUB
+            </button>
+          )}
+          <button type="button" role="menuitem" onClick={onFetchMetadata} disabled={disabled}
+            className={`${item} text-ink hover:bg-surface-high`}>
+            <Search size={14} className="text-ink-muted" />
+            Fetch Metadata
+          </button>
+          <div className="my-1 border-t border-line" />
+          <button type="button" role="menuitem" onClick={onDelete} disabled={disabled || deleting}
+            className={`${item} ${confirmDelete ? 'bg-danger text-white hover:bg-danger/80' : 'text-danger hover:bg-danger/10'}`}>
+            <Trash2 size={14} />
+            {confirmDelete ? 'Click again to delete' : 'Delete Book'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
   const qc = useQueryClient()
   const { addToast } = useToast()
@@ -143,10 +221,11 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
   const [showMetaDialog, setShowMetaDialog] = useState(false)
   const [showCoverDialog, setShowCoverDialog] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // Escape goes back to the library, unless a picker dialog or a text field has focus
   useEffect(() => {
-    if (showMetaDialog || showCoverDialog) return
+    if (showMetaDialog || showCoverDialog || menuOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       const tag = (e.target as HTMLElement)?.tagName
@@ -155,7 +234,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [showMetaDialog, showCoverDialog, onClose])
+  }, [showMetaDialog, showCoverDialog, menuOpen, onClose])
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -330,40 +409,29 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
           </div>
 
           {book && (
-            <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center shrink-0">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting || isCleaning}
-                onBlur={() => setConfirmDelete(false)}
-                className={[
-                  'inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:opacity-60',
-                  confirmDelete ? 'bg-danger text-white hover:bg-danger/80' : 'text-danger border border-danger/40 hover:bg-danger/10',
-                ].join(' ')}
-              >
-                {isDeleting ? <Spinner size={14} /> : <Trash2 size={14} />}
-                {confirmDelete ? 'Confirm Delete' : 'Delete'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowMetaDialog(true)}
-                disabled={isCleaning}
-                className="btn-outline justify-center px-3 sm:px-4"
-              >
-                <Search size={14} />
-                <span className="sm:hidden">Metadata</span>
-                <span className="hidden sm:inline">Fetch Metadata</span>
-              </button>
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => saveMutation.mutate()}
                 disabled={isSaving || isCleaning}
-                className="btn-primary justify-center px-3 sm:px-4"
+                className="btn-primary justify-center flex-1 sm:flex-none"
               >
                 {isSaving ? <Spinner size={14} className="text-white" /> : <Save size={14} />}
                 Save
               </button>
+              <ActionsMenu
+                open={menuOpen}
+                setOpen={setMenuOpen}
+                disabled={isCleaning}
+                isEpub={book.file_format?.toLowerCase() === 'epub'}
+                cleaning={cleanupMutation.isPending}
+                deleting={isDeleting}
+                confirmDelete={confirmDelete}
+                onCleanup={() => { setMenuOpen(false); cleanupMutation.mutate() }}
+                onFetchMetadata={() => { setMenuOpen(false); setShowMetaDialog(true) }}
+                onDelete={handleDelete}
+                onDismissDelete={() => setConfirmDelete(false)}
+              />
             </div>
           )}
         </div>
@@ -393,7 +461,13 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
           >
             {/* Cover art. Shares a grid row with the details card, so both are the same height. */}
             <div className="w-56 max-w-full mx-auto md:w-full md:col-start-1 md:row-start-1">
-              <div className="w-full aspect-[2/3] rounded-xl overflow-hidden bg-surface-raised border border-line flex items-center justify-center shadow-lg shadow-black/20">
+              <button
+                type="button"
+                onClick={() => setShowCoverDialog(true)}
+                aria-label="Change cover"
+                title="Change cover"
+                className="group relative block w-full aspect-[2/3] rounded-xl overflow-hidden bg-surface-raised border border-line shadow-lg shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+              >
                 {coverUrl ? (
                   <img
                     src={coverUrl}
@@ -403,9 +477,21 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                     draggable={false}
                   />
                 ) : (
-                  <BookOpen size={56} className="text-ink-faint" />
+                  <span className="flex w-full h-full items-center justify-center">
+                    <BookOpen size={56} className="text-ink-faint" />
+                  </span>
                 )}
-              </div>
+                {/* Pencil overlay on hover or keyboard focus */}
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 [@media(hover:none)]:hidden">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg">
+                    <Pencil size={20} />
+                  </span>
+                </span>
+                {/* Touch screens can't hover, so keep a small pencil badge visible there */}
+                <span className="pointer-events-none absolute bottom-2 right-2 hidden h-9 w-9 items-center justify-center rounded-full bg-accent text-white shadow-lg [@media(hover:none)]:flex">
+                  <Pencil size={16} />
+                </span>
+              </button>
             </div>
 
             {/* Details card, stretched to the cover's height on wider screens */}
@@ -445,35 +531,14 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                 />
               </div>
 
-              {/* Cover and file actions */}
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setShowCoverDialog(true)} className="btn-outline justify-center whitespace-nowrap px-3 sm:px-4 flex-1 sm:flex-none">
-                    <Image size={14} />
-                    Change Cover
+              {pendingCoverPreview && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-accent">New cover selected. Save to apply.</span>
+                  <button type="button" onClick={clearPendingCover} className="text-ink-muted hover:text-ink underline">
+                    Clear
                   </button>
-                  {book.file_format?.toLowerCase() === 'epub' && (
-                    <button
-                      type="button"
-                      onClick={() => cleanupMutation.mutate()}
-                      disabled={cleanupMutation.isPending}
-                      title="Runs the cleanup steps chosen in Settings, using the saved details"
-                      className="btn-outline justify-center whitespace-nowrap px-3 sm:px-4 flex-1 sm:flex-none"
-                    >
-                      {cleanupMutation.isPending ? <Spinner size={14} /> : <Sparkles size={14} />}
-                      Clean Up EPUB
-                    </button>
-                  )}
                 </div>
-                {pendingCoverPreview && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-accent">New cover selected. Save to apply.</span>
-                    <button type="button" onClick={clearPendingCover} className="text-ink-muted hover:text-ink underline">
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
 
               {saveMutation.isError && (
                 <div className="flex items-center gap-2 text-xs text-danger">
