@@ -29,8 +29,6 @@ const SORT_OPTIONS = [
   { value: 'file_size', label: 'File Size' },
 ]
 
-const PER_PAGE_OPTIONS = [10, 25, 50, 100]
-
 const GRID_SIZES = [
   { value: 120, label: 'Small' },
   { value: 160, label: 'Medium' },
@@ -57,7 +55,6 @@ function Sel({ children, width = 'w-32' }: { children: React.ReactNode; width?: 
 export default function FilterBar() {
   const {
     filters, setFilters, viewMode, setViewMode, gridSize, setGridSize,
-    perPage, setPerPage,
     selectionMode, selectedBookIds, visibleBookIds, setSelectionMode, clearSelection, selectAllBooks,
   } = useStore()
   // 'filters' | 'views' | null — only one panel open at a time on mobile
@@ -392,20 +389,6 @@ export default function FilterBar() {
   // Shared view controls — used in desktop row and mobile panel
   const viewControls = (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Per-page dropdown */}
-      <Sel>
-        <select
-          value={perPage}
-          onChange={e => setPerPage(Number(e.target.value))}
-          className={`${selectCls} w-full`}
-          aria-label="Books per page"
-        >
-          {PER_PAGE_OPTIONS.map(n => (
-            <option key={n} value={n}>{n} / page</option>
-          ))}
-        </select>
-      </Sel>
-
       {/* Grid size — only in grid mode */}
       {viewMode === 'grid' && (
         <Sel>
