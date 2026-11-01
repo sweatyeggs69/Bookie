@@ -43,10 +43,6 @@ interface StoreState extends Omit<PersistedPrefs, 'view'> {
   setViewMode: (mode: 'grid' | 'list') => void
   setGridSize: (size: number) => void
 
-  // Selected book (detail panel / drawer)
-  selectedBookId: number | null
-  setSelectedBookId: (id: number | null) => void
-
   // Search query (convenience wrapper — sets filters.q and resets page)
   setSearchQuery: (query: string) => void
 
@@ -113,10 +109,6 @@ export const useStore = create<StoreState>()(
 
       gridSize: 160,
       setGridSize: (gridSize) => set({ gridSize }),
-
-      // Selected book
-      selectedBookId: null,
-      setSelectedBookId: (selectedBookId) => set({ selectedBookId }),
 
       // Search query — sets filters.q and resets page
       setSearchQuery: (query) =>
