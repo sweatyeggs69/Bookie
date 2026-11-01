@@ -104,7 +104,7 @@ export default function App() {
             <Sidebar onAuthChange={checkAuth} />
             <main
               className={[
-                'flex-1 min-w-0 transition-[padding-left] duration-200 ease-in-out',
+                'flex-1 min-w-0 flex flex-col transition-[padding-left] duration-200 ease-in-out',
                 sidebarCollapsed ? 'lg:pl-14' : 'lg:pl-72',
               ].join(' ')}
             >

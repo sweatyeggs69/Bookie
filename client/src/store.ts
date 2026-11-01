@@ -7,7 +7,6 @@ import type { Filters, User } from './types'
 interface PersistedPrefs {
   viewMode: 'grid' | 'list'
   gridSize: number
-  perPage: number
   page: number
   filters: Filters
   view: 'library' | 'settings'
@@ -36,8 +35,6 @@ interface StoreState extends Omit<PersistedPrefs, 'view'> {
   // Pagination
   page: number
   setPage: (page: number) => void
-  perPage: number
-  setPerPage: (perPage: number) => void
 
   // View preferences (persisted)
   setViewMode: (mode: 'grid' | 'list') => void
@@ -100,8 +97,6 @@ export const useStore = create<StoreState>()(
       // Pagination
       page: 1,
       setPage: (page) => set((state) => ({ page, lastSelectedId: state.selectionMode ? null : state.lastSelectedId })),
-      perPage: 25,
-      setPerPage: (perPage) => set({ perPage, page: 1 }),
 
       // View preferences (initial values — overridden by persisted storage)
       viewMode: 'grid',
@@ -143,7 +138,6 @@ export const useStore = create<StoreState>()(
       partialize: (state: StoreState): PersistedPrefs => ({
         viewMode: state.viewMode,
         gridSize: state.gridSize,
-        perPage: state.perPage,
         page: state.page,
         filters: state.filters,
         view: state.view === 'upload' ? 'library' : state.view,
