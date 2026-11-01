@@ -132,10 +132,10 @@ export default function LibraryPage() {
   }
 
   return (
-    <div>
+    <div className="flex-1 flex flex-col">
       <FilterBar />
 
-      <div className="px-4 py-4">
+      <div className="flex-1 px-4 py-4">
         {isFetching && books.length > 0 && (
           <div className="flex justify-center mb-3">
             <Loader2 className="w-5 h-5 text-accent animate-spin" />
@@ -189,49 +189,52 @@ export default function LibraryPage() {
             ))}
           </div>
         )}
-
-        {pages > 1 && books.length > 0 && (
-          <div className="flex items-center justify-center gap-1 mt-6 pb-6">
-            <button
-              className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={14} />
-            </button>
-
-            {pageNumbers.map((p, i) =>
-              p === '…' ? (
-                <span key={`ellipsis-${i}`} className="px-1 text-ink-faint text-sm select-none">…</span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setPage(p as number)}
-                  className={[
-                    'min-w-[2rem] px-2 py-1.5 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                    page === p
-                      ? 'bg-accent text-white font-medium'
-                      : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
-                  ].join(' ')}
-                >
-                  {p}
-                </button>
-              )
-            )}
-
-            <button
-              className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
-              onClick={() => setPage(page + 1)}
-              disabled={page >= pages}
-              aria-label="Next page"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        )}
       </div>
 
+      {/* Docked to the bottom of the view, like the filter bar is to the top */}
+      {pages > 1 && books.length > 0 && (
+        <nav
+          aria-label="Pagination"
+          className="sticky bottom-0 z-30 bg-surface border-t border-line px-4 py-2.5 flex items-center justify-center gap-1"
+        >
+          <button
+            className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
+            onClick={() => setPage(page - 1)}
+            disabled={page <= 1}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          {pageNumbers.map((p, i) =>
+            p === '…' ? (
+              <span key={`ellipsis-${i}`} className="px-1 text-ink-faint text-sm select-none">…</span>
+            ) : (
+              <button
+                key={p}
+                onClick={() => setPage(p as number)}
+                className={[
+                  'min-w-[2rem] px-2 py-1.5 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  page === p
+                    ? 'bg-accent text-white font-medium'
+                    : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
+                ].join(' ')}
+              >
+                {p}
+              </button>
+            )
+          )}
+
+          <button
+            className="btn-outline !px-2 !py-1.5 disabled:opacity-40"
+            onClick={() => setPage(page + 1)}
+            disabled={page >= pages}
+            aria-label="Next page"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </nav>
+      )}
     </div>
   )
 }
