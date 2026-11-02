@@ -397,7 +397,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
         </button>
 
         {/* Page header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-bold text-ink break-words">{displayTitle}</h1>
             {book && (
@@ -410,11 +410,12 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
 
           {book && (
             <div className="flex items-center gap-2 shrink-0">
+              {/* On phones the Save button moves to the bottom of the page instead */}
               <button
                 type="button"
                 onClick={() => saveMutation.mutate()}
                 disabled={isSaving || isCleaning}
-                className="btn-primary justify-center flex-1 sm:flex-none"
+                className="btn-primary justify-center hidden sm:inline-flex"
               >
                 {isSaving ? <Spinner size={14} className="text-white" /> : <Save size={14} />}
                 Save
@@ -582,6 +583,18 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
               </div>
             </div>
           </fieldset>
+        )}
+
+        {book && (
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={isSaving || isCleaning}
+            className="btn-primary mt-6 w-full justify-center sm:hidden"
+          >
+            {isSaving ? <Spinner size={14} className="text-white" /> : <Save size={14} />}
+            Save
+          </button>
         )}
       </div>
 
