@@ -53,7 +53,7 @@ export default function Dialog({ open, onClose, title, children, footer, wide = 
       aria-label={title}
     >
       {/* Scrim */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm dialog-scrim" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs dialog-scrim" />
 
       {/* Panel */}
       <div

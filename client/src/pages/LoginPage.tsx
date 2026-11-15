@@ -57,7 +57,7 @@ export default function LoginPage({ onSuccess }: Props) {
                 autoFocus
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
+                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-hidden focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
                 placeholder="Username"
                 disabled={loading}
               />
@@ -71,7 +71,7 @@ export default function LoginPage({ onSuccess }: Props) {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
+                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-hidden focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
                 placeholder="Password"
                 disabled={loading}
               />

@@ -159,7 +159,7 @@ export default function CoverDialog({ bookTitle, bookAuthor, onClose, onSelected
                   src={r.cover_url}
                   alt={r.title}
                   loading="lazy"
-                  className="w-full aspect-[2/3] object-cover bg-surface-raised"
+                  className="w-full aspect-2/3 object-cover bg-surface-raised"
                   onLoad={e => { if (e.currentTarget.naturalHeight < 1000) e.currentTarget.closest('button')!.style.display = 'none' }}
                   onError={e => (e.currentTarget.closest('button')!.style.display = 'none')}
                 />

@@ -109,7 +109,7 @@ function NavItem({ label, icon: Icon, active, onClick, sub, danger, busy, disabl
               : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
           : active
             ? 'bg-surface-hover text-ink'
-            : 'text-ink/80 hover:bg-surface-hover hover:text-ink',
+            : 'text-ink hover:bg-surface-hover',
       ].join(' ')}
     >
       {Icon && (busy
@@ -265,7 +265,7 @@ export default function Sidebar({ onAuthChange }: Props) {
       {mobileOpen && (
         <button
           type="button"
-          className="lg:hidden fixed inset-0 z-[44] bg-black/50 dialog-scrim"
+          className="lg:hidden fixed inset-0 z-44 bg-black/50 dialog-scrim"
           onClick={() => setMobileOpen(false)}
           aria-label="Close menu"
         />
@@ -275,7 +275,7 @@ export default function Sidebar({ onAuthChange }: Props) {
       <nav
         aria-label="Sidebar"
         className={[
-          'fixed top-0 left-0 z-[45] h-full w-72 max-w-[85vw] flex flex-col bg-surface border-r border-line',
+          'fixed top-0 left-0 z-45 h-full w-72 max-w-[85vw] flex flex-col bg-surface border-r border-line',
           'transition-transform duration-200 ease-in-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           sidebarCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0',
@@ -319,7 +319,7 @@ export default function Sidebar({ onAuthChange }: Props) {
       <nav
         aria-label="Sidebar (collapsed)"
         className={[
-          'hidden lg:flex fixed top-0 left-0 z-[45] h-full w-14 flex-col items-center bg-surface border-r border-line',
+          'hidden lg:flex fixed top-0 left-0 z-45 h-full w-14 flex-col items-center bg-surface border-r border-line',
           'transition-opacity duration-150',
           sidebarCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none',
         ].join(' ')}
