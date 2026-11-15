@@ -65,7 +65,7 @@ function TagDropdown({ allTags, bookTags, onTagAdded, onTagRemoved }: TagDropdow
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded bg-surface-raised border border-line text-sm text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded bg-surface-raised border border-line text-sm text-ink hover:border-line-strong transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className={`truncate ${bookTags.length > 0 ? 'text-ink' : 'text-ink-muted'}`}>
           {bookTags.length > 0 ? bookTags.join(', ') : 'Add a Tag'}
@@ -144,7 +144,7 @@ function ActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         title="More actions"
-        className="btn-outline !px-2.5 justify-center"
+        className="btn-outline px-2.5! justify-center"
       >
         {cleaning || deleting ? <Spinner size={16} /> : <EllipsisVertical size={16} />}
       </button>
@@ -390,7 +390,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
         <button
           type="button"
           onClick={onClose}
-          className="mb-4 -ml-1 inline-flex items-center gap-1 rounded-lg px-1 py-0.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="mb-4 -ml-1 inline-flex items-center gap-1 rounded-lg px-1 py-0.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
         >
           <ArrowLeft size={16} />
           Library
@@ -399,7 +399,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
         {/* Page header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold text-ink break-words">{displayTitle}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-ink wrap-break-word">{displayTitle}</h1>
             {book && (
               <p className="mt-2 text-base text-ink-muted truncate">
                 {book.author || 'Unknown author'}
@@ -467,7 +467,7 @@ export default function BookPage({ bookId, onClose, onDelete }: BookPageProps) {
                 onClick={() => setShowCoverDialog(true)}
                 aria-label="Change cover"
                 title="Change cover"
-                className="group relative block w-full aspect-[2/3] rounded-xl overflow-hidden bg-surface-raised border border-line shadow-lg shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                className="group relative block w-full aspect-2/3 rounded-xl overflow-hidden bg-surface-raised border border-line shadow-lg shadow-black/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
               >
                 {coverUrl ? (
                   <img

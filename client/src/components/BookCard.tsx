@@ -84,7 +84,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           'group relative flex flex-col w-full text-left',
           'rounded-xl overflow-visible',
           'border transition-all duration-200 ease-out',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
           'cursor-pointer min-w-0',
           isSelected
             ? 'bg-accent/10 border-accent shadow-lg shadow-accent/20'
@@ -119,7 +119,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           )}
 
           {seriesBadge && (
-            <span className="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white backdrop-blur-sm border border-white/10">
+            <span className="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white backdrop-blur-xs border border-white/10">
               {seriesBadge}
             </span>
           )}
@@ -185,7 +185,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
             {emailAddresses.length > 0 && (
               <div className="flex items-stretch">
                 <button type="button" onClick={() => { setMenuOpen(false); quickSendMutation.mutate() }}
-                  className="flex items-center gap-2 flex-[3] px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                  className="flex items-center gap-2 flex-3 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                   <Send size={14} className="text-ink-muted" /> Send
                 </button>
                 <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}

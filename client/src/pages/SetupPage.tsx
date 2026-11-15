@@ -86,7 +86,7 @@ export default function SetupPage({ onSuccess }: Props) {
                 autoFocus
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
+                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-hidden focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
                 placeholder="Choose a username"
                 disabled={loading}
               />
@@ -103,7 +103,7 @@ export default function SetupPage({ onSuccess }: Props) {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
+                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-hidden focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
                 placeholder="At least 6 characters"
                 disabled={loading}
               />
@@ -120,7 +120,7 @@ export default function SetupPage({ onSuccess }: Props) {
                 autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
+                className="w-full bg-surface-raised border border-line rounded px-3 py-2 text-ink placeholder-ink-muted text-sm focus:outline-hidden focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors"
                 placeholder="Repeat your password"
                 disabled={loading}
               />

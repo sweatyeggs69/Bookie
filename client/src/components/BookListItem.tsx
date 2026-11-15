@@ -114,7 +114,7 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
           tabIndex={0}
           onClick={e => handleRowClick(e)}
           onKeyDown={e => e.key === 'Enter' && handleRowClick()}
-          className="flex items-center gap-3 flex-1 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded cursor-pointer"
+          className="flex items-center gap-3 flex-1 min-w-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded cursor-pointer"
           aria-label={`Open ${book.title ?? book.filename}`}
         >
           {/* Thumbnail */}
@@ -202,7 +202,7 @@ export default function BookListItem({ book, onClick }: BookListItemProps) {
                 {emailAddresses.length > 0 && (
                   <div className="flex items-stretch">
                     <button type="button" onClick={() => { setMenuOpen(false); quickSendMutation.mutate() }}
-                      className="flex items-center gap-2 flex-[3] px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
+                      className="flex items-center gap-2 flex-3 px-3 py-2 text-sm text-ink hover:bg-surface-high transition-colors">
                       <Send size={14} className="text-ink-muted" /> Send
                     </button>
                     <button type="button" onClick={() => { setMenuOpen(false); setSendOpen(true) }}

@@ -39,7 +39,7 @@ const selectCls = [
   'appearance-none px-3 py-1.5 pr-7 rounded-lg border border-line',
   'bg-surface-raised text-ink text-sm',
   'hover:border-line-strong transition-colors',
-  'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent',
+  'focus:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent',
   'cursor-pointer',
 ].join(' ')
 
@@ -366,7 +366,7 @@ export default function FilterBar() {
       <button
         type="button"
         onClick={toggleOrder}
-        className="shrink-0 px-3 py-1.5 rounded-lg border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="shrink-0 px-3 py-1.5 rounded-lg border border-line bg-surface-raised text-ink text-sm hover:border-line-strong transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
         aria-label={`Sort ${filters.order === 'asc' ? 'ascending' : 'descending'} — click to toggle`}
       >
         {filters.order === 'asc' ? '↑ Asc' : '↓ Desc'}
@@ -376,7 +376,7 @@ export default function FilterBar() {
         <button
           type="button"
           onClick={clearFilters}
-          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded text-sm text-ink-muted border border-line hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Clear all filters"
         >
           <X size={13} />
@@ -410,7 +410,7 @@ export default function FilterBar() {
         type="button"
         onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
         aria-label={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-        className="h-8 px-2.5 rounded-lg border border-line bg-surface-raised text-ink-muted hover:text-ink hover:border-line-strong transition-colors focus-visible:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+        className="h-8 px-2.5 rounded-lg border border-line bg-surface-raised text-ink-muted hover:text-ink hover:border-line-strong transition-colors focus-visible:outline-hidden focus:border-accent focus:ring-1 focus:ring-accent"
       >
         {viewMode === 'grid' ? <Grid2x2 size={15} /> : <List size={15} />}
       </button>
@@ -437,7 +437,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('filters')}
               className={[
-                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'relative flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'filters'
                   ? 'border-accent text-accent bg-accent/10'
                   : hasActiveFilters
@@ -458,7 +458,7 @@ export default function FilterBar() {
               type="button"
               onClick={() => toggleMobilePanel('views')}
               className={[
-                'flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'flex items-center justify-center w-10 h-10 shrink-0 rounded-lg border bg-surface-raised transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
                 mobilePanel === 'views'
                   ? 'border-accent text-accent bg-accent/10'
                   : 'border-line text-ink-muted hover:border-line-strong hover:text-ink',

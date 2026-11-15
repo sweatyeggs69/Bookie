@@ -1,5 +1,5 @@
 # ── Stage 1: Build React frontend ─────────────────────────
-FROM node:20-alpine AS frontend-builder
+FROM node:26-alpine AS frontend-builder
 
 WORKDIR /app/client
 
@@ -10,7 +10,7 @@ COPY client/ .
 RUN npm --prefix /app/client run build
 
 # ── Stage 2: Build Python deps ─────────────────────────────
-FROM python:3.12-slim AS py-builder
+FROM python:3.15-slim AS py-builder
 
 WORKDIR /build
 
@@ -33,12 +33,12 @@ COPY requirements.txt .
 # Upgrade pip to fix CVE-2026-1703 (wheel extraction path traversal via
 # os.path.commonprefix bypass — requires pip >= 26.0).
 # Note: CVE-2025-8869 (sdist tar symlink traversal) is not applicable on
-# Python 3.12 which fully implements PEP 706 and never reaches that code path.
+# Python 3.12+ which fully implements PEP 706 and never reaches that code path.
 RUN pip install --upgrade "pip>=26.0"
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ── Stage 3: Runtime ───────────────────────────────────────
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 LABEL org.opencontainers.image.title="Bookie"
 LABEL org.opencontainers.image.description="Self-hosted ebook manager"

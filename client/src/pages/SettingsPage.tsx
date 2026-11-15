@@ -524,7 +524,7 @@ function CleanupTab() {
           </button>
         </section>
 
-        <section className="card p-4 space-y-3 order-last lg:order-none">
+        <section className="card p-4 space-y-3 order-last lg:order-0">
           <div>
             <h2 className="text-sm font-semibold text-ink">Clean Up Library</h2>
             <p className="text-xs text-ink-muted leading-snug mt-0.5">
@@ -651,9 +651,9 @@ function PageFrame({ label, html }: { label: string; html: string }) {
       <figcaption className="text-[11px] font-medium uppercase tracking-wider text-ink-muted mb-1.5">{label}</figcaption>
       {html ? (
         <iframe title={`${label} page`} sandbox="" srcDoc={html}
-          className="block w-full aspect-[3/4] max-h-[26rem] rounded-md border border-line bg-white shadow-sm" />
+          className="block w-full aspect-3/4 max-h-104 rounded-md border border-line bg-white shadow-xs" />
       ) : (
-        <div className="aspect-[3/4] max-h-[26rem] rounded-md border border-dashed border-line flex items-center justify-center text-xs text-ink-faint">
+        <div className="aspect-3/4 max-h-104 rounded-md border border-dashed border-line flex items-center justify-center text-xs text-ink-faint">
           Page removed
         </div>
       )}
@@ -755,8 +755,8 @@ function BeforeAfterRows({ rows }: { rows: { key: string; before: string; after:
         const changed = r.after !== r.before
         return (
           <div key={r.key} className="grid grid-cols-2 gap-3 py-1.5">
-            <p className="text-ink-muted break-words">{r.before}</p>
-            <div className="break-words">
+            <p className="text-ink-muted wrap-break-word">{r.before}</p>
+            <div className="wrap-break-word">
               {r.after === null ? (
                 <p className="text-danger">Removed</p>
               ) : (

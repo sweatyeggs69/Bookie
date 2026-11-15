@@ -234,7 +234,7 @@ export default function LibraryPage() {
 
       <div ref={fit.areaRef} className="relative flex-1 min-h-0 overflow-y-auto px-4 py-4">
         {isFetching && books.length > 0 && (
-          <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-surface-card border border-line p-1.5 shadow">
+          <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-surface-card border border-line p-1.5 shadow-sm">
             <Loader2 className="w-4 h-4 text-accent animate-spin" />
           </div>
         )}
@@ -294,7 +294,7 @@ export default function LibraryPage() {
           className="shrink-0 bg-surface border-t border-line px-4 py-1.5 flex items-center justify-center gap-1"
         >
           <button
-            className="btn-outline !px-1.5 !py-1 disabled:opacity-40"
+            className="btn-outline px-1.5! py-1! disabled:opacity-40"
             onClick={() => setPage(page - 1)}
             disabled={page <= 1}
             aria-label="Previous page"
@@ -310,7 +310,7 @@ export default function LibraryPage() {
                 key={p}
                 onClick={() => setPage(p as number)}
                 className={[
-                  'min-w-[1.875rem] px-1.5 py-1 rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  'min-w-7.5 px-1.5 py-1 rounded text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
                   page === p
                     ? 'bg-accent text-white font-medium'
                     : 'border border-line text-ink-muted hover:border-line-strong hover:text-ink',
@@ -322,7 +322,7 @@ export default function LibraryPage() {
           )}
 
           <button
-            className="btn-outline !px-1.5 !py-1 disabled:opacity-40"
+            className="btn-outline px-1.5! py-1! disabled:opacity-40"
             onClick={() => setPage(page + 1)}
             disabled={page >= pages}
             aria-label="Next page"

@@ -98,7 +98,7 @@ export default function MetaDialog({ bookTitle, bookAuthor, onClose, onApplied }
                   'group flex items-start gap-3 w-full p-3 rounded-lg text-left',
                   'bg-surface-raised border border-line',
                   'hover:border-accent/50 hover:bg-surface-high',
-                  'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer',
+                  'transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent cursor-pointer',
                 ].join(' ')}
               >
                 <div className="shrink-0 w-12 h-[72px] rounded overflow-hidden bg-surface-high border border-line flex items-center justify-center">
@@ -149,7 +149,7 @@ export default function MetaDialog({ bookTitle, bookAuthor, onClose, onApplied }
           </div>
 
           <div className="p-4 flex gap-4 items-stretch">
-            <div className="flex-1 aspect-[2/3] rounded-lg overflow-hidden border border-line bg-surface-raised flex items-center justify-center">
+            <div className="flex-1 aspect-2/3 rounded-lg overflow-hidden border border-line bg-surface-raised flex items-center justify-center">
               {previewResult.cover_url ? (
                 <img
                   src={previewResult.cover_url}
