@@ -292,7 +292,7 @@ def _prune_previews() -> None:
 
 def _editable_book(book_id: int):
     """The book, or a 409 while an EPUB cleanup is rewriting its file."""
-    book = Book.query.get_or_404(book_id)
+    book = db.get_or_404(Book, book_id)
     if book.is_cleaning():
         abort(make_response(jsonify({"error": "This book is being cleaned up. Try again in a moment."}), 409))
     return book
@@ -618,7 +618,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>", methods=["GET"])
     @login_required
     def get_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = db.get_or_404(Book, book_id)
         return jsonify(book.to_dict())
 
     @app.route("/api/books/scan", methods=["POST"])
@@ -1052,7 +1052,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/download", methods=["GET"])
     @login_required
     def download_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = db.get_or_404(Book, book_id)
         filepath = _book_path(book)
         if not filepath.exists():
             abort(404)
@@ -1198,7 +1198,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/fetch-metadata", methods=["POST"])
     @login_required
     def fetch_metadata(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = db.get_or_404(Book, book_id)
         data = request.get_json(silent=True) or {}
         source = data.get("source", "open_library")
         query = data.get("query") or book.isbn or book.isbn13 or book.title or ""
@@ -1399,7 +1399,7 @@ def create_app():
     @app.route("/api/tags/<int:tag_id>", methods=["DELETE"])
     @login_required
     def delete_tag(tag_id):
-        tag = Tag.query.get_or_404(tag_id)
+        tag = db.get_or_404(Tag, tag_id)
         db.session.delete(tag)
         db.session.commit()
         return jsonify({"success": True})
@@ -1407,14 +1407,14 @@ def create_app():
     @app.route("/api/books/<int:book_id>/tags", methods=["GET"])
     @login_required
     def list_book_tags(book_id):
-        Book.query.get_or_404(book_id)
+        db.get_or_404(Book, book_id)
         bts = BookTag.query.filter_by(book_id=book_id).all()
         return jsonify([bt.tag.to_dict() for bt in bts])
 
     @app.route("/api/books/<int:book_id>/tags", methods=["POST"])
     @login_required
     def add_book_tag(book_id):
-        Book.query.get_or_404(book_id)
+        db.get_or_404(Book, book_id)
         data = request.get_json(silent=True) or {}
         name = (data.get("name") or "").strip()
         if not name:
@@ -1470,7 +1470,7 @@ def create_app():
     @app.route("/api/email-addresses/<int:addr_id>", methods=["PUT"])
     @login_required
     def update_email_address(addr_id):
-        addr = EmailAddress.query.get_or_404(addr_id)
+        addr = db.get_or_404(EmailAddress, addr_id)
         data = request.get_json(silent=True) or {}
         if "label" in data:
             addr.label = (data["label"] or "").strip() or addr.email
@@ -1487,7 +1487,7 @@ def create_app():
     @app.route("/api/email-addresses/<int:addr_id>", methods=["DELETE"])
     @login_required
     def delete_email_address(addr_id):
-        addr = EmailAddress.query.get_or_404(addr_id)
+        addr = db.get_or_404(EmailAddress, addr_id)
         was_default = addr.is_default
         db.session.delete(addr)
         db.session.commit()
@@ -1503,7 +1503,7 @@ def create_app():
     @login_required
     def set_default_email(addr_id):
         EmailAddress.query.filter_by(is_default=True).update({"is_default": False})
-        addr = EmailAddress.query.get_or_404(addr_id)
+        addr = db.get_or_404(EmailAddress, addr_id)
         addr.is_default = True
         db.session.commit()
         return jsonify(addr.to_dict())
@@ -1515,7 +1515,7 @@ def create_app():
     @app.route("/api/books/<int:book_id>/send", methods=["POST"])
     @login_required
     def send_book(book_id):
-        book = Book.query.get_or_404(book_id)
+        book = db.get_or_404(Book, book_id)
         data = request.get_json(silent=True) or {}
 
         # Resolve recipient: explicit > EmailAddress table default > legacy Settings key
