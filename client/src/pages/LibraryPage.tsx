@@ -143,7 +143,15 @@ function useFitLayout(viewMode: 'grid' | 'list', gridSize: number) {
       const update = () => {
         setItemH(first.offsetHeight)
         const cover = first.firstElementChild as HTMLElement | null
-        if (cover && viewMode === 'grid') setInfoH(Math.max(0, first.offsetHeight - cover.offsetHeight))
+        if (cover && viewMode === 'grid') {
+          // Use fractional sizes: offsetHeight rounds the card and cover
+          // separately, so the difference wobbles by a pixel as the card
+          // width changes. That wobble fed back into the card width and made
+          // the grid flip between two sizes every frame.
+          const info = first.getBoundingClientRect().height - cover.getBoundingClientRect().height
+          const next = Math.max(0, Math.ceil(info))
+          setInfoH(prev => (Math.abs(prev - next) <= 1 ? prev : next))
+        }
       }
       update()
       ro = new ResizeObserver(update)
