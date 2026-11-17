@@ -7,6 +7,7 @@ import FilterBar from '../components/FilterBar'
 import BookCard from '../components/BookCard'
 import BookListItem from '../components/BookListItem'
 import BookPage from './BookPage'
+import { useIsPhone, clampSize, PHONE_RANGE, DESKTOP_RANGE } from '../gridSize'
 
 function getPageNumbers(current: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -68,56 +69,62 @@ function useBookRoute() {
   return { bookId, open, close }
 }
 
-const GRID_GAP = 12
+const GRID_GAP = 12 // gap-3
 const AREA_PADDING = 16 // px-4 py-4 on the content area
 const LIST_GAP = 4 // space-y-1
-const CARD_INFO_H = 70 // title + author block under the cover, until measured
+// Height of the title and author block under each cover. BookCard gives it
+// this fixed height, so a card's size follows from its width alone and the
+// grid never has to measure a rendered card.
+const CARD_INFO_H = 73
+const CARD_BORDER = 2 // 1px border on each side
 
-// The library shows exactly one screen of books, with no scrolling. On wider
-// screens each grid size has a target card width; as many whole rows and
-// columns as fit at about that size are used. On phones the size sets the
-// column count and rows fill the height.
+// The library shows exactly one screen of books, with no scrolling, so the
+// page size has to come from the layout. Only the content area is measured;
+// its size doesn't depend on the cards, so nothing here can feed back into
+// itself.
 interface GridLayout { rows: number; cols: number; cardW: number }
 
-// Target card width for each size on wider screens
-const DESKTOP_CARD_W: Record<number, number> = { 120: 125, 160: 165, 210: 230 }
-
-// On phone-width screens the size picks the column count instead
-const PHONE_MAX_W = 600
-const PHONE_COLS: Record<number, number> = { 120: 4, 160: 3, 210: 2 }
-
-function phoneLayout(w: number, h: number, size: number, infoH: number): GridLayout {
-  const cols = PHONE_COLS[size] ?? 3
-  const colW = (w - GRID_GAP * (cols - 1)) / cols
-  const fitW = (rows: number) => ((h - GRID_GAP * (rows - 1)) / rows - infoH) / 1.5
-  const slot = colW * 1.5 + infoH + GRID_GAP
-  // Add the extra row that would fill the height only if the cards shrink
-  // by no more than 15% to make room for it
-  let rows = Math.max(1, Math.floor((h + GRID_GAP) / slot))
-  if (fitW(rows + 1) >= colW * 0.85) rows += 1
-  const cardW = Math.min(colW, fitW(rows))
-  return { rows, cols, cardW: Math.max(40, Math.floor(cardW)) }
+function cardHeight(cardW: number) {
+  return (cardW - CARD_BORDER) * 1.5 + CARD_INFO_H + CARD_BORDER
 }
 
-function gridLayout(w: number, h: number, size: number, infoH: number): GridLayout {
-  if (w < PHONE_MAX_W) return phoneLayout(w, h, size, infoH)
-  const target = DESKTOP_CARD_W[size] ?? 165
-  const fitW = (rows: number) => ((h - GRID_GAP * (rows - 1)) / rows - infoH) / 1.5
-  let rows = Math.max(1, Math.floor((h + GRID_GAP) / (target * 1.5 + infoH + GRID_GAP)))
-  // Squeeze in one more row if the cards only shrink a little for it
-  if (fitW(rows + 1) >= target * 0.85) rows += 1
-  // Cards stay near their target width, growing at most 10% to fill the height
-  const cardW = Math.min(fitW(rows), target * 1.1, w)
+// Widest card for which `rows` rows fit in height h
+function widthForRows(h: number, rows: number) {
+  const cardH = (h - GRID_GAP * (rows - 1)) / rows
+  return (cardH - CARD_INFO_H - CARD_BORDER) / 1.5 + CARD_BORDER
+}
+
+// `target` is the slider's card width. Rows are fitted to the height at about
+// that width, squeezing in one more row if the cards only shrink up to 15%
+// for it, and as many columns as fit at the resulting width are used.
+function gridLayout(w: number, h: number, target: number): GridLayout {
+  // Half a pixel of slack so rounding in the browser can't push a row over
+  const fitH = h - 0.5
+  let rows = Math.max(1, Math.floor((fitH + GRID_GAP) / (cardHeight(target) + GRID_GAP)))
+  if (widthForRows(fitH, rows + 1) >= target * 0.85) rows += 1
+  // Cards may grow up to 10% past the target to fill the height
+  const cardW = Math.max(40, Math.floor(Math.min(widthForRows(fitH, rows), target * 1.1, w)))
   const cols = Math.max(1, Math.floor((w + GRID_GAP) / (cardW + GRID_GAP)))
-  return { rows, cols, cardW: Math.max(40, Math.floor(cardW)) }
+  return { rows, cols, cardW }
 }
 
-function useFitLayout(viewMode: 'grid' | 'list', gridSize: number) {
+// On phones, empty space at the sides is wasted, so the columns stretch to
+// fill the width instead.
+function phoneLayout(w: number, h: number, target: number): GridLayout {
+  const cols = Math.max(1, Math.floor((w + GRID_GAP) / (target + GRID_GAP)))
+  const colW = Math.min(w, (w - GRID_GAP * (cols - 1)) / cols)
+  const fitH = h - 0.5
+  let rows = Math.max(1, Math.floor((fitH + GRID_GAP) / (cardHeight(colW) + GRID_GAP)))
+  if (widthForRows(fitH, rows + 1) >= colW * 0.85) rows += 1
+  const cardW = Math.max(40, Math.floor(Math.min(colW, widthForRows(fitH, rows))))
+  return { rows, cols, cardW }
+}
+
+function useFitLayout(viewMode: 'grid' | 'list', target: number, isPhone: boolean) {
   const [area, setArea] = useState<HTMLDivElement | null>(null)
   const [areaSize, setAreaSize] = useState({ w: 0, h: 0 })
   const [items, setItems] = useState<HTMLDivElement | null>(null)
   const [itemH, setItemH] = useState(0)
-  const [infoH, setInfoH] = useState(CARD_INFO_H)
 
   useEffect(() => {
     if (!area) return
@@ -131,28 +138,15 @@ function useFitLayout(viewMode: 'grid' | 'list', gridSize: number) {
     return () => ro.disconnect()
   }, [area])
 
-  // Measure a real rendered item: a list row's height, or the part of a
-  // card below its cover
+  // List rows vary with font settings, so measure a real one
   useEffect(() => {
-    if (!items) return
+    if (!items || viewMode !== 'list') return
     let ro: ResizeObserver | null = null
     const watch = () => {
       ro?.disconnect()
       const first = items.firstElementChild as HTMLElement | null
       if (!first) return
-      const update = () => {
-        setItemH(first.offsetHeight)
-        const cover = first.firstElementChild as HTMLElement | null
-        if (cover && viewMode === 'grid') {
-          // Use fractional sizes: offsetHeight rounds the card and cover
-          // separately, so the difference wobbles by a pixel as the card
-          // width changes. That wobble fed back into the card width and made
-          // the grid flip between two sizes every frame.
-          const info = first.getBoundingClientRect().height - cover.getBoundingClientRect().height
-          const next = Math.max(0, Math.ceil(info))
-          setInfoH(prev => (Math.abs(prev - next) <= 1 ? prev : next))
-        }
-      }
+      const update = () => setItemH(first.offsetHeight)
       update()
       ro = new ResizeObserver(update)
       ro.observe(first)
@@ -173,15 +167,17 @@ function useFitLayout(viewMode: 'grid' | 'list', gridSize: number) {
     return { areaRef: setArea, itemsRef: setItems, count: Math.min(rows, 200), grid: null }
   }
 
-  const grid = gridLayout(areaSize.w, areaSize.h, gridSize, infoH)
+  const grid = (isPhone ? phoneLayout : gridLayout)(areaSize.w, areaSize.h, target)
   return { areaRef: setArea, itemsRef: setItems, count: Math.min(grid.rows * grid.cols, 200), grid }
 }
 
 export default function LibraryPage() {
-  const { filters, page, setPage, viewMode, gridSize, setVisibleBookIds } = useStore()
+  const { filters, page, setPage, viewMode, gridSize, gridSizePhone, setVisibleBookIds } = useStore()
+  const isPhone = useIsPhone()
+  const target = isPhone ? clampSize(gridSizePhone, PHONE_RANGE) : clampSize(gridSize, DESKTOP_RANGE)
   const { bookId: selectedBookId, open: setSelectedBookId, close: closeBook } = useBookRoute()
 
-  const fit = useFitLayout(viewMode, gridSize)
+  const fit = useFitLayout(viewMode, target, isPhone)
   const perPage = fit.count
 
   // When the fit changes (resize, grid size), stay near the same books
@@ -278,7 +274,7 @@ export default function LibraryPage() {
             style={{
               gridTemplateColumns: fit.grid
                 ? `repeat(${fit.grid.cols}, ${fit.grid.cardW}px)`
-                : `repeat(auto-fill, minmax(${gridSize}px, 1fr))`,
+                : `repeat(auto-fill, minmax(${target}px, 1fr))`,
             }}
           >
             {books.map(book => (

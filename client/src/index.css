@@ -392,3 +392,10 @@
 
   /* ─── Utility classes ────────────────────────────────────────────────────── */
 }
+
+/* Card size slider in the library filter bar */
+.grid-size-slider {
+  accent-color: rgb(var(--accent));
+  height: 1rem;
+  cursor: pointer;
+}

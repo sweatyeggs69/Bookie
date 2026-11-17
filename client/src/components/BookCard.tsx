@@ -93,7 +93,9 @@ export default function BookCard({ book, onClick }: BookCardProps) {
         aria-label={`${selectionMode ? 'Select' : 'Open'} ${book.title ?? book.filename}`}
       >
         {/* Cover */}
-        <div className="relative w-full rounded-t-xl overflow-hidden" style={{ paddingBottom: '150%' }}>
+        {/* Cover: a fixed 2:3 box. Covers of any shape are cropped to it, so
+            the card's height depends only on its width. */}
+        <div className="relative w-full aspect-[2/3] shrink-0 rounded-t-xl overflow-hidden">
           <div className="absolute inset-0">
             {coverUrl ? (
               <img src={coverUrl} alt={book.title ?? book.filename} onError={() => setImgError(true)}
@@ -149,8 +151,10 @@ export default function BookCard({ book, onClick }: BookCardProps) {
         )}
 
         {/* Text */}
-        <div className="px-2.5 py-2 flex flex-col gap-0.5 min-w-0">
-          <p className="text-ink text-sm font-medium leading-snug line-clamp-2 min-h-[2.5em]" title={book.title ?? book.filename}>
+        {/* Fixed height (CARD_INFO_H in LibraryPage) so every card is the same
+            size whether the title takes one line or two, or has no author */}
+        <div className="h-[73px] shrink-0 overflow-hidden px-2.5 py-2 flex flex-col gap-0.5 min-w-0">
+          <p className="text-ink text-sm font-medium leading-snug line-clamp-2 min-h-[2.75em]" title={book.title ?? book.filename}>
             {book.title ?? book.filename}
           </p>
           {book.author && (

@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Filters, User } from './types'
+import { DEFAULT_DESKTOP_SIZE, DEFAULT_PHONE_SIZE } from './gridSize'
 
 // ─── Persisted preferences ────────────────────────────────────────────────────
 
 interface PersistedPrefs {
   viewMode: 'grid' | 'list'
   gridSize: number
+  gridSizePhone: number
   page: number
   filters: Filters
   view: 'library' | 'settings'
@@ -39,6 +41,7 @@ interface StoreState extends Omit<PersistedPrefs, 'view'> {
   // View preferences (persisted)
   setViewMode: (mode: 'grid' | 'list') => void
   setGridSize: (size: number) => void
+  setGridSizePhone: (size: number) => void
 
   // Search query (convenience wrapper — sets filters.q and resets page)
   setSearchQuery: (query: string) => void
@@ -102,8 +105,11 @@ export const useStore = create<StoreState>()(
       viewMode: 'grid',
       setViewMode: (viewMode) => set({ viewMode }),
 
-      gridSize: 160,
+      // Target card width in px for the grid size slider (see gridSize.ts)
+      gridSize: DEFAULT_DESKTOP_SIZE,
       setGridSize: (gridSize) => set({ gridSize }),
+      gridSizePhone: DEFAULT_PHONE_SIZE,
+      setGridSizePhone: (gridSizePhone) => set({ gridSizePhone }),
 
       // Search query — sets filters.q and resets page
       setSearchQuery: (query) =>
@@ -138,6 +144,7 @@ export const useStore = create<StoreState>()(
       partialize: (state: StoreState): PersistedPrefs => ({
         viewMode: state.viewMode,
         gridSize: state.gridSize,
+        gridSizePhone: state.gridSizePhone,
         page: state.page,
         filters: state.filters,
         view: state.view === 'upload' ? 'library' : state.view,

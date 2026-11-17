@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Grid2x2, List, SlidersHorizontal, ChevronDown, X, Trash2 } from 'lucide-react'
+import { Grid2x2, Grid3x3, List, SlidersHorizontal, ChevronDown, X, Trash2, Square } from 'lucide-react'
 import { useStore } from '../store'
 import * as api from '../api/client'
 import { Tag } from '../types'
 import SearchBar from './SearchBar'
 import { useToast } from '../contexts/toast'
+import { useIsPhone, clampSize, PHONE_RANGE, DESKTOP_RANGE } from '../gridSize'
 
 const FORMAT_OPTIONS = [
   { value: '', label: 'All Formats' },
@@ -29,12 +30,6 @@ const SORT_OPTIONS = [
   { value: 'file_size', label: 'File Size' },
 ]
 
-const GRID_SIZES = [
-  { value: 120, label: 'Small' },
-  { value: 160, label: 'Medium' },
-  { value: 210, label: 'Large' },
-]
-
 const selectCls = [
   'appearance-none px-3 py-1.5 pr-7 rounded-lg border border-line',
   'bg-surface-raised text-ink text-sm',
@@ -54,7 +49,7 @@ function Sel({ children, width = 'w-32' }: { children: React.ReactNode; width?: 
 
 export default function FilterBar() {
   const {
-    filters, setFilters, viewMode, setViewMode, gridSize, setGridSize,
+    filters, setFilters, viewMode, setViewMode,
     selectionMode, selectedBookIds, visibleBookIds, setSelectionMode, clearSelection, selectAllBooks,
   } = useStore()
   // 'filters' | 'views' | null — only one panel open at a time on mobile
@@ -390,20 +385,7 @@ export default function FilterBar() {
   const viewControls = (
     <div className="flex flex-wrap items-center gap-2">
       {/* Grid size — only in grid mode */}
-      {viewMode === 'grid' && (
-        <Sel>
-          <select
-            value={gridSize}
-            onChange={e => setGridSize(Number(e.target.value))}
-            className={`${selectCls} w-full`}
-            aria-label="Grid size"
-          >
-            {GRID_SIZES.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </Sel>
-      )}
+      {viewMode === 'grid' && <GridSizeSlider />}
 
       {/* View mode toggle */}
       <button
@@ -508,5 +490,32 @@ export default function FilterBar() {
         </div>
       )}
     </div>
+  )
+}
+
+// Card size slider: sets the target card width, and the grid fits as many
+// columns as it can at that width. Phones have their own range and value.
+function GridSizeSlider() {
+  const { gridSize, setGridSize, gridSizePhone, setGridSizePhone } = useStore()
+  const isPhone = useIsPhone()
+  const range = isPhone ? PHONE_RANGE : DESKTOP_RANGE
+  const value = clampSize(isPhone ? gridSizePhone : gridSize, range)
+  const save = isPhone ? setGridSizePhone : setGridSize
+
+  return (
+    <label className="flex items-center gap-2 h-8 px-2.5 rounded-lg border border-line bg-surface-raised text-ink-muted flex-1 sm:flex-none">
+      <Grid3x3 size={13} className="shrink-0" aria-hidden />
+      <input
+        type="range"
+        min={range.min}
+        max={range.max}
+        step={1}
+        value={value}
+        onChange={e => save(Number(e.target.value))}
+        className="grid-size-slider flex-1 sm:flex-none sm:w-28 min-w-0"
+        aria-label="Card size"
+      />
+      <Square size={14} className="shrink-0" aria-hidden />
+    </label>
   )
 }
