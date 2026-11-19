@@ -52,6 +52,7 @@ export default function UploadPage({ onClose }: Props) {
   const [items, setItems] = useState<FileItem[]>([])
   const [dragging, setDragging] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [skipped, setSkipped] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const qc = useQueryClient()
@@ -62,6 +63,7 @@ export default function UploadPage({ onClose }: Props) {
 
   function addFiles(files: File[]) {
     const valid = files.filter(f => ALLOWED.has(ext(f.name)))
+    setSkipped(files.filter(f => !ALLOWED.has(ext(f.name))).map(f => f.name))
     if (!valid.length) return
     setItems(prev => [
       ...prev,
@@ -162,9 +164,11 @@ export default function UploadPage({ onClose }: Props) {
           >
             or select a folder
           </button>
+          {/* No accept filter: mobile pickers map accept to MIME types, and formats
+              without a registered MIME type (azw3, azw, fb2, cbr...) show up greyed
+              out. addFiles() filters by extension instead. */}
           <input
             ref={inputRef} type="file" multiple
-            accept={[...ALLOWED].map(e => `.${e}`).join(',')}
             className="hidden"
             onChange={e => addFiles(Array.from(e.target.files ?? []))}
             onClick={e => e.stopPropagation()}
@@ -178,6 +182,13 @@ export default function UploadPage({ onClose }: Props) {
             onClick={e => e.stopPropagation()}
           />
         </div>
+
+        {skipped.length > 0 && (
+          <p className="text-xs text-danger flex items-start gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+            <span>Skipped unsupported {skipped.length === 1 ? 'file' : 'files'}: {skipped.slice(0, 3).join(', ')}{skipped.length > 3 ? ` and ${skipped.length - 3} more` : ''}</span>
+          </p>
+        )}
 
         {/* Tag selector */}
         {allTags.length > 0 && (
